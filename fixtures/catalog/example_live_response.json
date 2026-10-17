@@ -1,0 +1,26 @@
+{
+  "capturedAt": "2026-10-17T20:41:58Z",
+  "command": "python3 scripts/catalog_smoke.py --query \"denim jacket\" --limit 2",
+  "mode": "live",
+  "provider": "solescout",
+  "query": "denim jacket",
+  "elapsed_ms": 455,
+  "sampleListing": {
+    "providerListingId": "011-ennis-del-mar-denim-jacket-r011jk029xs",
+    "title": "011 - Ennis Del Mar Denim Jacket",
+    "brand": "C2H4",
+    "canonicalUrl": "https://solescout.ai/product/011-ennis-del-mar-denim-jacket-r011jk029xs",
+    "imageUrls": [
+      "https://solescout.ai/api/goat-image?slug=011-ennis-del-mar-denim-jacket-r011jk029xs&sku=r011-jk029xs"
+    ],
+    "price": { "amountMinor": 47500, "currency": "USD" },
+    "availability": "unknown",
+    "materialText": null,
+    "mode": "live"
+  },
+  "limitations": [
+    "Cheapest retailer names often hidden on free SoleScout tier",
+    "No material composition field",
+    "Currency implied USD"
+  ]
+}

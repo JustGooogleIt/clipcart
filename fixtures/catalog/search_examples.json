@@ -1,0 +1,73 @@
+{
+  "version": "2026-10-17.1",
+  "label": "fixture",
+  "note": "At least eight fashion search examples for ClipCart evaluation. Fixtures are labeled.",
+  "examples": [
+    {
+      "id": "E01_exactish_tee",
+      "intent": "exact_or_strong_brand",
+      "matchQueries": ["white cotton t-shirt", "polo ralph lauren tee", "white tee"],
+      "listingIds": ["fix_polo_tee_white"],
+      "notes": "Strong brand+title hit with M in stock at $55."
+    },
+    {
+      "id": "E02_over_budget_bomber",
+      "intent": "over_budget_original",
+      "matchQueries": ["black nylon bomber jacket", "cecilie bahnsen bomber"],
+      "listingIds": ["fix_cecilie_bomber"],
+      "notes": "$1810 bomber — original found / over budget for $120."
+    },
+    {
+      "id": "E03_unavailable_size",
+      "intent": "unavailable_size",
+      "matchQueries": ["032c hoodie", "oversized graphic hoodie"],
+      "listingIds": ["fix_032c_hoodie_xs"],
+      "notes": "Only XS observed; request M must not pass as satisfied."
+    },
+    {
+      "id": "E04_similar_denim",
+      "intent": "visually_similar_different_item",
+      "matchQueries": ["denim jacket", "blue denim jacket"],
+      "listingIds": ["fix_c2h4_denim_jacket", "fix_ck_faux_leather_moto"],
+      "notes": "Different brands/items; similar-option tier only."
+    },
+    {
+      "id": "E05_bag_under_budget",
+      "intent": "bag_under_budget",
+      "matchQueries": ["canvas tote bag", "y-3 tote"],
+      "listingIds": ["fix_y3_canvas_tote"],
+      "notes": "Y-3 tote ~$93 under $120."
+    },
+    {
+      "id": "E06_leather_exclusion",
+      "intent": "excluded_material",
+      "matchQueries": ["leather jacket", "about blank jacket"],
+      "listingIds": ["fix_aboutblank_leather"],
+      "notes": "Title mentions leather — hard-exclude for no-leather prefs."
+    },
+    {
+      "id": "E07_unknown_stock",
+      "intent": "unknown_availability",
+      "matchQueries": ["amiri tote", "amiri canvas tote"],
+      "listingIds": ["fix_amiri_tote_unknown_stock"],
+      "notes": "Price present; sizes_in_stock empty → availability unknown."
+    },
+    {
+      "id": "E08_no_match",
+      "intent": "no_match",
+      "matchQueries": [
+        "neon holographic scuba tuxedo jacket size zzz",
+        "zzzzz-no-such-garment-clipcart"
+      ],
+      "listingIds": [],
+      "notes": "Empty listingIds — fixture search must return zero listings, not invent URLs."
+    },
+    {
+      "id": "E09_luxury_bag_over_budget",
+      "intent": "over_budget_bag",
+      "matchQueries": ["acne studios tote", "heart tote bag"],
+      "listingIds": ["fix_acne_heart_tote"],
+      "notes": "Extra case: $900 tote."
+    }
+  ]
+}
