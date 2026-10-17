@@ -1,0 +1,15 @@
+# Direct runtime dependencies (integration owner: Claude). Pinned set: requirements.txt
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.4
+pymongo==4.10.1
+mongomock==4.3.0          # local_memory dev store only; Atlas uses pymongo
+httpx==0.28.1             # xAI Grok client
+certifi
+perceptron==0.4.0         # T02 Perceptron adapter
+Pillow==11.0.0
+numpy==2.2.1
+# Test / lint
+pytest==8.3.4
+ruff==0.8.4
+# System requirements (not pip): ffmpeg and ffprobe >= 6 on PATH (tested 7.1.1)

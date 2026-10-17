@@ -112,6 +112,10 @@ class SoleScoutCatalogProvider:
                 "disclaimer": payload.get("disclaimer"),
                 "hidden_stores": payload.get("hidden_stores"),
                 "stores_carrying": payload.get("stores_carrying"),
+                "stores": payload.get("stores") or [],
+                "sizes_in_stock": payload.get("sizes_in_stock") or [],
+                "style_code": payload.get("style_code"),
+                "retail_price_usd": payload.get("retail_price_usd"),
             },
         )
 
@@ -253,17 +257,15 @@ class SoleScoutCatalogProvider:
             warnings.append(
                 f"{hidden.get('count')} cheapest retailer name(s) hidden on free tier."
             )
-        # Prefer a concrete store URL when SoleScout exposes one with a usable link.
+        # The price above is SoleScout's lowest across retailers (often hidden),
+        # and canonicalUrl is SoleScout's page, so the retailer stays the
+        # aggregator. Visible stores are exposed separately in diagnostics so
+        # callers can link them without attaching the aggregate price to them.
         retailer = "SoleScout (aggregator)"
-        for store in stores:
-            store_url = store.get("url")
-            if store_url:
-                # Keep SoleScout page as evidence source; expose store as retailer hint.
-                retailer = str(store.get("name") or "unknown retailer")
-                warnings.append(
-                    "Visible store URL may omit price; cheapest offers may still be hidden."
-                )
-                break
+        if any(store.get("url") for store in stores):
+            warnings.append(
+                "Visible store URL may omit price; cheapest offers may still be hidden."
+            )
         material = material_hint_from_title(title)
         size = size_from_variant(variant_id, sizes if isinstance(sizes, list) else None)
         if variant_id and isinstance(sizes, list):

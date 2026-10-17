@@ -4,3 +4,9 @@ __pycache__/
 .env
 .venv/
 venv/
+.data/
+node_modules/
+apps/web/dist/
+.pytest_cache/
+.ruff_cache/
+*.log
