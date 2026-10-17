@@ -26,6 +26,7 @@ class AppState:
     executor: ThreadPoolExecutor
     counters: dict[str, int] = field(default_factory=dict)
     lock: threading.Lock = field(default_factory=threading.Lock)
+    _perception: Any = None
 
     def bump(self, key: str) -> None:
         with self.lock:
@@ -35,19 +36,26 @@ class AppState:
         """Return (provider | None, detection_mode)."""
         mode = self.settings.perception_provider
         if mode == "perceptron" and self.settings.perceptron_key_present:
-            from app.providers.perceptron.adapter import PerceptronPerceptionProvider
-            from app.providers.perceptron.sdk import SdkBackend
+            with self.lock:
+                if self._perception is None:
+                    import perceptron
 
-            backend = SdkBackend(model=self.settings.perceptron_model, request_timeout_s=30.0)
-            prov = PerceptronPerceptionProvider(
-                self.media,
-                backend,
-                mode="live",
-                model_id=self.settings.perceptron_model,
-                max_frames=12,
-                max_attribute_calls=4,
-            )
-            return prov, self.status["perceptron"].mode  # unverified until a call succeeds
+                    from app.providers.perceptron.adapter import PerceptronPerceptionProvider
+                    from app.providers.perceptron.sdk import SdkBackend
+
+                    s = self.settings
+                    backend = SdkBackend(model=s.perceptron_model, request_timeout_s=30.0)
+                    # Bound paid output per call; the SDK only exposes this as a global setting.
+                    perceptron.configure(max_tokens=s.perceptron_max_tokens)
+                    self._perception = PerceptronPerceptionProvider(
+                        self.media,
+                        backend,
+                        mode="live",
+                        model_id=s.perceptron_model,
+                        max_frames=s.perception_max_frames,
+                        max_attribute_calls=s.perception_max_attribute_calls,
+                    )
+            return self._perception, self.status["perceptron"].mode  # unverified until a call succeeds
         if mode == "fixture":
             from app.config import API_ROOT
             from app.providers.perceptron.adapter import PerceptronPerceptionProvider

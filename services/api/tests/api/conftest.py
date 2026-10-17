@@ -18,6 +18,7 @@ H = {"X-ClipCart-Request": "1"}
 def app_factory(tmp_path, monkeypatch):
     for k in ("MONGODB_URI", "PERCEPTRON_API_KEY", "XAI_API_KEY", "PERCEPTION_PROVIDER"):
         monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("CLIPCART_SKIP_DOTENV", "1")  # never read real keys in tests
     monkeypatch.setenv("CLIPCART_MEDIA_ROOT", str(tmp_path / "media"))
     monkeypatch.setenv("CLIPCART_WEB_DIST", str(tmp_path / "nodist"))
     from app.main import create_app

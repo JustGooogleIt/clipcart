@@ -38,6 +38,9 @@ class Settings:
     perception_provider: str  # perceptron | fixture | none
     perceptron_key_present: bool
     perceptron_model: str
+    perception_max_frames: int
+    perception_max_attribute_calls: int
+    perceptron_max_tokens: int
     xai_key_present: bool
     xai_model: str
     xai_base_url: str
@@ -59,7 +62,28 @@ class Settings:
         return "atlas" if "mongodb.net" in self.mongodb_uri else "mongodb"
 
 
+def _load_dotenv(path: Path) -> list[str]:
+    """Load KEY=VALUE lines from the repo .env without overriding the real environment.
+    Returns the names loaded (never values)."""
+    loaded: list[str] = []
+    if not path.is_file():
+        return loaded
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k = k.strip().removeprefix("export ").strip()
+        v = v.split(" #", 1)[0].strip().strip('"').strip("'")
+        if k and v and k not in os.environ:
+            os.environ[k] = v
+            loaded.append(k)
+    return loaded
+
+
 def load_settings() -> Settings:
+    if not _flag("CLIPCART_SKIP_DOTENV"):
+        _load_dotenv(REPO_ROOT / ".env")
     _ensure_ca_bundle()
     perceptron_key = bool(os.getenv("PERCEPTRON_API_KEY"))
     perception = (os.getenv("PERCEPTION_PROVIDER") or ("perceptron" if perceptron_key else "none")).lower()
@@ -70,7 +94,10 @@ def load_settings() -> Settings:
         catalog_provider=(os.getenv("CATALOG_PROVIDER") or "solescout").lower(),
         perception_provider=perception,
         perceptron_key_present=perceptron_key,
-        perceptron_model=os.getenv("PERCEPTRON_MODEL", "perceptron-mk1.5"),
+        perceptron_model=os.getenv("PERCEPTRON_MODEL", "perceptron-mk1"),
+        perception_max_frames=int(os.getenv("PERCEPTION_MAX_FRAMES", "6")),
+        perception_max_attribute_calls=int(os.getenv("PERCEPTION_MAX_ATTRIBUTE_CALLS", "3")),
+        perceptron_max_tokens=int(os.getenv("PERCEPTRON_MAX_TOKENS", "1200")),
         xai_key_present=bool(os.getenv("XAI_API_KEY")),
         xai_model=os.getenv("XAI_MODEL", "grok-4.3"),
         xai_base_url=os.getenv("XAI_BASE_URL", "https://api.x.ai/v1").rstrip("/"),
