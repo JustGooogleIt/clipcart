@@ -13,6 +13,9 @@ EvidenceTier = Literal["verified", "likely", "similar"]
 ResultMode = Literal["live", "cached", "catalog", "fixture"]
 Availability = Literal["in_stock", "out_of_stock", "unknown"]
 Condition = Literal["new", "used", "unknown"]
+# retailer_offer: canonicalUrl+price(+size) come from the same visible store record.
+# comparison: SoleScout product page; not a retailer checkout destination.
+DestinationKind = Literal["retailer_offer", "comparison"]
 
 
 class Money(TypedDict):
@@ -69,5 +72,6 @@ class Listing(TypedDict):
     checkedAt: str
     evidenceIds: list[str]
     mode: ResultMode
+    destinationKind: DestinationKind
     # Optional diagnostics for integrators; strip before browser if needed.
     warnings: NotRequired[list[str]]

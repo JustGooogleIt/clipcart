@@ -11,14 +11,13 @@ from typing import Any
 from .base import CatalogFilters, CatalogSearchResult
 from .errors import CatalogProviderError
 from .normalize import (
-    availability_from_sizes,
     build_evidence,
     dollars_to_minor,
     material_hint_from_title,
-    size_from_variant,
     stable_id,
     utc_now,
 )
+from .offers import resolve_solescout_offer
 from .types import Listing
 
 
@@ -112,10 +111,14 @@ class SoleScoutCatalogProvider:
                 "disclaimer": payload.get("disclaimer"),
                 "hidden_stores": payload.get("hidden_stores"),
                 "stores_carrying": payload.get("stores_carrying"),
+                "destinationKind": listing.get("destinationKind") if listing else None,
+                # Raw detail fields for the integration verifier (size and store checks).
                 "stores": payload.get("stores") or [],
                 "sizes_in_stock": payload.get("sizes_in_stock") or [],
                 "style_code": payload.get("style_code"),
                 "retail_price_usd": payload.get("retail_price_usd"),
+                "lowest_price_usd": payload.get("lowest_price_usd"),
+                "comparison_url": str(payload.get("url") or ""),
             },
         )
 
@@ -170,6 +173,7 @@ class SoleScoutCatalogProvider:
     def _listing_from_search_hit(
         self, item: dict[str, Any], checked_at: str, filters: CatalogFilters
     ) -> tuple[Listing | None, Any]:
+        """Search cards never include store records → always comparison destinations."""
         slug = item.get("slug")
         if not slug:
             return None, None
@@ -177,17 +181,14 @@ class SoleScoutCatalogProvider:
         url = str(item.get("url") or f"{self.base_url}/product/{slug}")
         image = item.get("image")
         price = dollars_to_minor(item.get("lowest_price_usd"), filters.currency)
-        if filters.max_price_minor is not None and price is not None:
-            if price["amountMinor"] > filters.max_price_minor:
-                # Soft filter at adapter edge; orchestrator also enforces hard constraints.
-                pass
-        warnings: list[str] = [
-            "Retailer names for cheapest offers may be hidden on SoleScout free tier.",
-            "canonicalUrl is the SoleScout product page unless a store URL is later attached.",
+        warnings = [
+            "SoleScout comparison result — not a retailer checkout destination.",
+            "Search hits expose aggregate lowest_price_usd only; call get_details for a direct retailer offer when available.",
+            "Do not treat the SoleScout product page as merchant checkout.",
         ]
         material = material_hint_from_title(title)
         listing_id = stable_id(self.name, "search", slug, checked_at)
-        offer_key = f"{self.name}:{slug}"
+        offer_key = f"{self.name}:{slug}:comparison"
         ev = build_evidence(
             provider=self.name,
             source_url=url,
@@ -197,11 +198,12 @@ class SoleScoutCatalogProvider:
                 {
                     "field": "price",
                     "value": item.get("lowest_price_usd"),
-                    "excerpt": f"lowest_price_usd={item.get('lowest_price_usd')}",
+                    "excerpt": f"lowest_price_usd={item.get('lowest_price_usd')} (aggregate)",
                 },
+                {"field": "brand", "value": item.get("brand"), "excerpt": None},
                 {
-                    "field": "brand",
-                    "value": item.get("brand"),
+                    "field": "destinationKind",
+                    "value": "comparison",
                     "excerpt": None,
                 },
             ],
@@ -215,7 +217,7 @@ class SoleScoutCatalogProvider:
             "providerListingId": str(slug),
             "productId": str(slug),
             "variantId": None,
-            "retailer": "SoleScout (aggregator)",
+            "retailer": "SoleScout (price comparison)",
             "canonicalUrl": url,
             "imageUrls": [str(image)] if image else [],
             "title": title,
@@ -230,6 +232,7 @@ class SoleScoutCatalogProvider:
             "checkedAt": checked_at,
             "evidenceIds": [ev["id"]],
             "mode": "live",
+            "destinationKind": "comparison",
             "warnings": warnings,
         }
         return listing, ev
@@ -244,70 +247,66 @@ class SoleScoutCatalogProvider:
         if not slug:
             return None, None
         title = str(item.get("title") or slug)
-        url = str(item.get("url") or f"{self.base_url}/product/{slug}")
         image = item.get("image")
-        sizes = item.get("sizes_in_stock") or []
-        stores = item.get("stores") or []
-        price = dollars_to_minor(item.get("lowest_price_usd"), "USD")
-        warnings = [
-            str(item.get("disclaimer") or "Prices change; confirm on retailer page."),
-        ]
-        hidden = item.get("hidden_stores") or {}
-        if hidden.get("count"):
-            warnings.append(
-                f"{hidden.get('count')} cheapest retailer name(s) hidden on free tier."
-            )
-        # The price above is SoleScout's lowest across retailers (often hidden),
-        # and canonicalUrl is SoleScout's page, so the retailer stays the
-        # aggregator. Visible stores are exposed separately in diagnostics so
-        # callers can link them without attaching the aggregate price to them.
-        retailer = "SoleScout (aggregator)"
-        if any(store.get("url") for store in stores):
-            warnings.append(
-                "Visible store URL may omit price; cheapest offers may still be hidden."
-            )
-        material = material_hint_from_title(title)
-        size = size_from_variant(variant_id, sizes if isinstance(sizes, list) else None)
-        if variant_id and isinstance(sizes, list):
-            matched = [
-                s
-                for s in sizes
-                if str(s.get("size", "")).lower() == variant_id.lower()
-            ]
-            avail = "in_stock" if matched else "out_of_stock"
-            if matched and matched[0].get("lowest_price_usd") is not None:
-                price = dollars_to_minor(matched[0].get("lowest_price_usd"), "USD")
-        else:
-            avail = availability_from_sizes(
-                sizes if isinstance(sizes, list) else None,
-                stores if isinstance(stores, list) else None,
-            )
-        listing_id = stable_id(self.name, "detail", str(slug), checked_at, variant_id or "")
-        offer_key = f"{self.name}:{slug}" + (f":{variant_id}" if variant_id else "")
+        offer = resolve_solescout_offer(item, variant_id=variant_id)
+        disclaimer = item.get("disclaimer")
+        warnings = list(offer.warnings)
+        if disclaimer:
+            warnings.insert(0, str(disclaimer))
+
+        price = dollars_to_minor(offer.price_usd, "USD")
+        size = (
+            {"raw": offer.size_raw, "system": None} if offer.size_raw else None
+        )
+
+        listing_id = stable_id(
+            self.name,
+            "detail",
+            str(slug),
+            offer.kind,
+            checked_at,
+            variant_id or "",
+            offer.canonical_url,
+        )
+        offer_key = f"{self.name}:{slug}:{offer.kind}"
+        if variant_id:
+            offer_key += f":{variant_id}"
+        if offer.kind == "retailer_offer" and offer.store_name:
+            offer_key += f":{offer.store_name}"
+
         ev = build_evidence(
             provider=self.name,
-            source_url=url,
+            source_url=offer.canonical_url,
             retrieved_at=checked_at,
             claims=[
                 {"field": "title", "value": title, "excerpt": title},
                 {
                     "field": "price",
-                    "value": item.get("lowest_price_usd"),
-                    "excerpt": f"lowest_price_usd={item.get('lowest_price_usd')}",
+                    "value": offer.price_usd,
+                    "excerpt": (
+                        f"store.price_usd={offer.price_usd}"
+                        if offer.kind == "retailer_offer"
+                        else f"aggregate/comparison price_usd={offer.price_usd}"
+                    ),
                 },
                 {
-                    "field": "sizes_in_stock",
-                    "value": sizes,
+                    "field": "destinationKind",
+                    "value": offer.kind,
                     "excerpt": None,
                 },
                 {
-                    "field": "stores_carrying",
-                    "value": item.get("stores_carrying"),
+                    "field": "retailer",
+                    "value": offer.retailer,
+                    "excerpt": None,
+                },
+                {
+                    "field": "sizes_in_stock",
+                    "value": item.get("sizes_in_stock"),
                     "excerpt": None,
                 },
             ],
             raw_ref=f"solescout:product:{slug}",
-            source_type="merchant_api",
+            source_type="merchant_api" if offer.kind == "retailer_offer" else "search_result",
         )
         listing: Listing = {
             "id": listing_id,
@@ -316,8 +315,8 @@ class SoleScoutCatalogProvider:
             "providerListingId": str(slug),
             "productId": str(slug),
             "variantId": variant_id,
-            "retailer": retailer,
-            "canonicalUrl": url,
+            "retailer": offer.retailer,
+            "canonicalUrl": offer.canonical_url,
             "imageUrls": [str(image)] if image else [],
             "title": title,
             "brand": item.get("brand"),
@@ -325,12 +324,13 @@ class SoleScoutCatalogProvider:
             "shippingMinor": None,
             "condition": "unknown",
             "size": size,
-            "availability": avail,  # type: ignore[typeddict-item]
-            "materialText": material,
+            "availability": offer.availability,  # type: ignore[typeddict-item]
+            "materialText": material_hint_from_title(title),
             "colorText": item.get("color"),
             "checkedAt": checked_at,
             "evidenceIds": [ev["id"]],
             "mode": "live",
+            "destinationKind": offer.kind,  # type: ignore[typeddict-item]
             "warnings": warnings,
         }
         return listing, ev

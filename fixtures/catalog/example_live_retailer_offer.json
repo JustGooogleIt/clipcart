@@ -1,0 +1,17 @@
+{
+  "capturedAt": "2026-10-17T21:17:33Z",
+  "command": "python3 scripts/catalog_smoke.py --detail 3-pack-classic-slim-crew-tee-nscnp3whd --variant M",
+  "demoQuery": "polo ralph lauren t-shirt",
+  "mode": "live",
+  "destinationKind": "retailer_offer",
+  "retailer": "Grp-Ff",
+  "destinationUrl": "https://www.farfetch.com/us/shopping/men/polo-ralph-lauren-slim-fit-3-pack-t-shirts-set-of-three-item-39280997.aspx",
+  "price": { "amountMinor": 7400, "currency": "USD" },
+  "variantId": "M",
+  "aggregateLowestUsdHidden": 55,
+  "limitations": [
+    "Farfetch store name is abbreviated as Grp-Ff by SoleScout",
+    "Cheaper hidden retailers exist; their $55 lowest is not paired with this URL",
+    "Search hits remain comparison-only until get_details"
+  ]
+}
