@@ -89,3 +89,12 @@ def test_tool_budget_holds_under_parallel_workers():
     out, _, led = run(cat, Preferences(), budget=SearchBudget(max_tool_calls=3, max_detail_calls=1))
     assert led.budget.used_tool_calls <= 3 and led.budget.used_detail_calls <= 1
     assert sum(1 for k, _ in cat.calls) <= 3
+
+
+def test_off_color_listing_is_not_recommended_as_similar():
+    items = [item("g", "Green Varsity Bomber Jacket", 80), item("k", "Black Nylon Bomber Jacket", 80)]
+    cat = FakeCatalog(items, {s: {"sizes": ["M"]} for s in "gk"})
+    out, events, _ = run(cat, Preferences(max_item_price_minor=12000))
+    titles = [L.title for L in out.listings]
+    assert "Black Nylon Bomber Jacket" in titles and "Green Varsity Bomber Jacket" not in titles
+    assert any("weaker match" in s for _, s in events)

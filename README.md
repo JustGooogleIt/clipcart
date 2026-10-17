@@ -2,6 +2,29 @@
 
 Fashion shopping agent for DubHacks. Spec: [`docs/ClipCart_SRS.md`](docs/ClipCart_SRS.md).
 
+## Run locally
+
+Requirements: Python 3.11+, Node 20+, and `ffmpeg`/`ffprobe` on PATH.
+
+```bash
+cp .env.example .env      # optional: add PERCEPTRON_API_KEY, XAI_API_KEY, MONGODB_URI
+scripts/dev.sh            # builds apps/web and serves UI + API on http://127.0.0.1:8000
+```
+
+Without keys, the app runs honestly in reduced modes: detection "not configured" with a manual box, rule-based search workers, and a local in-process store. Mode chips at the top and `#/diagnostics` show which modes are active.
+
+Tests: `services/api/.venv/bin/python -m pytest services/api/tests -q`. Web typecheck: `cd apps/web && npx tsc -b`.
+
+Live checks once keys exist:
+
+```bash
+cd services/api
+CLIPCART_LIVE_PERCEPTRON=1 PERCEPTRON_API_KEY=... .venv/bin/python -m pytest tests/perception/test_perceptron_live.py -s
+PERCEPTRON_API_KEY=... .venv/bin/python -m app.providers.perceptron.smoke path/to/photo.jpg --frames 1
+```
+
+Status: [`docs/status.md`](docs/status.md). Decisions: [`docs/decisions.md`](docs/decisions.md).
+
 ## Ownership (short)
 
 | Area | Owner |

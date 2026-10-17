@@ -35,6 +35,7 @@ from .workers import GrokWorker, RuleWorker
 
 MAX_PRIMARY = 3
 MAX_NEEDS_CHECKING = 3
+MIN_SIMILAR_RELEVANCE = 0.1
 
 
 @dataclass
@@ -181,6 +182,7 @@ def run_search(
     emit("ranking", "Applying budget, size and material rules", worker="verifier")
     scored = []
     exclusions: Counter = Counter()
+    weak = 0
     original_over_budget = None
     for c in cands:
         L = c.listing
@@ -193,6 +195,9 @@ def run_search(
                 exclusions[v] += 1
             if tier in ("verified", "likely") and violated == ["budget"] and original_over_budget is None:
                 original_over_budget = (c, checks, tier, reason)
+            continue
+        if tier == "similar" and relevance(L, profile, prefs) < MIN_SIMILAR_RELEVANCE:
+            weak += 1  # e.g. a different color than the garment; not a useful "similar option"
             continue
         scored.append((sec, c, checks, tier, reason))
 
@@ -266,6 +271,9 @@ def run_search(
         }.get(constraint, f"that conflict with '{constraint}' (title mentions it)")
         emit("ranking", f"Excluded {n} result{'s' if n != 1 else ''} {label}", worker="verifier")
 
+    if weak:
+        emit("ranking", f"Set aside {weak} weaker match{'es' if weak != 1 else ''} (different color or few shared details)",
+             worker="verifier")
     n_p, n_n = len(primary), len(needs)
     if n_p == 0 and n_n == 0:
         out.status = "partial" if tools.errors else "no_match"

@@ -153,6 +153,21 @@ def create(request: Request, response: Response) -> dict:
     return session_view(st, st.db.sessions.find_one({"_id": s.id}))
 
 
+@router.post("/api/sessions/resume")
+def resume(request: Request, response: Response) -> dict:
+    """Boot: the owner's most recent committed session, or a new one."""
+    require_mutation_header(request)
+    owner = ensure_owner(request, response)
+    st = state_of(request)
+    doc = st.db.sessions.find_one({"ownerId": owner}, sort=[("createdAt", -1)])
+    if doc:
+        return session_view(st, doc)
+    limiter.check(owner, "session", 30)
+    st.bump("sessions_created")
+    s = create_session(st.db, owner)
+    return session_view(st, st.db.sessions.find_one({"_id": s.id}))
+
+
 @router.get("/api/sessions/latest")
 def latest(request: Request) -> dict:
     owner = current_owner(request)

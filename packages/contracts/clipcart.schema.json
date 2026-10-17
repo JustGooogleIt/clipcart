@@ -1,0 +1,1730 @@
+{
+  "$comment": "Generated from services/api/app/contracts by scripts/gen_contracts.py. Do not edit.",
+  "$defs": {
+    "AgentEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "elapsedMs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "evidenceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "jobId": {
+          "type": "string"
+        },
+        "resultIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sequence": {
+          "type": "integer"
+        },
+        "stage": {
+          "enum": [
+            "locating_garment",
+            "searching_original",
+            "searching_alternatives",
+            "verifying_listings",
+            "ranking",
+            "completed",
+            "partial",
+            "no_match",
+            "failed",
+            "superseded"
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "toolName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "worker": {
+          "default": "system",
+          "enum": [
+            "exact",
+            "alternatives",
+            "verifier",
+            "system"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "jobId",
+        "sequence",
+        "stage",
+        "summary",
+        "at"
+      ],
+      "title": "AgentEvent",
+      "type": "object"
+    },
+    "AnalysisJob": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "detectionMode": {
+          "enum": [
+            "live",
+            "unverified",
+            "fixture",
+            "unavailable"
+          ],
+          "type": "string"
+        },
+        "finishedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "frameIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "garmentIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "issues": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "mediaId": {
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "shotBoundariesMs": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "partial",
+            "detection_unavailable",
+            "failed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "ownerId",
+        "mediaId",
+        "status",
+        "detectionMode",
+        "createdAt"
+      ],
+      "title": "AnalysisJob",
+      "type": "object"
+    },
+    "ApiError": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "requestId"
+      ],
+      "title": "ApiError",
+      "type": "object"
+    },
+    "ConstraintCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "constraint": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "evidenceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "state": {
+          "enum": [
+            "satisfied",
+            "violated",
+            "unknown"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "constraint",
+        "state",
+        "detail"
+      ],
+      "title": "ConstraintCheck",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/EvidenceClaim"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rawResponseRef": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retrievedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "sourceType": {
+          "enum": [
+            "merchant_api",
+            "merchant_page",
+            "creator_link",
+            "search_result",
+            "human_verified"
+          ],
+          "type": "string"
+        },
+        "sourceUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "sourceType",
+        "sourceUrl",
+        "provider",
+        "retrievedAt",
+        "claims",
+        "rawResponseRef"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "EvidenceClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "excerpt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "field": {
+          "type": "string"
+        },
+        "value": {
+          "default": null
+        }
+      },
+      "required": [
+        "field"
+      ],
+      "title": "EvidenceClaim",
+      "type": "object"
+    },
+    "FrameRef": {
+      "additionalProperties": false,
+      "properties": {
+        "assetId": {
+          "type": "string"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "index": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mediaId": {
+          "type": "string"
+        },
+        "ptsSeconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sharpness": {
+          "type": "number"
+        },
+        "timestampMs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transform": {
+          "$ref": "#/$defs/FrameTransform"
+        },
+        "width": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "assetId",
+        "mediaId",
+        "index",
+        "timestampMs",
+        "ptsSeconds",
+        "width",
+        "height",
+        "transform",
+        "sharpness"
+      ],
+      "title": "FrameRef",
+      "type": "object"
+    },
+    "FrameTransform": {
+      "additionalProperties": false,
+      "description": "How a stored frame's pixels relate to the original coded media pixels.\n\nPipeline: coded pixels -> orientation (EXIF orientation 1..8 or video\ndisplay rotation) -> oriented pixels -> uniform resize -> stored frame.\nThe resize is uniform with no padding or cropping, so a normalized box in\nthe stored frame is the same normalized box in the oriented source.",
+      "properties": {
+        "exifOrientation": {
+          "maximum": 8,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "orientedHeight": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "orientedWidth": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "outputHeight": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "outputWidth": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "rotationDegrees": {
+          "type": "integer"
+        },
+        "scale": {
+          "exclusiveMinimum": 0.0,
+          "type": "number"
+        },
+        "sourceHeight": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "sourceWidth": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sourceWidth",
+        "sourceHeight",
+        "exifOrientation",
+        "rotationDegrees",
+        "orientedWidth",
+        "orientedHeight",
+        "outputWidth",
+        "outputHeight",
+        "scale"
+      ],
+      "title": "FrameTransform",
+      "type": "object"
+    },
+    "Garment": {
+      "additionalProperties": false,
+      "properties": {
+        "groupingBasis": {
+          "enum": [
+            "single",
+            "within_shot",
+            "user_confirmed"
+          ],
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "observationIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "representativeCropId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "userDescription": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "observationIds",
+        "representativeCropId",
+        "label",
+        "groupingBasis"
+      ],
+      "title": "Garment",
+      "type": "object"
+    },
+    "GarmentObservation": {
+      "additionalProperties": false,
+      "description": "Mirrors SRS ``GarmentObservation`` plus explicit provenance fields.",
+      "properties": {
+        "box01": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "type": "array"
+        },
+        "category": {
+          "enum": [
+            "jacket",
+            "top",
+            "bag",
+            "other"
+          ],
+          "type": "string"
+        },
+        "cropAssetId": {
+          "type": "string"
+        },
+        "editedByUser": {
+          "type": "boolean"
+        },
+        "frameAssetId": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "mediaId": {
+          "type": "string"
+        },
+        "modelGeneratedFields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "modelId": {
+          "type": "string"
+        },
+        "observedAttributes": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        "personTrackId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "providerRequestId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rawLabel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "timestampMs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "userCorrectedFields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "visibleText": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "mediaId",
+        "frameAssetId",
+        "timestampMs",
+        "box01",
+        "cropAssetId",
+        "category",
+        "personTrackId",
+        "observedAttributes",
+        "visibleText",
+        "providerRequestId",
+        "modelId",
+        "editedByUser"
+      ],
+      "title": "GarmentObservation",
+      "type": "object"
+    },
+    "JobError": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "JobError",
+      "type": "object"
+    },
+    "Listing": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "enum": [
+            "in_stock",
+            "out_of_stock",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "brand": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "canonicalUrl": {
+          "type": "string"
+        },
+        "checkedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "colorText": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "detailChecked": {
+          "type": "boolean"
+        },
+        "evidenceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "hiddenStoreCount": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "type": "string"
+        },
+        "imageUrls": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "materialText": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mode": {
+          "enum": [
+            "live",
+            "cached",
+            "catalog",
+            "fixture"
+          ],
+          "type": "string"
+        },
+        "offerKey": {
+          "type": "string"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "priceBasis": {
+          "enum": [
+            "seller_offer",
+            "aggregate_lowest",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "productId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider": {
+          "type": "string"
+        },
+        "providerListingId": {
+          "type": "string"
+        },
+        "retailer": {
+          "type": "string"
+        },
+        "sellerVisibility": {
+          "enum": [
+            "named",
+            "hidden",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "shippingMinor": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "size": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SizePref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sizesInStock": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/SizeStock"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sourceKind": {
+          "enum": [
+            "aggregator",
+            "retailer",
+            "marketplace",
+            "demo_catalog"
+          ],
+          "type": "string"
+        },
+        "storeOffers": {
+          "items": {
+            "$ref": "#/$defs/StoreOffer"
+          },
+          "type": "array"
+        },
+        "storesCarrying": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "styleCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "type": "string"
+        },
+        "variantId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "offerKey",
+        "provider",
+        "providerListingId",
+        "productId",
+        "variantId",
+        "retailer",
+        "sourceKind",
+        "canonicalUrl",
+        "imageUrls",
+        "title",
+        "brand",
+        "price",
+        "priceBasis",
+        "sellerVisibility",
+        "shippingMinor",
+        "condition",
+        "size",
+        "sizesInStock",
+        "availability",
+        "materialText",
+        "colorText",
+        "checkedAt",
+        "detailChecked",
+        "evidenceIds",
+        "mode"
+      ],
+      "title": "Listing",
+      "type": "object"
+    },
+    "MediaAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "byteSize": {
+          "type": "integer"
+        },
+        "canonicalSourceUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "durationMs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "exifOrientation": {
+          "default": 1,
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "image",
+            "video"
+          ],
+          "type": "string"
+        },
+        "mime": {
+          "enum": [
+            "image/jpeg",
+            "image/png",
+            "video/mp4",
+            "video/quicktime"
+          ],
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "rotationDegrees": {
+          "default": 0,
+          "type": "integer"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "sourceType": {
+          "enum": [
+            "upload_image",
+            "upload_video"
+          ],
+          "type": "string"
+        },
+        "storageKey": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "sha256",
+        "mime",
+        "kind",
+        "width",
+        "height",
+        "durationMs",
+        "sourceType",
+        "storageKey",
+        "byteSize",
+        "createdAt"
+      ],
+      "title": "MediaAsset",
+      "type": "object"
+    },
+    "Money": {
+      "additionalProperties": false,
+      "properties": {
+        "amountMinor": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "currency": {
+          "maxLength": 3,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "amountMinor",
+        "currency"
+      ],
+      "title": "Money",
+      "type": "object"
+    },
+    "OutboundLink": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "aggregator_product_page",
+            "retailer_product_page"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "priceNote": {
+          "type": "string"
+        },
+        "retailer": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "token",
+        "kind",
+        "label",
+        "retailer",
+        "priceNote"
+      ],
+      "title": "OutboundLink",
+      "type": "object"
+    },
+    "PreferencePatch": {
+      "additionalProperties": false,
+      "description": "Partial update. Only fields present in the request are applied (FR14).",
+      "properties": {
+        "colors": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 6,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "enum": [
+                "new",
+                "used",
+                "any"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "country": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "excludedMaterials": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 8,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "maxItemPriceMinor": {
+          "anyOf": [
+            {
+              "maximum": 10000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "size": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SizePref"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "PreferencePatch",
+      "type": "object"
+    },
+    "Preferences": {
+      "additionalProperties": false,
+      "properties": {
+        "colors": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6,
+          "type": "array"
+        },
+        "condition": {
+          "default": "any",
+          "enum": [
+            "new",
+            "used",
+            "any"
+          ],
+          "type": "string"
+        },
+        "country": {
+          "default": "US",
+          "type": "string"
+        },
+        "currency": {
+          "default": "USD",
+          "type": "string"
+        },
+        "excludedMaterials": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "type": "array"
+        },
+        "maxItemPriceMinor": {
+          "anyOf": [
+            {
+              "maximum": 10000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "size": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SizePref"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Preferences",
+      "type": "object"
+    },
+    "Recommendation": {
+      "additionalProperties": false,
+      "properties": {
+        "constraintChecks": {
+          "items": {
+            "$ref": "#/$defs/ConstraintCheck"
+          },
+          "type": "array"
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "foundBy": {
+          "items": {
+            "enum": [
+              "exact",
+              "alternatives"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "garmentId": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "identityEvidenceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "identityTier": {
+          "enum": [
+            "verified",
+            "likely",
+            "similar"
+          ],
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/OutboundLink"
+          },
+          "type": "array"
+        },
+        "listingId": {
+          "type": "string"
+        },
+        "rank": {
+          "type": "integer"
+        },
+        "rankingVersion": {
+          "type": "string"
+        },
+        "searchId": {
+          "type": "string"
+        },
+        "section": {
+          "enum": [
+            "primary",
+            "needs_checking",
+            "original_over_budget"
+          ],
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "searchId",
+        "garmentId",
+        "listingId",
+        "section",
+        "identityTier",
+        "identityEvidenceIds",
+        "constraintChecks",
+        "explanation",
+        "warnings",
+        "rank",
+        "rankingVersion",
+        "foundBy",
+        "links"
+      ],
+      "title": "Recommendation",
+      "type": "object"
+    },
+    "ReferralEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "affiliateConfigured": {
+          "default": false,
+          "type": "boolean"
+        },
+        "conversionStatus": {
+          "default": "unknown",
+          "enum": [
+            "unknown",
+            "confirmed",
+            "reversed"
+          ],
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "linkKind": {
+          "enum": [
+            "aggregator_product_page",
+            "retailer_product_page"
+          ],
+          "type": "string"
+        },
+        "linkToken": {
+          "type": "string"
+        },
+        "listingId": {
+          "type": "string"
+        },
+        "occurredAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "outboundUrl": {
+          "type": "string"
+        },
+        "recommendationId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "recommendationId",
+        "listingId",
+        "linkToken",
+        "outboundUrl",
+        "linkKind",
+        "occurredAt"
+      ],
+      "title": "ReferralEvent",
+      "type": "object"
+    },
+    "SearchBudget": {
+      "additionalProperties": false,
+      "properties": {
+        "maxDetailCalls": {
+          "default": 6,
+          "type": "integer"
+        },
+        "maxRoundsPerWorker": {
+          "default": 3,
+          "type": "integer"
+        },
+        "maxToolCalls": {
+          "default": 12,
+          "type": "integer"
+        },
+        "reasoningCalls": {
+          "default": 0,
+          "type": "integer"
+        },
+        "usedDetailCalls": {
+          "default": 0,
+          "type": "integer"
+        },
+        "usedToolCalls": {
+          "default": 0,
+          "type": "integer"
+        }
+      },
+      "title": "SearchBudget",
+      "type": "object"
+    },
+    "SearchJob": {
+      "additionalProperties": false,
+      "properties": {
+        "budget": {
+          "$ref": "#/$defs/SearchBudget"
+        },
+        "catalogMode": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "deadlineAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JobError"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "finishedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "garmentId": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inputHash": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "preferenceSnapshot": {
+          "$ref": "#/$defs/Preferences"
+        },
+        "resultIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "sessionRevision": {
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "partial",
+            "no_match",
+            "failed",
+            "cancelled",
+            "superseded"
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "workerMode": {
+          "enum": [
+            "grok",
+            "rule_based"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "ownerId",
+        "sessionRevision",
+        "inputHash",
+        "status",
+        "preferenceSnapshot",
+        "garmentId",
+        "budget",
+        "deadlineAt",
+        "workerMode",
+        "catalogMode",
+        "createdAt"
+      ],
+      "title": "SearchJob",
+      "type": "object"
+    },
+    "ShoppingSession": {
+      "additionalProperties": false,
+      "properties": {
+        "activeSearchId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "analysisId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastPresentedResultIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "mediaId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "preferences": {
+          "$ref": "#/$defs/Preferences"
+        },
+        "revision": {
+          "type": "integer"
+        },
+        "selectedGarmentId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "revision",
+        "mediaId",
+        "selectedGarmentId",
+        "preferences",
+        "activeSearchId",
+        "createdAt",
+        "updatedAt"
+      ],
+      "title": "ShoppingSession",
+      "type": "object"
+    },
+    "SizePref": {
+      "additionalProperties": false,
+      "properties": {
+        "raw": {
+          "maxLength": 20,
+          "minLength": 1,
+          "type": "string"
+        },
+        "system": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "raw"
+      ],
+      "title": "SizePref",
+      "type": "object"
+    },
+    "SizeStock": {
+      "additionalProperties": false,
+      "properties": {
+        "lowestPrice": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "raw": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "raw",
+        "lowestPrice"
+      ],
+      "title": "SizeStock",
+      "type": "object"
+    },
+    "StoreOffer": {
+      "additionalProperties": false,
+      "description": "A retailer the aggregator names. Its price is often not disclosed.",
+      "properties": {
+        "price": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retailer": {
+          "type": "string"
+        },
+        "sizesInStock": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "retailer",
+        "url",
+        "price"
+      ],
+      "title": "StoreOffer",
+      "type": "object"
+    }
+  },
+  "title": "ClipCart contracts"
+}

@@ -113,7 +113,7 @@ def rule_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list
             qs.append(" ".join(dict.fromkeys(x for x in [noun, generic] if x)))
     out: list[str] = []
     for q in qs:
-        q = " ".join(q.split())
+        q = " ".join(dict.fromkeys(q.lower().split()))  # no repeated words ("black black bomber")
         if q and q.lower() not in [o.lower() for o in out]:
             out.append(q)
     return out[:2]

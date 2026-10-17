@@ -96,3 +96,10 @@ def test_upload_rejects_fake_media(app_factory):
     s = c.post("/api/sessions", headers=H).json()["session"]
     r = c.post(f"/api/media/uploads?sessionId={s['id']}&expectedRevision={s['revision']}", content=b"not a video", headers=H)
     assert r.status_code == 415 and r.json()["code"] == "unsupported_media"
+
+
+def test_resume_reuses_latest_session(app_factory):
+    c = new_client(app_factory(cat()))
+    a = c.post("/api/sessions/resume", headers=H).json()["session"]
+    b = c.post("/api/sessions/resume", headers=H).json()["session"]
+    assert a["id"] == b["id"]
