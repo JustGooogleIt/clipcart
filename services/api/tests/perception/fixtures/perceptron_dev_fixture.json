@@ -1,0 +1,28 @@
+{
+  "fixture_label": "DEVELOPMENT FIXTURE - synthetic boxes for the generated test clip. NOT A LIVE PERCEPTRON RESPONSE.",
+  "provenance": "Hand-authored to match tests/media/media_factory.moving_box_video (black block at x=40+10t, y=60, 80x120 px on a 320x240 frame) plus a static slate-blue 48x72 block at (224,72), sampled at 4 frames over 3 s. Coordinates use Perceptron's documented 0-1000 grid. No real media, no real provider call.",
+  "model_id": "fixture",
+  "frames": [
+    {"frame_index": 0, "detections": [
+      {"label": "jacket or coat", "box_0_1000": [125, 250, 375, 750]},
+      {"label": "bag or handbag or backpack", "box_0_1000": [700, 300, 850, 600]}
+    ]},
+    {"frame_index": 1, "detections": [
+      {"label": "jacket or coat", "box_0_1000": [148, 250, 398, 750]},
+      {"label": "bag or handbag or backpack", "box_0_1000": [700, 300, 850, 600]}
+    ]},
+    {"frame_index": 2, "detections": [
+      {"label": "jacket or coat", "box_0_1000": [172, 250, 422, 750]},
+      {"label": "bag or handbag or backpack", "box_0_1000": [700, 300, 850, 600]},
+      {"label": "jacket or coat", "box_0_1000": [500, 500, 500, 900]}
+    ]},
+    {"frame_index": 3, "detections": [
+      {"label": "jacket or coat", "box_0_1000": [195, 250, 445, 750]},
+      {"label": "bag or handbag or backpack", "box_0_1000": [700, 300, 850, 600]}
+    ]}
+  ],
+  "attributes": {
+    "jacket": {"color": ["black"], "pattern": ["solid"], "cut": ["hip length"], "details": [], "visible_text": []},
+    "bag": {"color": ["blue"], "pattern": ["solid"], "cut": [], "details": [], "visible_text": []}
+  }
+}

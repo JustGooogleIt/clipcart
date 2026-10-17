@@ -1,0 +1,206 @@
+{
+  "_label": "DEVELOPMENT FIXTURE OUTPUT - generated from the synthetic clip and perceptron_dev_fixture.json. NOT A LIVE PERCEPTRON RESPONSE.",
+  "media": {
+    "id": "med_hgJ-jqhZloDbfVcLNKRXavtU",
+    "sha256": "7f14d5101f66c69b93f90086e4b90ac6100431f0dd4df691452a13fd0776e2b9",
+    "mime": "video/mp4",
+    "kind": "video",
+    "width": 320,
+    "height": 240,
+    "durationMs": 3000,
+    "sourceType": "upload_video",
+    "canonicalSourceUrl": null,
+    "byteSize": 5092,
+    "rotationDegrees": 0,
+    "exifOrientation": 1,
+    "createdAt": "2026-10-17T20:54:32.894519Z"
+  },
+  "frames": [
+    {
+      "assetId": "frm_w2Z3eOcOac4YAtBaq9-T9R57",
+      "mediaId": "med_hgJ-jqhZloDbfVcLNKRXavtU",
+      "index": 0,
+      "timestampMs": 0,
+      "ptsSeconds": 0.0,
+      "width": 320,
+      "height": 240,
+      "transform": {
+        "sourceWidth": 320,
+        "sourceHeight": 240,
+        "exifOrientation": 1,
+        "rotationDegrees": 0,
+        "orientedWidth": 320,
+        "orientedHeight": 240,
+        "outputWidth": 320,
+        "outputHeight": 240,
+        "scale": 1.0
+      },
+      "sharpness": 170.7550048828125
+    },
+    {
+      "assetId": "frm_b4JSmnaIrx40nGtjfuXlmKbx",
+      "mediaId": "med_hgJ-jqhZloDbfVcLNKRXavtU",
+      "index": 1,
+      "timestampMs": 767,
+      "ptsSeconds": 0.766667,
+      "width": 320,
+      "height": 240,
+      "transform": {
+        "sourceWidth": 320,
+        "sourceHeight": 240,
+        "exifOrientation": 1,
+        "rotationDegrees": 0,
+        "orientedWidth": 320,
+        "orientedHeight": 240,
+        "outputWidth": 320,
+        "outputHeight": 240,
+        "scale": 1.0
+      },
+      "sharpness": 170.7550048828125
+    }
+  ],
+  "framesOmitted": 2,
+  "shotBoundariesMs": [],
+  "analysis": {
+    "status": "ok",
+    "mode": "fixture",
+    "issues": [],
+    "droppedDetections": 1,
+    "observations": [
+      {
+        "id": "obs_f01691eb3b33c180b52ebabb",
+        "mediaId": "med_hgJ-jqhZloDbfVcLNKRXavtU",
+        "frameAssetId": "frm_w2Z3eOcOac4YAtBaq9-T9R57",
+        "timestampMs": 0,
+        "box01": [
+          0.125,
+          0.25,
+          0.375,
+          0.75
+        ],
+        "cropAssetId": "crp_dIaUeyFoW5advPRDaR-yBvx7",
+        "category": "jacket",
+        "personTrackId": null,
+        "observedAttributes": {
+          "color": [
+            "black"
+          ],
+          "pattern": [
+            "solid"
+          ],
+          "cut": [
+            "hip length"
+          ]
+        },
+        "visibleText": [],
+        "providerRequestId": "fixture-0",
+        "modelId": "fixture",
+        "editedByUser": false,
+        "rawLabel": "jacket or coat",
+        "modelGeneratedFields": [
+          "box01",
+          "category",
+          "color",
+          "pattern",
+          "cut"
+        ],
+        "userCorrectedFields": []
+      },
+      {
+        "id": "obs_23478b620637319b76906039",
+        "mediaId": "med_hgJ-jqhZloDbfVcLNKRXavtU",
+        "frameAssetId": "frm_w2Z3eOcOac4YAtBaq9-T9R57",
+        "timestampMs": 0,
+        "box01": [
+          0.7,
+          0.3,
+          0.85,
+          0.6
+        ],
+        "cropAssetId": "crp_6WZFosilpY4g1vCYg1QSTGuQ",
+        "category": "bag",
+        "personTrackId": null,
+        "observedAttributes": {
+          "color": [
+            "blue"
+          ],
+          "pattern": [
+            "solid"
+          ]
+        },
+        "visibleText": [],
+        "providerRequestId": "fixture-0",
+        "modelId": "fixture",
+        "editedByUser": false,
+        "rawLabel": "bag or handbag or backpack",
+        "modelGeneratedFields": [
+          "box01",
+          "category",
+          "color",
+          "pattern"
+        ],
+        "userCorrectedFields": []
+      }
+    ],
+    "observationsOmitted": 6,
+    "requests": [
+      {
+        "provider": "perceptron",
+        "modelId": "fixture",
+        "frameAssetId": "frm_w2Z3eOcOac4YAtBaq9-T9R57",
+        "cropAssetId": null,
+        "purpose": "detect",
+        "providerRequestId": "fixture-0",
+        "startedAt": "2026-10-17T20:54:33.055430Z",
+        "elapsedMs": 0,
+        "outcome": "ok",
+        "errorCode": null,
+        "usage": null,
+        "attempt": 1
+      },
+      {
+        "provider": "perceptron",
+        "modelId": "fixture",
+        "frameAssetId": "frm_b4JSmnaIrx40nGtjfuXlmKbx",
+        "cropAssetId": null,
+        "purpose": "detect",
+        "providerRequestId": "fixture-1",
+        "startedAt": "2026-10-17T20:54:33.055555Z",
+        "elapsedMs": 0,
+        "outcome": "ok",
+        "errorCode": null,
+        "usage": null,
+        "attempt": 1
+      }
+    ],
+    "requestsOmitted": 8
+  },
+  "garments": [
+    {
+      "id": "gar_2f9bea9efe8c318b58d73ba4",
+      "sessionId": "ses_example",
+      "observationIds": [
+        "obs_23478b620637319b76906039",
+        "obs_bb3787dccbd7f9276d1ad83d",
+        "obs_a819bde2e17c6084638901d9",
+        "obs_8f3041c2f413ea533ff5b725"
+      ],
+      "representativeCropId": "crp_6WZFosilpY4g1vCYg1QSTGuQ",
+      "label": "blue bag",
+      "groupingBasis": "within_shot"
+    },
+    {
+      "id": "gar_81ac08cbf66f409bb0c7af38",
+      "sessionId": "ses_example",
+      "observationIds": [
+        "obs_f01691eb3b33c180b52ebabb",
+        "obs_e5101516c845a4ad1257aaa2",
+        "obs_b47850d8ed274eda7f008d3e",
+        "obs_c5beb96769d804671c44fb99"
+      ],
+      "representativeCropId": "crp_dIaUeyFoW5advPRDaR-yBvx7",
+      "label": "black jacket",
+      "groupingBasis": "within_shot"
+    }
+  ]
+}
