@@ -13,6 +13,7 @@ from .media import (
     ProviderIssue,
     ProviderRequestMeta,
 )
+from .youtube import YouTubeAnalysis, YouTubeGarment, YouTubeInterval, YouTubeTimestamp
 from .shopping import (
     AgentEvent,
     AnalysisJob,
@@ -41,4 +42,5 @@ __all__ = [
     "FrameRef", "FrameTransform", "Garment", "GarmentObservation", "JobError", "Listing", "MediaAsset", "Money",
     "OutboundLink", "PreferencePatch", "Preferences", "ProviderIssue", "ProviderRequestMeta", "Recommendation", "Record",
     "ReferralEvent", "SearchBudget", "SearchJob", "ShoppingSession", "SizePref", "SizeStock", "StoreOffer",
+    "YouTubeAnalysis", "YouTubeGarment", "YouTubeInterval", "YouTubeTimestamp",
 ]

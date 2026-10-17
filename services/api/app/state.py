@@ -77,6 +77,7 @@ def build_state(settings: Settings) -> AppState:
     status = {
         "perceptron": ProviderStatus("perceptron", settings.perception_provider == "perceptron" and settings.perceptron_key_present),
         "grok": ProviderStatus("grok", settings.xai_key_present),
+        "gemini": ProviderStatus("gemini", settings.gemini_key_present and settings.feature_youtube_gemini),
         "catalog": ProviderStatus(
             settings.catalog_provider,
             catalog is not None,

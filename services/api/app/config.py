@@ -44,6 +44,14 @@ class Settings:
     xai_key_present: bool
     xai_model: str
     xai_base_url: str
+    gemini_key_present: bool
+    gemini_model: str
+    gemini_base_url: str
+    gemini_fps: float
+    gemini_max_output_tokens: int
+    gemini_timeout_s: float
+    youtube_default_window_s: int
+    feature_youtube_gemini: bool
     feature_photon: bool
     feature_voice: bool
     feature_solana: bool
@@ -101,6 +109,14 @@ def load_settings() -> Settings:
         xai_key_present=bool(os.getenv("XAI_API_KEY")),
         xai_model=os.getenv("XAI_MODEL", "grok-4.3"),
         xai_base_url=os.getenv("XAI_BASE_URL", "https://api.x.ai/v1").rstrip("/"),
+        gemini_key_present=bool(os.getenv("GEMINI_API_KEY")),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
+        gemini_base_url=os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta").rstrip("/"),
+        gemini_fps=float(os.getenv("GEMINI_VIDEO_FPS", "0.5")),
+        gemini_max_output_tokens=int(os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "2048")),
+        gemini_timeout_s=float(os.getenv("GEMINI_TIMEOUT_S", "120")),
+        youtube_default_window_s=min(600, int(os.getenv("YOUTUBE_DEFAULT_WINDOW_S", "180"))),
+        feature_youtube_gemini=_flag("FEATURE_YOUTUBE_GEMINI"),
         feature_photon=_flag("FEATURE_PHOTON"),
         feature_voice=_flag("FEATURE_VOICE"),
         feature_solana=_flag("FEATURE_SOLANA"),

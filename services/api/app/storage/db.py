@@ -26,6 +26,7 @@ COLLECTIONS = (
     "outbound_links",
     "referrals",
     "idempotency",
+    "youtube_analyses",
 )
 
 
@@ -55,6 +56,7 @@ def ensure_indexes(db: Any) -> None:
     db.recommendations.create_index([("searchId", ASCENDING), ("rank", ASCENDING)])
     db.garments.create_index([("sessionId", ASCENDING)])
     db.garment_observations.create_index([("mediaId", ASCENDING)])
+    db.youtube_analyses.create_index([("sessionId", ASCENDING), ("createdAt", DESCENDING)])
     db.referrals.create_index([("sessionId", ASCENDING), ("occurredAt", DESCENDING)])
 
 
