@@ -6,12 +6,22 @@ Environment: local spike server `http://127.0.0.1:8765`
 
 ## Verdict
 
-**Partial proof.** The isolated UI + API chain for “paste URL → IFrame player → timestamped still upload → detect endpoint” works. The full Chrome human path **visible YouTube frame → getDisplayMedia pixels → Mk1.5 garment box** is **not claimed complete** in this environment because:
+**Partial proof (model path now live).** The isolated UI + API chain works, and **live Perceptron Mk1.5 detect succeeds** once `PERCEPTRON_API_KEY` is in the gitignored repo `.env`.
 
-1. **`PERCEPTRON_API_KEY` is missing** from the agent environment (no repo `.env`). Live Mk1.5 calls return `perceptron_key_missing` / script exit 2.
-2. **`getDisplayMedia` tab share cannot be completed** inside the automated Cursor browser (no durable OS share picker). Status stayed “Not sharing” after clicking Share. This step needs a human in desktop Chrome.
+Still **not claimed complete**: end-to-end **visible YouTube tab pixels via `getDisplayMedia` → garment box**, because:
+
+1. **`getDisplayMedia` tab share cannot be completed** inside the automated Cursor browser (no durable OS share picker). Needs a human in desktop Chrome.
+2. Garment proof on a real fashion clip needs a **team-owned / permitted YouTube URL** (default Big Buck Bunny is wiring-only).
 
 We do **not** claim a link-only flow. No YouTube downloader was used.
+
+### Live Perceptron smoke (2026-10-17, after key provided)
+
+- Endpoint: `POST /api/detect-frame` `mode=live` with synthetic jacket still + fake player timestamp `3.5s`
+- Model: `perceptron-mk1.5`, `complete: true`, ~430–660 ms
+- Result: **1 box** `jacket or coat` at `box01 ≈ [0.281, 0.166, 0.72, 0.877]`
+- Overlay artifact: `artifacts/live-perceptron-synthetic-overlay.jpg`
+- Key remains only in gitignored `.env` (never committed)
 
 ## What was verified (real)
 
@@ -30,8 +40,8 @@ We do **not** claim a link-only flow. No YouTube downloader was used.
 | Step | Where it breaks |
 | --- | --- |
 | Tab permission / pixels | **Tab permission** — automated browser cannot finish `getDisplayMedia` |
-| Model input (live) | **Credentials** — `PERCEPTRON_API_KEY` unset; Perceptron not called |
-| Garment box on capture | **Blocked by above** — no live boxes to score against a shared tab frame |
+| Model input (live) | **Unblocked** with local `.env` key — synthetic still → jacket box |
+| Garment box on **tab capture** | **Still blocked** on tab permission (needs human Chrome share) |
 | Fashion demo URL | Default CC Big Buck Bunny is wiring-only; garment proof needs a **team-owned** fashion clip (`fixtures/VIDEO.md`) |
 
 ## Coordinate mismatch notes (expected)
