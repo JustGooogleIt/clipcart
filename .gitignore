@@ -11,3 +11,6 @@ apps/web/dist/
 .ruff_cache/
 *.log
 *.tsbuildinfo
+# Ephemeral capture stills from the spike server
+experiments/youtube-capture/artifacts/ytf_*.jpg
+experiments/youtube-capture/artifacts/ytf_*.jpeg

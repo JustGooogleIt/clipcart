@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ClipCart spike — YouTube tab capture → Perceptron</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow">experiments/youtube-capture · not production UI</p>
+        <h1>YouTube tab capture → Perceptron</h1>
+        <p class="lede">
+          Paste a YouTube URL you own or have permission to analyze. Play it, explicitly share this
+          browser tab, then sample up to six visible frames with the player timestamp. No downloader;
+          no full recording retained.
+        </p>
+      </header>
+
+      <section class="panel" aria-labelledby="setup-title">
+        <h2 id="setup-title">1. Video</h2>
+        <label class="field">
+          <span>YouTube URL</span>
+          <input
+            id="urlInput"
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            autocomplete="off"
+          />
+        </label>
+        <p class="hint">
+          Default is a Creative Commons Big Buck Bunny clip for wiring tests (not fashion). For garment
+          proof, paste a team-owned fashion clip.
+        </p>
+        <div class="row">
+          <button type="button" id="loadBtn">Load player</button>
+          <span id="healthChip" class="chip">checking…</span>
+        </div>
+        <div id="playerWrap" class="player-wrap">
+          <div id="player"></div>
+        </div>
+        <p id="playerStatus" class="status" role="status">Player not loaded.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="share-title">
+        <h2 id="share-title">2. Share this tab</h2>
+        <p class="hint">
+          Chrome will show its normal sharing prompt. Prefer <strong>This tab</strong> / current tab so
+          the YouTube player is visible. Denial and stop-share are handled explicitly.
+        </p>
+        <div class="row">
+          <button type="button" id="shareBtn" disabled>Share tab (getDisplayMedia)</button>
+          <button type="button" id="stopShareBtn" disabled>Stop sharing</button>
+        </div>
+        <video id="preview" class="preview" playsinline muted autoplay></video>
+        <p id="shareStatus" class="status" role="status">Not sharing.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="sample-title">
+        <h2 id="sample-title">3. Sample frames → Perceptron</h2>
+        <div class="row">
+          <label class="inline">
+            Frames
+            <input id="frameCount" type="number" min="1" max="6" value="3" />
+          </label>
+          <label class="inline">
+            Gap (ms)
+            <input id="gapMs" type="number" min="200" max="5000" value="800" />
+          </label>
+          <label class="inline check">
+            <input id="geometryOnly" type="checkbox" />
+            Geometry only (skip Perceptron)
+          </label>
+        </div>
+        <div class="row">
+          <button type="button" id="sampleBtn" disabled>Sample &amp; detect</button>
+        </div>
+        <p id="sampleStatus" class="status" role="status">Idle.</p>
+        <div id="results" class="results"></div>
+      </section>
+
+      <section class="panel notes">
+        <h2>Limitations</h2>
+        <ul>
+          <li>Requires a Chromium browser with <code>getDisplayMedia</code>.</li>
+          <li>Capture includes whatever is on screen (controls, letterboxing, DPI scale).</li>
+          <li>At most six stills; the MediaStream is stopped when sampling ends.</li>
+          <li>This spike never downloads YouTube bytes or uses the Data API for media.</li>
+        </ul>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
