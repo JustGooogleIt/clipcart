@@ -96,7 +96,10 @@ def health(request: Request) -> dict:
             "grok": {**st.status["grok"].snapshot(), "model": s.xai_model},
             "catalog": {**st.status["catalog"].snapshot(), "provider": s.catalog_provider, "error": st.catalog_error},
         },
-        "features": {"photon": s.feature_photon, "voice": s.feature_voice, "solana": s.feature_solana},
+        "features": {"photon": s.feature_photon, "voice": s.feature_voice, "solana": s.feature_solana,
+                     "agentResearch": s.feature_agent_research},
+        "research": {"provider": s.research_provider if s.feature_agent_research else None,
+                     "mode": ("fixture" if s.research_provider == "fixture" else "live") if s.feature_agent_research else None},
     }
 
 
