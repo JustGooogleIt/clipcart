@@ -11,3 +11,11 @@ apps/web/dist/
 .ruff_cache/
 *.log
 *.tsbuildinfo
+# Ephemeral capture stills / run frames from the spike server
+experiments/youtube-capture/artifacts/ytf_*.jpg
+experiments/youtube-capture/artifacts/ytf_*.jpeg
+experiments/youtube-capture/artifacts/run_*/
+experiments/youtube-capture/artifacts/fashion-scan-*.jpg
+experiments/youtube-capture/artifacts/*-overlay.jpg
+# Temporary YouTube downloads (yt-dlp cache)
+experiments/youtube-capture/cache/

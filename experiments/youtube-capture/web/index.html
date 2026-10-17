@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ClipCart spike — Scan YouTube → Perceptron</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow">experiments/youtube-capture · not production UI</p>
+        <h1>Scan the video → find the clothes</h1>
+        <p class="lede">
+          Paste a YouTube URL. We temporarily cache a short download, <strong>scan the whole clip
+          locally</strong> (scene cuts + dense samples), then run Perceptron only on the best frames —
+          so it feels like a full scan without blowing the model budget.
+        </p>
+      </header>
+
+      <section class="panel" aria-labelledby="analyze-title">
+        <h2 id="analyze-title">Analyze</h2>
+        <label class="field">
+          <span>YouTube URL</span>
+          <input id="urlInput" type="url" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" />
+        </label>
+        <p class="hint" id="defaultHint"></p>
+        <div class="row">
+          <button type="button" id="analyzeBtn">Scan video</button>
+          <label class="inline check">
+            <input id="geometryOnly" type="checkbox" />
+            Skip Perceptron (scan only)
+          </label>
+          <span id="healthChip" class="chip">checking…</span>
+        </div>
+        <p id="status" class="status" role="status">Idle.</p>
+        <pre id="scanMeta" class="meta" hidden></pre>
+        <div id="playerWrap" class="player-wrap" hidden><div id="player"></div></div>
+        <div id="results" class="results"></div>
+      </section>
+
+      <section class="panel notes">
+        <h2>Why not “every frame” into the model?</h2>
+        <ul>
+          <li>A 90s clip at 30fps is ~2700 frames — that many Perceptron calls is too slow/expensive.</li>
+          <li>Instead we <em>do</em> walk the whole video on your machine, score sharpness, keep scene cuts, then send ~8 diverse stills to Mk1.5.</li>
+          <li>Cache hits skip re-download (1 hour TTL).</li>
+        </ul>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
