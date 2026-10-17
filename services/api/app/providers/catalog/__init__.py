@@ -7,6 +7,7 @@ Logical interface (SRS §12):
 """
 
 from .base import CatalogFilters, CatalogProvider, CatalogSearchResult
+from .ebay import EbayBrowseCatalogProvider
 from .errors import CatalogProviderError
 from .factory import get_catalog_provider
 from .fixture_catalog import FixtureCatalogProvider
@@ -17,6 +18,7 @@ __all__ = [
     "CatalogProvider",
     "CatalogProviderError",
     "CatalogSearchResult",
+    "EbayBrowseCatalogProvider",
     "FixtureCatalogProvider",
     "SoleScoutCatalogProvider",
     "get_catalog_provider",

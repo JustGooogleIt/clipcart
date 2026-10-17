@@ -71,10 +71,10 @@ SoleScout disclaimer (must surface): prices change daily; SoleScout is not the r
 
 | Variable | Required? | Purpose |
 | --- | --- | --- |
-| `CATALOG_PROVIDER` | No (default `solescout`) | `solescout` \| `fixture` |
+| `CATALOG_PROVIDER` | No (default `solescout`) | `solescout` \| `fixture` \| `ebay` |
 | `SOLESCOUT_BASE_URL` | No | Default `https://solescout.ai` |
 | `SOLESCOUT_TIMEOUT_S` | No | Default `20` |
-| `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` | Optional next | Browse API application token (not yet verified on this account) |
+| `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` | Required for `ebay` | Browse API application token (**not yet verified**) |
 
 See `docs/catalog.env.example`.
 

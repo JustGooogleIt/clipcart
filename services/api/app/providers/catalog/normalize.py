@@ -42,11 +42,12 @@ _LEATHER_RE = re.compile(r"\bleather\b", re.I)
 def material_hint_from_title(title: str | None) -> str | None:
     if not title:
         return None
+    # Check faux leather before bare leather.
+    if re.search(r"\bfaux\s+leather\b", title, re.I):
+        return "faux leather (title mention)"
     if _LEATHER_RE.search(title):
         # Title text only — not composition certification.
         return "leather (title mention)"
-    if re.search(r"\bfaux\s+leather\b", title, re.I):
-        return "faux leather (title mention)"
     return None
 
 
