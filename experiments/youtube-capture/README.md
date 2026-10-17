@@ -1,60 +1,48 @@
-# YouTube tab capture → Perceptron (feasibility spike)
+# YouTube → temp cache → Perceptron (feasibility spike)
 
 Isolated under `experiments/youtube-capture/`. Does **not** edit `apps/web` or the main ClipCart API.
 
-## What it does
+## Primary path (chosen)
 
-1. Paste a YouTube URL → embed via **YouTube IFrame Player API** (playback time).
-2. User clicks **Share tab** → browser **`getDisplayMedia`** prompt (prefer current tab).
-3. Sample ≤6 visible frames from the capture stream, each tagged with `player.getCurrentTime()`.
-4. POST stills to a tiny local FastAPI app → **Perceptron** detect (`PERCEPTRON_MODEL`, default `perceptron-mk1.5`).
-5. Draw returned boxes on the captured bitmap; stop/discard the MediaStream.
+1. Paste a YouTube URL.
+2. **yt-dlp** downloads a **bounded** clip (default ≤90s, ≤720p) into a local **TTL cache** (`cache/`, 1 hour).
+3. **ffmpeg** samples ≤6 JPEG frames with accurate timestamps.
+4. **Perceptron** (`PERCEPTRON_MODEL`, default `perceptron-mk1.5`) detects jackets/tops/bags.
+5. UI overlays boxes on the extracted frames.
 
-No YouTube downloader. No full recording retained (only optional JPEG stills under `artifacts/`).
+Re-analyzing the same URL within the TTL is a **cache hit** (no re-download).
+
+> This is an explicit temporary-download path. It is **not** tab-share capture and **not** “link-only without bytes.”
+
+Optional legacy endpoint `POST /api/detect-frame` still accepts tab-capture uploads for comparison.
 
 ## Setup
 
 ```bash
-# from repo root
-python3 -m venv .venv && source .venv/bin/activate
+source .venv/bin/activate
 pip install -r experiments/youtube-capture/requirements.txt
-
-# put PERCEPTRON_API_KEY in repo .env or export it (never commit)
-export PERCEPTRON_API_KEY=…
-export PERCEPTRON_MODEL=perceptron-mk1.5
-
-chmod +x experiments/youtube-capture/scripts/run.sh
+# system: ffmpeg / ffprobe
+export PERCEPTRON_API_KEY=…   # or repo .env (gitignored)
 ./experiments/youtube-capture/scripts/run.sh
-# open http://127.0.0.1:8765 in Chrome
+# http://127.0.0.1:8765
 ```
 
-## Reproduce (Chrome desktop)
+## Reproduce
 
-1. Open http://127.0.0.1:8765
-2. Load a **permitted** YouTube URL (see `fixtures/VIDEO.md`). For garments, use a team fashion clip.
-3. Play the video.
-4. **Share tab** → choose this Chrome tab (not the whole screen if possible).
-5. **Sample & detect** (1–6 frames). Confirm boxes overlay the garment on at least one still.
-6. Sharing stops automatically after sampling; stream is discarded.
+1. Open http://127.0.0.1:8765 in Chrome.
+2. Paste a **permitted** YouTube URL (fashion clip for garment proof).
+3. Click **Download cache & detect**.
+4. Confirm boxes on at least one frame.
 
-Geometry-only (no Perceptron spend): check “Geometry only”.
-
-Still → Perceptron without tab share (labeled non-tab path):
+CLI smoke:
 
 ```bash
-.venv/bin/python experiments/youtube-capture/scripts/detect_still.py path/to/garment.jpg
+curl -sS http://127.0.0.1:8765/api/analyze-youtube \
+  -H 'Content-Type: application/json' \
+  -d '{"youtubeUrl":"https://www.youtube.com/watch?v=aqz-KE-bpKQ","frameCount":2,"mode":"live"}'
 ```
-
-## Real vs mocked
-
-| Step | Real? |
-| --- | --- |
-| YouTube IFrame playback + `getCurrentTime` | Real (YouTube API) |
-| Tab pixels via `getDisplayMedia` | Real (requires human Chrome prompt) |
-| Perceptron Mk1.5 detect | Real when `PERCEPTRON_API_KEY` is set |
-| Link-only / download bytes | **Not implemented** — do not claim |
 
 ## Docs
 
-- `FINDINGS.md` — proof results, coordinate mismatches, blockers
-- `CONTRACT.md` — smallest integration surface for Claude
+- `FINDINGS.md` — what worked / failed
+- `CONTRACT.md` — Claude integration surface

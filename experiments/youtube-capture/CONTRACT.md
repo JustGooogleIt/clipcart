@@ -1,63 +1,53 @@
-# Smallest ClipCart contract (for Claude)
+# Smallest ClipCart contract (download-cache path)
 
-Isolated spike path: `experiments/youtube-capture/`. Do **not** merge this into `apps/web` or `services/api` without an agreed import.
+Spike: `experiments/youtube-capture/`. Agree before merging into `apps/web` / `services/api`.
 
-## Browser → API (proposed)
+## Browser → API
 
 ```http
-POST /api/sessions/{id}/youtube-tab-samples
-Content-Type: multipart/form-data
-```
+POST /api/sessions/{id}/youtube-analyze
+Content-Type: application/json
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `file` | JPEG bytes | One visible tab-capture still (not a YouTube download) |
-| `youtubeUrl` | string | Canonical watch URL |
-| `videoId` | string | Parsed id |
-| `playerTimeSec` | float | `YT.Player.getCurrentTime()` at grab |
-| `sampleIndex` | int | 0..5 |
-| `captureWidth` / `captureHeight` | int | MediaStream track / canvas size |
-| `playerWidth` / `playerHeight` | int | iframe CSS pixel box |
-
-Response (align with existing perception types):
-
-```json
 {
-  "mode": "live",
-  "source": "youtube_tab_capture",
-  "playerTimeSec": 12.4,
-  "frameAssetId": "…",
-  "observations": [
-    {
-      "box01": [0.1, 0.2, 0.5, 0.8],
-      "category": "jacket",
-      "timestampMs": 12400,
-      "providerRequestId": "…"
-    }
-  ],
-  "warnings": [
-    "Boxes are in capture-bitmap space; player chrome/letterbox may not match coded video."
-  ]
+  "youtubeUrl": "https://www.youtube.com/watch?v=…",
+  "frameCount": 3,
+  "expectedRevision": 1
 }
 ```
 
-## Frontend responsibilities (UI session)
+## Backend pipeline
 
-1. YouTube IFrame Player API for playback + `getCurrentTime()`.
-2. Explicit `getDisplayMedia` (prefer current tab); surface deny / ended / unsupported.
-3. Sample ≤6 frames; stop all tracks afterward; never keep a MediaRecorder blob.
-4. Discard black frames client-side or accept server `blackFrame: true`.
-5. Draw boxes on the **captured** bitmap; do not assume iframe CSS rect == capture pixels.
+1. Validate YouTube URL / video id.
+2. **Cache lookup** by `videoId` (TTL, e.g. 1h). On miss: yt-dlp download bounded section (≤90s) + ≤720p into private object/temp storage.
+3. ffmpeg sample ≤6 frames with decode timestamps.
+4. Existing Perceptron detect adapter on each frame (budgeted).
+5. Return observations with `source: youtube_download_cache`, `timestampMs`, `box01`, `mode: live|cached`.
+6. Purge expired cache entries; never commit media.
 
-## Backend responsibilities (API session)
+## Response sketch
 
-1. Treat uploads as opaque user-approved screenshots of the tab.
-2. Run existing Perceptron detect adapter (Mk1.5 / configured model).
-3. Persist frame + observations with `sourceType: youtube_tab_capture` and player timestamp.
-4. Feature-flag the route; do not claim “link-only analysis.”
+```json
+{
+  "videoId": "…",
+  "cacheHit": true,
+  "frames": [
+    {
+      "timestampMs": 4200,
+      "frameAssetId": "…",
+      "observations": [{ "box01": [0.2, 0.1, 0.7, 0.9], "category": "jacket", "providerRequestId": "…" }]
+    }
+  ],
+  "warnings": ["Temporary YouTube download was used; not a tab-share flow."]
+}
+```
 
-## Explicit non-goals
+## UI responsibilities
 
-- No YouTube downloader / yt-dlp.
-- No assumption that YouTube Data API returns video bytes.
-- No silent fixture substitution for live tab frames.
+- Paste URL + progress (downloading / cache hit / detecting).
+- Show honest “downloaded for analysis” labeling.
+- Display frame strip + boxes; optional YouTube embed for human watch-along only (not the pixel source).
+
+## Non-goals
+
+- Do not silently pretend this is tab-capture or link-only.
+- Do not keep unbounded archives of YouTube files.
