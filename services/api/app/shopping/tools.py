@@ -176,9 +176,12 @@ class ToolBox:
         except BudgetExceeded as exc:
             return {"error": f"budget_exhausted:{exc.kind}"}
         t0 = time.monotonic()
+        # With a size preference, ask for that variant so a direct store offer
+        # is only returned when that same store lists the size (PR #3 rule).
+        variant = self.filters.size_raw.strip() if self.filters.size_raw else None
         try:
             result = self._call(
-                lambda: self.provider.get_details(c.listing.provider_listing_id, None),
+                lambda: self.provider.get_details(c.listing.provider_listing_id, variant),
                 label=f"detail {c.listing.provider_listing_id}",
             )
         except CatalogProviderError as exc:

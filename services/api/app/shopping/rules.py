@@ -105,7 +105,10 @@ def price_phrase(listing: Listing, prefs: Preferences | None = None) -> str:
         sz = f" in {size_note}" if size_note else ""
         return f"Lowest listed {p}{sz} {where} via SoleScout{seller}"
     if listing.price_basis == "seller_offer":
-        return f"{p} at {listing.retailer}"
+        extra = ""
+        if listing.provider == "solescout" and listing.hidden_store_count:
+            extra = f"; {listing.hidden_store_count} unnamed seller(s) may be cheaper"
+        return f"{p} at {listing.retailer} (found via SoleScout){extra}" if listing.provider == "solescout" else f"{p} at {listing.retailer}"
     return "Price not available"
 
 

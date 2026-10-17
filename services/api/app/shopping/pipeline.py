@@ -68,7 +68,14 @@ def _links_for(rec_id: str, L: Listing, prefs: Preferences) -> tuple[list[Outbou
         links.append(OutboundLink(token=token, kind=kind, label=label, retailer=retailer, price_note=note))
         targets.append(LinkTarget(token, url, kind, rec_id, L.id))
 
-    if L.source_kind == "aggregator":
+    if L.source_kind == "retailer" and L.provider == "solescout":
+        # Direct store offer surfaced by SoleScout: the store link carries the store's own price.
+        add(L.canonical_url, "retailer_product_page", f"View at {L.retailer}", L.retailer, price_phrase(L, prefs))
+        for s in L.store_offers[:1]:
+            if s.url and s.retailer == "SoleScout comparison":
+                note = "Other sellers' prices; cheapest names may be hidden"
+                add(s.url, "aggregator_product_page", "Compare prices on SoleScout", "SoleScout", note)
+    elif L.source_kind == "aggregator":
         add(L.canonical_url, "aggregator_product_page", "Compare prices on SoleScout", "SoleScout", price_phrase(L, prefs))
         for s in L.store_offers[:2]:
             if s.url:

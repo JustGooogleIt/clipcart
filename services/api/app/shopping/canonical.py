@@ -108,7 +108,28 @@ def to_listing(
     sizes_in_stock = None
     style_code = diag.get("style_code")
 
-    if provider in AGGREGATOR_PROVIDERS:
+    if provider in AGGREGATOR_PROVIDERS and item.get("destinationKind") == "retailer_offer":
+        # PR #3: URL, price and size all come from the same visible store record.
+        source_kind = "retailer"
+        retailer = str(item.get("retailer") or "Unnamed retailer")[:60]
+        price_basis = "seller_offer" if price else "unknown"
+        seller_visibility = "named"
+        if detail:
+            hidden = diag.get("hidden_stores") or {}
+            hidden_count = int(hidden.get("count") or 0)
+            stores_carrying = diag.get("stores_carrying")
+            store = next((st for st in diag.get("stores") or [] if safe_url(st.get("url")) == url), None)
+            store_sizes = [
+                str(x.get("size") if isinstance(x, dict) else x)
+                for x in ((store or {}).get("sizes_in_stock") or [])
+                if (x.get("size") if isinstance(x, dict) else x)
+            ]
+            # Size stock for a store offer is that store's list, never the aggregate table.
+            sizes_in_stock = [SizeStock(raw=z, lowest_price=price) for z in store_sizes]
+            cmp_url = safe_url(diag.get("comparison_url"))
+            if cmp_url:
+                store_offers.append(StoreOffer(retailer="SoleScout comparison", url=cmp_url, price=None))
+    elif provider in AGGREGATOR_PROVIDERS:
         source_kind = "aggregator"
         retailer = "SoleScout"
         price_basis = "aggregate_lowest" if price else "unknown"

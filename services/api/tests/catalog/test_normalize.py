@@ -59,7 +59,10 @@ class SoleScoutRetailerLabelTest(unittest.TestCase):
         with mock.patch.object(p, "_get_json", return_value=(raw, 5)):
             res = p.get_details(raw["slug"])
         listing = res.listings[0]
-        self.assertEqual(listing["retailer"], "SoleScout (aggregator)")
+        # Unpriced visible store: stays a comparison destination on SoleScout's page.
+        self.assertEqual(listing["destinationKind"], "comparison")
+        self.assertTrue(listing["retailer"].startswith("SoleScout"))
+        self.assertTrue(listing["canonicalUrl"].startswith("https://solescout.ai/"))
         self.assertEqual(res.diagnostics["stores"][0]["name"], "Offseason")
         self.assertIsNone(res.diagnostics["stores"][0]["price_usd"])
         self.assertEqual(res.diagnostics["hidden_stores"]["count"], 2)
