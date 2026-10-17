@@ -95,8 +95,10 @@ def health(request: Request) -> dict:
                            "setting": s.perception_provider},
             "grok": {**st.status["grok"].snapshot(), "model": s.xai_model},
             "catalog": {**st.status["catalog"].snapshot(), "provider": s.catalog_provider, "error": st.catalog_error},
+            "gemini": {**st.status["gemini"].snapshot(), "model": s.gemini_model, "keyPresent": s.gemini_key_present},
         },
-        "features": {"photon": s.feature_photon, "voice": s.feature_voice, "solana": s.feature_solana},
+        "features": {"photon": s.feature_photon, "voice": s.feature_voice, "solana": s.feature_solana,
+                     "youtubeGemini": s.feature_youtube_gemini},
     }
 
 
@@ -127,7 +129,10 @@ def session_view(st, doc: dict) -> dict:
             pass
     if sess.analysis_id:
         out["analysis"] = clean(db.analysis_jobs.find_one({"_id": sess.analysis_id, "ownerId": doc["ownerId"]}))
-    garments = [clean(g) for g in db.garments.find({"sessionId": sess.id, "ownerId": doc["ownerId"]})]
+    # Media garments only (Perceptron or user-drawn). Gemini YouTube garments have no crop or box and
+    # are exposed separately under out["youtube"], so they can never render as crops.
+    garments = [clean(g) for g in db.garments.find({"sessionId": sess.id, "ownerId": doc["ownerId"],
+                                                    "source": {"$ne": "gemini_youtube"}})]
     # Only garments for the current media analysis or manual ones on its frames.
     if sess.analysis_id:
         garments = [g for g in garments if g.get("analysisId") == sess.analysis_id]
@@ -136,6 +141,15 @@ def session_view(st, doc: dict) -> dict:
     out["observations"] = [clean(o) for o in db.garment_observations.find({"id": {"$in": obs_ids}})]
     for o in out["observations"]:
         o.pop("sessionId", None)
+    if st.settings.feature_youtube_gemini:
+        from app.youtube.service import public_view
+
+        latest_yt = db.youtube_analyses.find_one({"sessionId": sess.id, "ownerId": doc["ownerId"]}, sort=[("createdAt", -1)])
+        sel = None
+        if sess.selected_garment_id:
+            g = db.garments.find_one({"_id": sess.selected_garment_id, "ownerId": doc["ownerId"], "source": "gemini_youtube"})
+            sel = clean(g)
+        out["youtube"] = {"latestAnalysis": public_view(latest_yt), "selectedGarment": sel}
     if sess.active_search_id:
         out["activeSearch"] = clean(db.search_jobs.find_one({"_id": sess.active_search_id},
                                                              {"leaseOwner": 0, "leaseExpiresAt": 0}))

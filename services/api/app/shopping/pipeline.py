@@ -99,6 +99,7 @@ def run_search(
     grok_status: ProviderStatus,
     grok_client_factory: Callable[[], Any] | None,
     is_current: Callable[[], bool],
+    garment_source: str = "media",
 ) -> SearchOutcome:
     filters = CatalogFilters(
         category=profile.category,
@@ -235,6 +236,8 @@ def run_search(
             warnings.append("Availability unknown")
         if L.mode in ("fixture", "catalog"):
             warnings.append("Fixture data: not a live result")
+        if garment_source == "gemini_youtube":
+            warnings.append("Garment described by Gemini from a YouTube video; no crop was compared")
         out.recommendations.append(
             Recommendation(
                 id=rec_id,
@@ -251,6 +254,7 @@ def run_search(
                 ranking_version=RANKING_VERSION,
                 found_by=sorted(c.found_by & {"exact", "alternatives"}) or ["alternatives"],
                 links=links,
+                garment_source=garment_source,
             )
         )
         out.listings.append(L)

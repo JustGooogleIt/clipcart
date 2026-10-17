@@ -26,6 +26,17 @@ LEASE_S = 90
 
 
 def build_profile(state: AppState, garment_doc: dict) -> GarmentProfile:
+    if garment_doc.get("source") == "gemini_youtube":
+        # Description-only garment from a public YouTube video: no crop, box or Perceptron observation.
+        yt = garment_doc.get("youtube") or {}
+        return GarmentProfile(
+            category=garment_doc.get("category") or "other",
+            colors=list(yt.get("colors") or [])[:3],
+            pattern=list(yt.get("pattern") or [])[:2],
+            visible_text=list(yt.get("visibleText") or [])[:4],
+            description=garment_doc.get("userDescription") or yt.get("description"),
+            label=garment_doc.get("label") or "",
+        )
     g = from_doc(Garment, garment_doc)
     obs = [from_doc(GarmentObservation, d) for d in state.db.garment_observations.find({"id": {"$in": g.observation_ids}})]
     cat = garment_doc.get("category") or (obs[0].category if obs else "other")
@@ -71,6 +82,7 @@ def create_search(state: AppState, session_doc: dict, garment_doc: dict, prefs: 
         budget=SearchBudget(max_tool_calls=s.max_tool_calls, max_detail_calls=s.max_detail_calls),
         deadline_at=now() + timedelta(seconds=s.search_deadline_s),
         worker_mode="grok" if s.xai_key_present else "rule_based",
+        garment_source="gemini_youtube" if garment_doc.get("source") == "gemini_youtube" else "media",
         catalog_mode=state.status["catalog"].mode,
         created_at=now(),
     )
@@ -171,6 +183,7 @@ def _run(state: AppState, job: SearchJob, emit: _Emitter) -> None:
         grok_status=state.status["grok"],
         grok_client_factory=factory,
         is_current=lambda: _is_current(state, job.id, job.session_id),
+        garment_source=job.garment_source,
     )
     budget_doc = budget.wire()
     if outcome.status == "superseded" or not _is_current(state, job.id, job.session_id):

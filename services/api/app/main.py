@@ -13,6 +13,7 @@ from app.config import Settings, load_settings
 from app.jobs.search import recover_on_startup
 from app.media.errors import MediaError
 from app.routes.api import router
+from app.routes.youtube import router as youtube_router
 from app.sessions.service import ApiProblem
 from app.state import build_state
 
@@ -64,6 +65,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return resp
 
     app.include_router(router)
+    app.include_router(youtube_router)
 
     dist = settings.web_dist
     if dist.is_dir():

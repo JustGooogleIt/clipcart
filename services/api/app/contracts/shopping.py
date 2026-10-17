@@ -181,6 +181,7 @@ class Recommendation(Record):
     ranking_version: str
     found_by: list[Literal["exact", "alternatives"]]
     links: list[OutboundLink]
+    garment_source: GarmentSource = "media"
 
 
 class SearchBudget(Mutable):
@@ -198,6 +199,9 @@ class JobError(Record):
     retryable: bool
 
 
+GarmentSource = Literal["media", "gemini_youtube"]
+
+
 class SearchJob(Record):
     id: str
     session_id: str
@@ -213,6 +217,8 @@ class SearchJob(Record):
     error: JobError | None = None
     worker_mode: Literal["grok", "rule_based"]
     catalog_mode: str
+    # Where the searched garment came from. "gemini_youtube" garments have no crop or box.
+    garment_source: GarmentSource = "media"
     created_at: datetime
     finished_at: datetime | None = None
     summary: str | None = None
