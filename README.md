@@ -15,9 +15,10 @@ Without keys, the app runs honestly in reduced modes: detection "not configured"
 
 Tests: `services/api/.venv/bin/python -m pytest services/api/tests -q`. Web typecheck: `cd apps/web && npx tsc -b`.
 
-Live checks once keys exist:
+Live checks once keys exist (bounded spend, prints no secrets):
 
 ```bash
+services/api/.venv/bin/python scripts/live_checks.py --image path/to/garment.jpg   # perceptron, grok, atlas
 cd services/api
 CLIPCART_LIVE_PERCEPTRON=1 PERCEPTRON_API_KEY=... .venv/bin/python -m pytest tests/perception/test_perceptron_live.py -s
 PERCEPTRON_API_KEY=... .venv/bin/python -m app.providers.perceptron.smoke path/to/photo.jpg --frames 1

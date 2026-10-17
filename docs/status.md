@@ -1,6 +1,6 @@
 # ClipCart status
 
-Updated 2026-10-17 by Claude (integration owner). Branch `integration`.
+Updated 2026-10-17 (second pass) by Claude (integration owner). Branch `integration`. UI polish is owned by a separate session on `feat/ui-polish`, which hasn't been pushed yet; this lane does not edit `apps/web/`.
 
 ## Working flow (verified locally in headless Chrome and with offline tests)
 
@@ -19,22 +19,26 @@ The flow runs on http://127.0.0.1:8000 via `scripts/dev.sh`:
 
 | Provider | Mode now | What makes it live |
 | --- | --- | --- |
-| SoleScout catalog | Live (real calls succeed) | Already live, no key needed |
-| Perceptron | Not configured | `PERCEPTRON_API_KEY` set **and** one successful call; the app shows "Key set, not yet verified" until then |
-| Grok (xAI) | Not configured, so rule-based workers | `XAI_API_KEY` set and one successful call |
-| MongoDB | `local_memory` (mongomock, in process) | `MONGODB_URI` for Atlas; not Atlas-track complete until then |
+| SoleScout catalog | Live (real calls succeed). PR #3 destinations are integrated | Already live, no key needed |
+| Perceptron | Not configured: `PERCEPTRON_API_KEY` is empty in `.env` | Key set, then `scripts/live_checks.py --image <photo> --only perceptron` succeeds once. The model is `perceptron-mk1` |
+| Grok (xAI) | Not configured: `XAI_API_KEY` is empty. Search uses rule-based workers | Key set, then `--only grok` shows `groundedInCatalog: true` |
+| MongoDB | `local_memory` by default. Restore after restart was verified on a real MongoDB 8.0 server (local binary, not Atlas) | `MONGODB_URI` (Atlas), then `--only atlas` succeeds |
+
+## Spend bounds for live Perceptron
+
+Each upload makes at most `PERCEPTION_MAX_FRAMES` (6) detect calls and `PERCEPTION_MAX_ATTRIBUTE_CALLS` (3) attribute calls. `PERCEPTRON_MAX_TOKENS` is 1200. The live check makes at most one detect call and one attribute call.
 
 ## Latest good commit
 
-See `git log integration`. Tests: `services/api/.venv/bin/python -m pytest services/api/tests -q` reports 132 passed and 1 skipped. The skip is the live Perceptron check.
+See `git log integration`. Tests: `services/api/.venv/bin/python -m pytest services/api/tests -q` reports 142 passed and 1 skipped. The skip is the live Perceptron check.
 
 ## Known blockers
 
-- No `PERCEPTRON_API_KEY`: AT03 (real Perceptron call) is not met.
-- No `XAI_API_KEY`: AT06 (Grok workers doing real tool calls) is met only by a scripted-client test, not live.
-- No `MONGODB_URI`: Atlas persistence (AT16 on Atlas) is unverified. The same pymongo code paths run on mongomock.
-- SoleScout free tier hides the cheapest sellers. Cards say so and never attach the aggregate price to a named store.
-- SoleScout gives no material composition, so any material exclusion leaves results in "Needs checking".
+- `PERCEPTRON_API_KEY` is empty, so AT03 (real Perceptron call) is not met and live detection in the web flow is unverified.
+- `XAI_API_KEY` is empty, so AT06 is met only by a scripted-client test.
+- `MONGODB_URI` is empty, so Atlas itself is unverified. The same code passed a restart-restore check on a real MongoDB server.
+- `feat/ui-polish` hasn't landed, so the post-UI desktop and phone verification is still pending.
+- SoleScout free tier hides most cheapest sellers. Material composition is never provided, so material exclusions leave results in "Needs checking".
 
 ## Deferred behind flags (off)
 
@@ -48,6 +52,6 @@ See `git log integration`. Tests: `services/api/.venv/bin/python -m pytest servi
 
 ## Next
 
-1. Add keys to `.env` and rerun the live checks in the README.
+1. Fill `PERCEPTRON_API_KEY` (and optionally `XAI_API_KEY`, `MONGODB_URI`) in the root `.env`, then run `services/api/.venv/bin/python scripts/live_checks.py --image <garment photo>`.
 2. Set the Atlas URI and confirm reload after a server restart.
 3. Build the truth set (AT19) on real clips once Perceptron is live.
