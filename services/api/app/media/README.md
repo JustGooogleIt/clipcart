@@ -6,14 +6,17 @@ Owner: Codex lane (feat/perception). Integration owner: Claude.
 
 ```text
 Task and owner:        T02 media/frame extraction, crop geometry, grouping, Perceptron adapter
-Base commit and branch: ce146ce (main, README only) -> feat/perception
+Base commit and branch: origin/main (post catalog merge) -> feat/perception
 Allowed paths:         services/api/app/media/, services/api/app/providers/perceptron/,
-                       services/api/tests/media/, services/api/tests/perception/
+                       services/api/tests/media/, services/api/tests/perception/,
+                       docs/perception-handoff.md, docs/perception.env.example,
+                       fixtures/perception/
 Forbidden/shared paths: app/contracts, routes, frontend, catalog, Grok workers, root deps, env templates
-Input/output contract: SRS section 12 logical interfaces (no committed Claude contract existed yet)
-Acceptance checks:     AT01, AT02, AT03 (live, needs key), AT04
-Known blocker:         no PERCEPTRON_API_KEY available to this lane; no integration branch existed
-Next integration step: Claude swaps app/media/types.py for app/contracts imports and wires routes
+Input/output contract: SRS section 12 logical interfaces (no committed Claude contract yet)
+Acceptance checks:     AT01, AT02, AT04 offline; AT03 live blocked without PERCEPTRON_API_KEY
+Known blocker:         PERCEPTRON_API_KEY unset in this environment (smoke exits 2, no call)
+Next integration step: Claude promotes types into app/contracts and wires upload/analysis routes
+See also:              docs/perception-handoff.md
 ```
 
 ## Contract status
