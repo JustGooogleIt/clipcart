@@ -20,7 +20,7 @@ The flow runs on http://127.0.0.1:8000 via `scripts/dev.sh`:
 | Provider | Mode now | What makes it live |
 | --- | --- | --- |
 | SoleScout catalog | Live (real calls succeed). PR #3 destinations are integrated | Already live, no key needed |
-| Perceptron | Not configured: `PERCEPTRON_API_KEY` is empty in `.env` | Key set, then `scripts/live_checks.py --image <photo> --only perceptron` succeeds once. The model is `perceptron-mk1` |
+| Perceptron | **Live**, verified 2026-10-17 with `perceptron-mk1.5` (set in `.env`). The smoke check gave request `be94e617…`, one jacket box, and visible attributes. The web flow worked on a photo (desktop) and a 6-frame clip (phone): 13 paid calls, 0 failures | Already live |
 | Grok (xAI) | Not configured: `XAI_API_KEY` is empty. Search uses rule-based workers | Key set, then `--only grok` shows `groundedInCatalog: true` |
 | MongoDB | `local_memory` by default. Restore after restart was verified on a real MongoDB 8.0 server (local binary, not Atlas) | `MONGODB_URI` (Atlas), then `--only atlas` succeeds |
 
@@ -34,7 +34,9 @@ See `git log integration`. Tests: `services/api/.venv/bin/python -m pytest servi
 
 ## Known blockers
 
-- `PERCEPTRON_API_KEY` is empty, so AT03 (real Perceptron call) is not met and live detection in the web flow is unverified.
+- AT03 is met: a real Perceptron call produced a displayed garment tied to its frame and request ID.
+- The live garment label shows only a color when the representative crop got an attribute call (3 per upload). Grouping and labels belong to the perception lane.
+- The UI detection chip refreshes only after a search finishes. That's a note for the UI polish session.
 - `XAI_API_KEY` is empty, so AT06 is met only by a scripted-client test.
 - `MONGODB_URI` is empty, so Atlas itself is unverified. The same code passed a restart-restore check on a real MongoDB server.
 - `feat/ui-polish` hasn't landed, so the post-UI desktop and phone verification is still pending.
