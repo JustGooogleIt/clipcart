@@ -47,7 +47,11 @@ def run_analysis(state: AppState, job_id: str) -> None:
     # shown frame has detections and spend stays bounded per upload.
     n_frames = state.settings.perception_max_frames if (provider is not None and mode != "fixture") else 12
     try:
-        frames = state.media.extract_frames(media_id, owner, max_frames=n_frames)
+        media = state.media.get_media(media_id, owner)
+        if media.source_type == "youtube_download":
+            frames = state.media.extract_ranked_frames(media_id, owner, max_frames=n_frames)
+        else:
+            frames = state.media.extract_frames(media_id, owner, max_frames=n_frames)
         cuts = state.media.detect_shot_boundaries(media_id, owner)
     except Exception as exc:  # noqa: BLE001
         log.warning("frame extraction failed: %s", exc)

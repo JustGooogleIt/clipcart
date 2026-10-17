@@ -17,7 +17,7 @@ from .base import Record as _Record
 
 Category = Literal["jacket", "top", "bag", "other"]
 GroupingBasis = Literal["single", "within_shot", "user_confirmed"]
-SourceType = Literal["upload_image", "upload_video"]
+SourceType = Literal["upload_image", "upload_video", "youtube_download"]
 MediaKind = Literal["image", "video"]
 ProviderErrorCode = Literal[
     "auth_error",

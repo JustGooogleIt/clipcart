@@ -38,7 +38,7 @@ from .geometry import box01_to_pixels, fit_within, validate_box01
 from .limits import MediaLimits
 from .probe import FFMPEG_INPUT_GUARD, probe_image, probe_video, sniff_kind
 from .storage import LocalAssetStore
-from .types import CropRef, FrameRef, FrameTransform, MediaAsset
+from .types import CropRef, FrameRef, FrameTransform, MediaAsset, SourceType
 
 _CHUNK = 1024 * 1024
 _SHOWINFO_RE = re.compile(r"\bn:\s*(\d+)\s+pts:\s*(-?\d+)\s+pts_time:\s*(-?[0-9.]+(?:e-?\d+)?)")
@@ -56,6 +56,41 @@ def sharpness_score(img: Image.Image) -> float:
     return float(round(lap.var(), 3))
 
 
+def _fashion_usefulness_score(img: Image.Image) -> float:
+    """Sharp + mid exposure + center detail + mild colorfulness (lookbook stills)."""
+    rgb = img.convert("RGB")
+    rgb.thumbnail((384, 384))
+    grey = rgb.convert("L")
+    a = np.asarray(grey, dtype=np.float32)
+    arr = np.asarray(rgb, dtype=np.float32)
+    if a.shape[0] < 8 or a.shape[1] < 8:
+        return 0.0
+    lap = -4 * a[1:-1, 1:-1] + a[:-2, 1:-1] + a[2:, 1:-1] + a[1:-1, :-2] + a[1:-1, 2:]
+    sharp = float(lap.var())
+    mean = float(a.mean())
+    exposure = 1.0 - min(1.0, abs(mean - 118.0) / 118.0)
+    h, w = a.shape
+    center = a[h // 4 : (3 * h) // 4, w // 4 : (3 * w) // 4]
+    center_energy = float(center.std())
+    colorfulness = float(arr.std(axis=2).mean())
+    return sharp * (0.55 + 0.45 * exposure) * (0.7 + 0.3 * min(1.0, center_energy / 40.0)) * (
+        0.75 + 0.25 * min(1.0, colorfulness / 25.0)
+    )
+
+
+def _uniform_sample_times(duration_s: float, interval_s: float) -> list[float]:
+    if duration_s <= 0.2:
+        return [0.0]
+    start = min(0.35, duration_s * 0.03)
+    end = max(start + 0.05, duration_s - 0.35)
+    times: list[float] = []
+    t = start
+    while t <= end + 1e-6:
+        times.append(round(t, 3))
+        t += interval_s
+    return times or [round(duration_s / 2, 3)]
+
+
 def _encode_jpeg(img: Image.Image) -> bytes:
     buf = io.BytesIO()
     img.convert("RGB").save(buf, format="JPEG", quality=JPEG_QUALITY)
@@ -68,7 +103,14 @@ class MediaService:
         self.limits = limits or MediaLimits()
 
     # ------------------------------------------------------------------ ingest
-    def ingest(self, upload: BinaryIO, owner_id: str, *, source_url: str | None = None) -> MediaAsset:
+    def ingest(
+        self,
+        upload: BinaryIO,
+        owner_id: str,
+        *,
+        source_url: str | None = None,
+        source_type: SourceType | None = None,
+    ) -> MediaAsset:
         """Stream ``upload`` to disk with a hard byte cap, then validate by decoding.
 
         The cap is chosen from the sniffed magic bytes so an oversized image is
@@ -111,7 +153,7 @@ class MediaService:
                     width=p.width,
                     height=p.height,
                     duration_ms=None,
-                    source_type="upload_image",
+                    source_type=source_type or "upload_image",
                     canonical_source_url=source_url,
                     storage_key=f"{media_id}.bin",
                     byte_size=total,
@@ -131,7 +173,7 @@ class MediaService:
                     width=p.width,
                     height=p.height,
                     duration_ms=p.duration_ms,
-                    source_type="upload_video",
+                    source_type=source_type or "upload_video",
                     canonical_source_url=source_url,
                     storage_key=f"{media_id}.bin",
                     byte_size=total,
@@ -196,6 +238,141 @@ class MediaService:
         if asset.kind == "image":
             return [self._image_frame(asset, meta, src, owner_id)]
         return self._video_frames(asset, meta, src, owner_id, n, interval_ms, start_ms, end_ms)
+
+    def extract_ranked_frames(
+        self,
+        media_id: str,
+        owner_id: str,
+        *,
+        max_frames: int | None = None,
+        max_candidates: int = 48,
+        sample_interval_s: float = 1.25,
+    ) -> list[FrameRef]:
+        """Scan the clip locally; keep sharp, fashion-likely, time-diverse stills.
+
+        Used for YouTube downloads so Perceptron sees the best frames without
+        paying for every decoded FPS sample.
+        """
+        asset = self.get_media(media_id, owner_id)
+        meta = self.store.meta(media_id, owner_id)
+        src = self.store.path(media_id, owner_id)
+        if asset.kind == "image":
+            return [self._image_frame(asset, meta, src, owner_id)]
+
+        n = min(max_frames or 12, self.limits.max_initial_frames)
+        if n <= 0:
+            raise MediaError("max_frames must be positive")
+        duration_ms = asset.duration_ms or 0
+        if duration_ms <= 0:
+            raise MediaError("video has no duration")
+        duration_s = duration_ms / 1000.0
+
+        interval = sample_interval_s
+        est = max(1, int(duration_s / interval))
+        if est > max_candidates:
+            interval = max(0.5, duration_s / max_candidates)
+
+        times_s = _uniform_sample_times(duration_s, interval)
+        try:
+            scene_ms = self.detect_shot_boundaries(media_id, owner_id, threshold=0.22)
+        except Exception:  # noqa: BLE001
+            scene_ms = []
+        for ms in scene_ms:
+            t = ms / 1000.0
+            if 0.2 <= t <= duration_s - 0.2:
+                times_s.append(t)
+
+        times_s = sorted(set(round(t, 3) for t in times_s))
+        merged: list[float] = []
+        for t in times_s:
+            if not merged or abs(t - merged[-1]) > 0.2:
+                merged.append(t)
+        merged = merged[:max_candidates]
+
+        # Extract candidate stills at each time, score, then pick diverse top-K.
+        tw, th, scale = fit_within(asset.width, asset.height, self.limits.frame_max_side)
+        transform = FrameTransform(
+            source_width=meta["coded_width"],
+            source_height=meta["coded_height"],
+            exif_orientation=asset.exif_orientation,
+            rotation_degrees=asset.rotation_degrees,
+            oriented_width=asset.width,
+            oriented_height=asset.height,
+            output_width=tw,
+            output_height=th,
+            scale=scale,
+        )
+        start_s = float(meta.get("start_time_s") or 0.0)
+        scored: list[tuple[float, float, Image.Image]] = []  # score, t, img
+        with tempfile.TemporaryDirectory(dir=self.store.root) as outdir:
+            for i, t in enumerate(merged):
+                out = Path(outdir) / f"c_{i:03d}.jpg"
+                try:
+                    img = self._extract_still_at(src, start_s + t, out, tw, th)
+                except MediaError:
+                    continue
+                score = _fashion_usefulness_score(img)
+                scored.append((score, t, img))
+
+        if not scored:
+            raise MediaDecodeError("no frames decoded for ranked sampling")
+
+        min_gap = max(0.6, duration_s / (n * 3.0))
+        ranked = sorted(scored, key=lambda x: x[0], reverse=True)
+        picked: list[tuple[float, float, Image.Image]] = []
+        for item in ranked:
+            if all(abs(item[1] - p[1]) >= min_gap for p in picked):
+                picked.append(item)
+            if len(picked) >= n:
+                break
+        if len(picked) < n:
+            for item in ranked:
+                if item in picked:
+                    continue
+                picked.append(item)
+                if len(picked) >= n:
+                    break
+        picked.sort(key=lambda x: x[1])
+
+        frames: list[FrameRef] = []
+        for i, (_score, t, img) in enumerate(picked):
+            ts_ms = max(0, int(round(t * 1000)))
+            frames.append(self._store_frame(asset, owner_id, img, i, ts_ms, start_s + t, transform))
+        return frames
+
+    def _extract_still_at(self, src: Path, abs_t: float, out: Path, tw: int, th: int) -> Image.Image:
+        cmd = [
+            "ffmpeg",
+            "-nostdin",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-threads",
+            "2",
+            *FFMPEG_INPUT_GUARD,
+            "-ss",
+            f"{abs_t:.3f}",
+            "-i",
+            str(src),
+            "-frames:v",
+            "1",
+            "-vf",
+            f"scale={tw}:{th}:flags=area",
+            "-q:v",
+            "2",
+            str(out),
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, timeout=self.limits.extract_timeout_s, check=False)
+        except subprocess.TimeoutExpired:
+            raise MediaTimeoutError("frame extraction timed out") from None
+        if proc.returncode != 0 or not out.is_file():
+            raise MediaDecodeError("could not extract still")
+        with Image.open(out) as im:
+            img = im.convert("RGB")
+        if img.size != (tw, th):
+            img = img.resize((tw, th), Image.Resampling.LANCZOS)
+        return img
 
     def _image_frame(self, asset: MediaAsset, meta: dict, src: Path, owner_id: str) -> FrameRef:
         with Image.open(src) as raw:

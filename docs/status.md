@@ -1,12 +1,12 @@
 # ClipCart status
 
-Updated 2026-10-17 (second pass) by Claude (integration owner). Branch `integration`. UI polish is owned by a separate session on `feat/ui-polish`, which hasn't been pushed yet; this lane does not edit `apps/web/`.
+Updated 2026-10-17. YouTube product ingest lands on `feat/youtube-product` (based on `integration`).
 
 ## Working flow (verified locally in headless Chrome and with offline tests)
 
 The flow runs on http://127.0.0.1:8000 via `scripts/dev.sh`:
 
-1. Upload a JPEG/PNG or MP4/MOV. A photo and a 4 s clip were tested, at desktop and phone widths.
+1. Upload a JPEG/PNG or MP4/MOV, **or paste a YouTube URL** (`POST /api/sessions/{id}/youtube-analyze` — temporary yt-dlp download, ranked local scan, then the same analysis job). A photo and a 4 s clip were tested; YouTube path has offline fixture tests.
 2. Frames are extracted with decoder timestamps. Without a Perceptron key, detection reports "not configured" and the shopper draws a box (manual crop fallback).
 3. Select the garment, then set budget, size, colors, excluded materials and condition.
 4. Two bounded workers search **live SoleScout**. Without `XAI_API_KEY` they run rule-based queries, labeled "Rule-based".
