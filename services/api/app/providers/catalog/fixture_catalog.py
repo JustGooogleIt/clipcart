@@ -62,6 +62,7 @@ class FixtureCatalogProvider:
             listing = dict(item)
             listing["checkedAt"] = checked_at
             listing["mode"] = listing.get("mode") or "fixture"
+            listing.setdefault("destinationKind", "comparison")
             listings_out.append(listing)  # type: ignore[arg-type]
             for ev in self._data.get("evidence", []):
                 if ev.get("id") in (listing.get("evidenceIds") or []):
@@ -98,6 +99,7 @@ class FixtureCatalogProvider:
                 continue
             listing = dict(item)
             listing["checkedAt"] = checked_at
+            listing.setdefault("destinationKind", "comparison")
             if variant_id:
                 listing["variantId"] = variant_id
                 size = listing.get("size") or {}

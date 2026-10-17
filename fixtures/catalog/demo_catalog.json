@@ -1,7 +1,7 @@
 {
   "version": "2026-10-17.1",
   "label": "fixture",
-  "note": "Sourced demo listings for ClipCart. mode is fixture/catalog — never present as live SoleScout/eBay results without a fresh call.",
+  "note": "Sourced demo listings for ClipCart. mode is fixture/catalog \u2014 never present as live SoleScout/eBay results without a fresh call.",
   "sourcePermissions": "Public product aggregator URLs captured for hackathon evaluation; team must not claim affiliate entitlement.",
   "evidence": [
     {
@@ -11,9 +11,27 @@
       "provider": "solescout",
       "retrievedAt": "2026-10-17T20:40:36Z",
       "claims": [
-        { "field": "title", "value": "Polo Ralph Lauren Slim Fit Cotton T-shirt White", "excerpt": null },
-        { "field": "price", "value": 55, "excerpt": "lowest_price_usd=55" },
-        { "field": "sizes_in_stock", "value": ["XS", "S", "M", "L", "XL"], "excerpt": null }
+        {
+          "field": "title",
+          "value": "Polo Ralph Lauren Slim Fit Cotton T-shirt White",
+          "excerpt": null
+        },
+        {
+          "field": "price",
+          "value": 55,
+          "excerpt": "lowest_price_usd=55"
+        },
+        {
+          "field": "sizes_in_stock",
+          "value": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ],
+          "excerpt": null
+        }
       ],
       "rawResponseRef": "fixtures/catalog/raw/product_3-pack-classic-slim-crew-tee-nscnp3whd.json"
     },
@@ -24,8 +42,16 @@
       "provider": "solescout",
       "retrievedAt": "2026-10-17T20:40:36Z",
       "claims": [
-        { "field": "title", "value": "CECILIE BAHNSEN CBFeilan knotted embroidered shell bomber jacket", "excerpt": null },
-        { "field": "price", "value": 1810, "excerpt": "lowest_price_usd=1810" }
+        {
+          "field": "title",
+          "value": "CECILIE BAHNSEN CBFeilan knotted embroidered shell bomber jacket",
+          "excerpt": null
+        },
+        {
+          "field": "price",
+          "value": 1810,
+          "excerpt": "lowest_price_usd=1810"
+        }
       ],
       "rawResponseRef": "fixtures/catalog/raw/access_probe_meta.json#black_nylon_bomber"
     },
@@ -36,8 +62,18 @@
       "provider": "solescout",
       "retrievedAt": "2026-10-17T20:40:25Z",
       "claims": [
-        { "field": "price", "value": 100, "excerpt": "lowest_price_usd=100" },
-        { "field": "sizes_in_stock", "value": ["XS"], "excerpt": "only XS observed" }
+        {
+          "field": "price",
+          "value": 100,
+          "excerpt": "lowest_price_usd=100"
+        },
+        {
+          "field": "sizes_in_stock",
+          "value": [
+            "XS"
+          ],
+          "excerpt": "only XS observed"
+        }
       ],
       "rawResponseRef": "fixtures/catalog/raw/solescout_hoodie.json"
     },
@@ -48,8 +84,16 @@
       "provider": "solescout",
       "retrievedAt": "2026-10-17T20:40:25Z",
       "claims": [
-        { "field": "title", "value": "011 - Ennis Del Mar Denim Jacket", "excerpt": null },
-        { "field": "price", "value": 475, "excerpt": "lowest_price_usd=475" }
+        {
+          "field": "title",
+          "value": "011 - Ennis Del Mar Denim Jacket",
+          "excerpt": null
+        },
+        {
+          "field": "price",
+          "value": 475,
+          "excerpt": "lowest_price_usd=475"
+        }
       ],
       "rawResponseRef": "fixtures/catalog/raw/solescout_search_denim_jacket.json"
     },
@@ -60,8 +104,16 @@
       "provider": "solescout",
       "retrievedAt": "2026-10-17T20:40:36Z",
       "claims": [
-        { "field": "title", "value": "adidas Y-3 Canvas Tote Bag Black", "excerpt": null },
-        { "field": "price", "value": 93, "excerpt": "lowest_price_usd=93" }
+        {
+          "field": "title",
+          "value": "adidas Y-3 Canvas Tote Bag Black",
+          "excerpt": null
+        },
+        {
+          "field": "price",
+          "value": 93,
+          "excerpt": "lowest_price_usd=93"
+        }
       ],
       "rawResponseRef": "fixtures/catalog/raw/access_probe_meta.json#canvas_tote"
     },
@@ -72,9 +124,23 @@
       "provider": "solescout",
       "retrievedAt": "2026-10-17T20:40:25Z",
       "claims": [
-        { "field": "title", "value": "about:blank Leather Jacket", "excerpt": "leather mentioned in title" },
-        { "field": "price", "value": 431, "excerpt": "lowest_price_usd=431" },
-        { "field": "sizes_in_stock", "value": ["L"], "excerpt": null }
+        {
+          "field": "title",
+          "value": "about:blank Leather Jacket",
+          "excerpt": "leather mentioned in title"
+        },
+        {
+          "field": "price",
+          "value": 431,
+          "excerpt": "lowest_price_usd=431"
+        },
+        {
+          "field": "sizes_in_stock",
+          "value": [
+            "L"
+          ],
+          "excerpt": null
+        }
       ],
       "rawResponseRef": "fixtures/catalog/raw/solescout_jacket.json"
     },
@@ -85,8 +151,16 @@
       "provider": "solescout",
       "retrievedAt": "2026-10-17T20:40:36Z",
       "claims": [
-        { "field": "price", "value": 90, "excerpt": "lowest_price_usd=90" },
-        { "field": "sizes_in_stock", "value": [], "excerpt": "empty sizes_in_stock" }
+        {
+          "field": "price",
+          "value": 90,
+          "excerpt": "lowest_price_usd=90"
+        },
+        {
+          "field": "sizes_in_stock",
+          "value": [],
+          "excerpt": "empty sizes_in_stock"
+        }
       ],
       "rawResponseRef": "fixtures/catalog/raw/access_probe_meta.json#amiri_tote"
     },
@@ -97,9 +171,23 @@
       "provider": "solescout",
       "retrievedAt": "2026-10-17T20:40:36Z",
       "claims": [
-        { "field": "title", "value": "Jacket Calvin Klein Jeans Faux Leather Moto Brown Cork", "excerpt": "faux leather title" },
-        { "field": "price", "value": 209, "excerpt": "lowest_price_usd=209" },
-        { "field": "sizes_in_stock", "value": ["XXS"], "excerpt": null }
+        {
+          "field": "title",
+          "value": "Jacket Calvin Klein Jeans Faux Leather Moto Brown Cork",
+          "excerpt": "faux leather title"
+        },
+        {
+          "field": "price",
+          "value": 209,
+          "excerpt": "lowest_price_usd=209"
+        },
+        {
+          "field": "sizes_in_stock",
+          "value": [
+            "XXS"
+          ],
+          "excerpt": null
+        }
       ],
       "rawResponseRef": "fixtures/catalog/raw/access_probe_meta.json#faux_leather"
     },
@@ -110,8 +198,16 @@
       "provider": "solescout",
       "retrievedAt": "2026-10-17T20:40:25Z",
       "claims": [
-        { "field": "title", "value": "Acne Studios acne studios denim patch heart tote bag", "excerpt": null },
-        { "field": "price", "value": 900, "excerpt": "lowest_price_usd=900" }
+        {
+          "field": "title",
+          "value": "Acne Studios acne studios denim patch heart tote bag",
+          "excerpt": null
+        },
+        {
+          "field": "price",
+          "value": 900,
+          "excerpt": "lowest_price_usd=900"
+        }
       ],
       "rawResponseRef": "fixtures/catalog/raw/solescout_bag.json"
     }
@@ -124,25 +220,37 @@
       "providerListingId": "3-pack-classic-slim-crew-tee-nscnp3whd",
       "productId": "3-pack-classic-slim-crew-tee-nscnp3whd",
       "variantId": "M",
-      "retailer": "SoleScout (aggregator)",
-      "canonicalUrl": "https://solescout.ai/product/3-pack-classic-slim-crew-tee-nscnp3whd",
+      "retailer": "Grp-Ff",
+      "canonicalUrl": "https://www.farfetch.com/us/shopping/men/polo-ralph-lauren-slim-fit-3-pack-t-shirts-set-of-three-item-39280997.aspx",
       "imageUrls": [
         "https://solescout.ai/api/goat-image?slug=3-pack-classic-slim-crew-tee-nscnp3whd&sku=NSCNP3-WHD"
       ],
       "title": "Polo Ralph Lauren Slim Fit Cotton T-shirt White",
       "brand": "Polo Ralph Lauren",
-      "price": { "amountMinor": 5500, "currency": "USD" },
+      "price": {
+        "amountMinor": 7400,
+        "currency": "USD"
+      },
       "shippingMinor": null,
       "condition": "unknown",
-      "size": { "raw": "M", "system": "alpha" },
+      "size": {
+        "raw": "M",
+        "system": "alpha"
+      },
       "availability": "in_stock",
       "materialText": "cotton (title mention)",
       "colorText": "White",
       "checkedAt": "2026-10-17T20:40:36Z",
-      "evidenceIds": ["ev_fixture_polo_tee"],
+      "evidenceIds": [
+        "ev_fixture_polo_tee"
+      ],
       "mode": "fixture",
       "category": "top",
-      "warnings": ["Captured snapshot; revalidate before claiming fresh stock."]
+      "warnings": [
+        "Direct retailer offer: URL, price, and size come from the same Farfetch store record.",
+        "SoleScout aggregate lowest ($55) is from hidden retailers and is not paired with this URL."
+      ],
+      "destinationKind": "retailer_offer"
     },
     {
       "id": "fix_cecilie_bomber",
@@ -151,14 +259,17 @@
       "providerListingId": "cecilie-bahnsen-cbfeilan-knotted-embroidered-shell-bomber-jacket-226otw21006cbfeilanbombertechnicalnylonblack",
       "productId": "cecilie-bahnsen-cbfeilan-knotted-embroidered-shell-bomber-jacket-226otw21006cbfeilanbombertechnicalnylonblack",
       "variantId": null,
-      "retailer": "SoleScout (aggregator)",
+      "retailer": "SoleScout (price comparison)",
       "canonicalUrl": "https://solescout.ai/product/cecilie-bahnsen-cbfeilan-knotted-embroidered-shell-bomber-jacket-226otw21006cbfeilanbombertechnicalnylonblack",
       "imageUrls": [
         "https://solescout.ai/api/goat-image?slug=cecilie-bahnsen-cbfeilan-knotted-embroidered-shell-bomber-jacket-226otw21006cbfeilanbombertechnicalnylonblack&sku=2.26OTW21006%20CBFEILAN%20BOMBER%20TECHNICAL%20NYLONBLACK"
       ],
       "title": "CECILIE BAHNSEN CBFeilan knotted embroidered shell bomber jacket",
       "brand": "CECILIE BAHNSEN",
-      "price": { "amountMinor": 181000, "currency": "USD" },
+      "price": {
+        "amountMinor": 181000,
+        "currency": "USD"
+      },
       "shippingMinor": null,
       "condition": "unknown",
       "size": null,
@@ -166,10 +277,15 @@
       "materialText": null,
       "colorText": null,
       "checkedAt": "2026-10-17T20:40:36Z",
-      "evidenceIds": ["ev_fixture_cecilie_bomber"],
+      "evidenceIds": [
+        "ev_fixture_cecilie_bomber"
+      ],
       "mode": "fixture",
       "category": "jacket",
-      "warnings": ["Over-budget for typical $120 demo constraint."]
+      "warnings": [
+        "Over-budget for typical $120 demo constraint."
+      ],
+      "destinationKind": "comparison"
     },
     {
       "id": "fix_032c_hoodie_xs",
@@ -178,25 +294,37 @@
       "providerListingId": "032c-oversized-graphic-printed-hoodie-fw22c2040",
       "productId": "032c-oversized-graphic-printed-hoodie-fw22c2040",
       "variantId": "XS",
-      "retailer": "Offseason",
+      "retailer": "SoleScout (price comparison)",
       "canonicalUrl": "https://solescout.ai/product/032c-oversized-graphic-printed-hoodie-fw22c2040",
       "imageUrls": [
         "https://solescout.ai/api/goat-image?slug=032c-oversized-graphic-printed-hoodie-fw22c2040&sku=FW22C2040"
       ],
       "title": "032c Oversized Graphic Printed Hoodie",
       "brand": "032c",
-      "price": { "amountMinor": 10000, "currency": "USD" },
+      "price": {
+        "amountMinor": 10000,
+        "currency": "USD"
+      },
       "shippingMinor": null,
       "condition": "unknown",
-      "size": { "raw": "XS", "system": "alpha" },
+      "size": {
+        "raw": "XS",
+        "system": "alpha"
+      },
       "availability": "in_stock",
       "materialText": null,
       "colorText": null,
       "checkedAt": "2026-10-17T20:40:25Z",
-      "evidenceIds": ["ev_fixture_032c_hoodie"],
+      "evidenceIds": [
+        "ev_fixture_032c_hoodie"
+      ],
       "mode": "fixture",
       "category": "top",
-      "warnings": ["Only XS observed in stock; M unavailable."]
+      "warnings": [
+        "SoleScout comparison result \u2014 not a retailer checkout destination.",
+        "Visible Offseason URL omitted price and was not used as checkout."
+      ],
+      "destinationKind": "comparison"
     },
     {
       "id": "fix_c2h4_denim_jacket",
@@ -205,14 +333,17 @@
       "providerListingId": "011-ennis-del-mar-denim-jacket-r011jk029xs",
       "productId": "011-ennis-del-mar-denim-jacket-r011jk029xs",
       "variantId": null,
-      "retailer": "SoleScout (aggregator)",
+      "retailer": "SoleScout (price comparison)",
       "canonicalUrl": "https://solescout.ai/product/011-ennis-del-mar-denim-jacket-r011jk029xs",
       "imageUrls": [
         "https://solescout.ai/api/goat-image?slug=011-ennis-del-mar-denim-jacket-r011jk029xs&sku=r011-jk029xs"
       ],
       "title": "011 - Ennis Del Mar Denim Jacket",
       "brand": "C2H4",
-      "price": { "amountMinor": 47500, "currency": "USD" },
+      "price": {
+        "amountMinor": 47500,
+        "currency": "USD"
+      },
       "shippingMinor": null,
       "condition": "unknown",
       "size": null,
@@ -220,10 +351,15 @@
       "materialText": null,
       "colorText": null,
       "checkedAt": "2026-10-17T20:40:25Z",
-      "evidenceIds": ["ev_fixture_c2h4_denim"],
+      "evidenceIds": [
+        "ev_fixture_c2h4_denim"
+      ],
       "mode": "fixture",
       "category": "jacket",
-      "warnings": ["Similar option to other denim jackets; not a verified identical SKU across brands."]
+      "warnings": [
+        "Similar option to other denim jackets; not a verified identical SKU across brands."
+      ],
+      "destinationKind": "comparison"
     },
     {
       "id": "fix_y3_canvas_tote",
@@ -232,14 +368,17 @@
       "providerListingId": "adidas-y-3-canvas-tote-bag-black",
       "productId": "adidas-y-3-canvas-tote-bag-black",
       "variantId": null,
-      "retailer": "SoleScout (aggregator)",
+      "retailer": "SoleScout (price comparison)",
       "canonicalUrl": "https://solescout.ai/product/adidas-y-3-canvas-tote-bag-black",
       "imageUrls": [
         "https://solescout.ai/api/goat-image?slug=adidas-y-3-canvas-tote-bag-black&sku=adidas-y-3-canvas-tote-bag-black"
       ],
       "title": "adidas Y-3 Canvas Tote Bag Black",
       "brand": "adidas Y-3",
-      "price": { "amountMinor": 9300, "currency": "USD" },
+      "price": {
+        "amountMinor": 9300,
+        "currency": "USD"
+      },
       "shippingMinor": null,
       "condition": "unknown",
       "size": null,
@@ -247,10 +386,15 @@
       "materialText": "canvas (title mention)",
       "colorText": "Black",
       "checkedAt": "2026-10-17T20:40:36Z",
-      "evidenceIds": ["ev_fixture_y3_tote"],
+      "evidenceIds": [
+        "ev_fixture_y3_tote"
+      ],
       "mode": "fixture",
       "category": "bag",
-      "warnings": ["Size list from provider may use shoe-like labels; treat sizing as unknown for bags."]
+      "warnings": [
+        "Size list from provider may use shoe-like labels; treat sizing as unknown for bags."
+      ],
+      "destinationKind": "comparison"
     },
     {
       "id": "fix_aboutblank_leather",
@@ -259,25 +403,36 @@
       "providerListingId": "about-blank-leather-jacket-ss26036brn",
       "productId": "about-blank-leather-jacket-ss26036brn",
       "variantId": "L",
-      "retailer": "SoleScout (aggregator)",
+      "retailer": "SoleScout (price comparison)",
       "canonicalUrl": "https://solescout.ai/product/about-blank-leather-jacket-ss26036brn",
       "imageUrls": [
         "https://solescout.ai/api/goat-image?slug=about-blank-leather-jacket-ss26036brn&sku=SS26-036-BRN"
       ],
       "title": "about:blank Leather Jacket",
       "brand": "about:blank",
-      "price": { "amountMinor": 43100, "currency": "USD" },
+      "price": {
+        "amountMinor": 43100,
+        "currency": "USD"
+      },
       "shippingMinor": null,
       "condition": "unknown",
-      "size": { "raw": "L", "system": "alpha" },
+      "size": {
+        "raw": "L",
+        "system": "alpha"
+      },
       "availability": "in_stock",
       "materialText": "leather (title mention)",
       "colorText": null,
       "checkedAt": "2026-10-17T20:40:25Z",
-      "evidenceIds": ["ev_fixture_leather_jacket"],
+      "evidenceIds": [
+        "ev_fixture_leather_jacket"
+      ],
       "mode": "fixture",
       "category": "jacket",
-      "warnings": ["Material from title only; exclude when user forbids leather."]
+      "warnings": [
+        "Material from title only; exclude when user forbids leather."
+      ],
+      "destinationKind": "comparison"
     },
     {
       "id": "fix_amiri_tote_unknown_stock",
@@ -286,12 +441,15 @@
       "providerListingId": "amiri-canvas-tote-bag-amhaba1060",
       "productId": "amiri-canvas-tote-bag-amhaba1060",
       "variantId": null,
-      "retailer": "SoleScout (aggregator)",
+      "retailer": "SoleScout (price comparison)",
       "canonicalUrl": "https://solescout.ai/product/amiri-canvas-tote-bag-amhaba1060",
       "imageUrls": [],
       "title": "AMIRI Canvas Tote Bag",
       "brand": "AMIRI",
-      "price": { "amountMinor": 9000, "currency": "USD" },
+      "price": {
+        "amountMinor": 9000,
+        "currency": "USD"
+      },
       "shippingMinor": null,
       "condition": "unknown",
       "size": null,
@@ -299,10 +457,15 @@
       "materialText": "canvas (title mention)",
       "colorText": null,
       "checkedAt": "2026-10-17T20:40:36Z",
-      "evidenceIds": ["ev_fixture_amiri_tote"],
+      "evidenceIds": [
+        "ev_fixture_amiri_tote"
+      ],
       "mode": "fixture",
       "category": "bag",
-      "warnings": ["sizes_in_stock empty — do not claim in_stock."]
+      "warnings": [
+        "sizes_in_stock empty \u2014 do not claim in_stock."
+      ],
+      "destinationKind": "comparison"
     },
     {
       "id": "fix_ck_faux_leather_moto",
@@ -311,23 +474,34 @@
       "providerListingId": "jacket-calvin-klein-jeans-faux-leather-moto-brown-cork-lv047h543gwfm",
       "productId": "jacket-calvin-klein-jeans-faux-leather-moto-brown-cork-lv047h543gwfm",
       "variantId": "XXS",
-      "retailer": "SoleScout (aggregator)",
+      "retailer": "SoleScout (price comparison)",
       "canonicalUrl": "https://solescout.ai/product/jacket-calvin-klein-jeans-faux-leather-moto-brown-cork-lv047h543gwfm",
       "imageUrls": [],
       "title": "Jacket Calvin Klein Jeans Faux Leather Moto Brown Cork",
       "brand": "Calvin Klein Jeans",
-      "price": { "amountMinor": 20900, "currency": "USD" },
+      "price": {
+        "amountMinor": 20900,
+        "currency": "USD"
+      },
       "shippingMinor": null,
       "condition": "unknown",
-      "size": { "raw": "XXS", "system": "alpha" },
+      "size": {
+        "raw": "XXS",
+        "system": "alpha"
+      },
       "availability": "in_stock",
       "materialText": "faux leather (title mention)",
       "colorText": "Brown Cork",
       "checkedAt": "2026-10-17T20:40:36Z",
-      "evidenceIds": ["ev_fixture_ck_moto"],
+      "evidenceIds": [
+        "ev_fixture_ck_moto"
+      ],
       "mode": "fixture",
       "category": "jacket",
-      "warnings": ["Visually similar to leather moto; composition not lab-verified."]
+      "warnings": [
+        "Visually similar to leather moto; composition not lab-verified."
+      ],
+      "destinationKind": "comparison"
     },
     {
       "id": "fix_acne_heart_tote",
@@ -336,25 +510,36 @@
       "providerListingId": "acne-studios-acne-studios-denim-patch-heart-tote-bag-c10244",
       "productId": "acne-studios-acne-studios-denim-patch-heart-tote-bag-c10244",
       "variantId": "One Size",
-      "retailer": "SoleScout (aggregator)",
+      "retailer": "SoleScout (price comparison)",
       "canonicalUrl": "https://solescout.ai/product/acne-studios-acne-studios-denim-patch-heart-tote-bag-c10244",
       "imageUrls": [
         "https://solescout.ai/api/goat-image?slug=acne-studios-acne-studios-denim-patch-heart-tote-bag-c10244&sku=C10244"
       ],
       "title": "Acne Studios acne studios denim patch heart tote bag",
       "brand": "Acne Studios",
-      "price": { "amountMinor": 90000, "currency": "USD" },
+      "price": {
+        "amountMinor": 90000,
+        "currency": "USD"
+      },
       "shippingMinor": null,
       "condition": "unknown",
-      "size": { "raw": "One Size", "system": null },
+      "size": {
+        "raw": "One Size",
+        "system": null
+      },
       "availability": "in_stock",
       "materialText": null,
       "colorText": null,
       "checkedAt": "2026-10-17T20:40:25Z",
-      "evidenceIds": ["ev_fixture_acne_tote"],
+      "evidenceIds": [
+        "ev_fixture_acne_tote"
+      ],
       "mode": "fixture",
       "category": "bag",
-      "warnings": ["Over-budget luxury bag relative to $120 constraint."]
+      "warnings": [
+        "Over-budget luxury bag relative to $120 constraint."
+      ],
+      "destinationKind": "comparison"
     }
   ]
 }
