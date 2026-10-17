@@ -1,8 +1,6 @@
-"""Isolated YouTube → temporary cache → frames → Perceptron spike.
+"""Isolated YouTube → temp cache → auto-scan frames → Perceptron spike.
 
-Primary path: yt-dlp download (bounded, TTL cache) + ffmpeg frames + Perceptron.
-Optional legacy path: tab-capture upload (`/api/detect-frame`).
-
+Primary path: yt-dlp (TTL cache) + local full-clip scan + Perceptron on best frames.
 Does NOT modify ClipCart's main API. Never logs or returns the API key.
 """
 
@@ -23,7 +21,7 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 from cache import CacheError, download_youtube, purge_expired
-from frames import extract_frames
+from frames import scan_video_for_detect
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
@@ -42,10 +40,17 @@ if _env_path.is_file():
             os.environ[key] = val
 
 MODEL = os.getenv("PERCEPTRON_MODEL", "perceptron-mk1.5")
-MAX_FRAMES_PER_SESSION = 6
-CLASSES = ["jacket or coat", "top or shirt or sweater", "bag or handbag or backpack"]
+MAX_DETECT_FRAMES = int(os.getenv("YOUTUBE_MAX_DETECT_FRAMES", "10"))
+CLASSES = [
+    "coat or jacket or blazer",
+    "sweater or hoodie or knit",
+    "shirt or blouse or top",
+    "dress or skirt",
+    "pants or jeans or trousers",
+    "bag or handbag or backpack",
+]
 
-app = FastAPI(title="ClipCart YouTube download-cache spike", version="0.2.0")
+app = FastAPI(title="ClipCart YouTube auto-scan spike", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -68,6 +73,52 @@ def _luminance_stats(img: Image.Image) -> dict[str, float]:
 
 def _is_black_frame(stats: dict[str, float]) -> bool:
     return stats["mean"] < 8.0 and stats["max"] < 20.0
+
+
+def _box_area01(box01: list[float]) -> float:
+    x0, y0, x1, y1 = box01
+    return max(0.0, x1 - x0) * max(0.0, y1 - y0)
+
+
+def _iou01(a: list[float], b: list[float]) -> float:
+    ax0, ay0, ax1, ay1 = a
+    bx0, by0, bx1, by1 = b
+    ix0, iy0 = max(ax0, bx0), max(ay0, by0)
+    ix1, iy1 = min(ax1, bx1), min(ay1, by1)
+    inter = max(0.0, ix1 - ix0) * max(0.0, iy1 - iy0)
+    if inter <= 0:
+        return 0.0
+    union = _box_area01(a) + _box_area01(b) - inter
+    return inter / union if union > 0 else 0.0
+
+
+def _clean_boxes(boxes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Drop tiny / near-duplicate boxes so overlays read cleanly."""
+    filtered: list[dict[str, Any]] = []
+    for b in boxes:
+        box01 = b.get("box01") or []
+        if len(box01) != 4:
+            continue
+        area = _box_area01(box01)
+        # Ignore speckles / near-full-frame nonsense
+        if area < 0.01 or area > 0.92:
+            continue
+        w = box01[2] - box01[0]
+        h = box01[3] - box01[1]
+        if w < 0.04 or h < 0.04:
+            continue
+        filtered.append(b)
+
+    # Prefer larger boxes first; suppress heavy overlaps (same or any label).
+    ranked = sorted(filtered, key=lambda b: _box_area01(b["box01"]), reverse=True)
+    kept: list[dict[str, Any]] = []
+    for b in ranked:
+        if any(_iou01(b["box01"], k["box01"]) >= 0.55 for k in kept):
+            continue
+        kept.append(b)
+    # Stable-ish reading order: top-to-bottom
+    kept.sort(key=lambda b: (b["box01"][1], b["box01"][0]))
+    return kept
 
 
 def _perceptron_detect(image_bytes: bytes) -> dict[str, Any]:
@@ -115,6 +166,7 @@ def _perceptron_detect(image_bytes: bytes) -> dict[str, Any]:
                 ],
             }
         )
+    cleaned = _clean_boxes(boxes)
     return {
         "mode": "live",
         "model": res.model or MODEL,
@@ -122,14 +174,16 @@ def _perceptron_detect(image_bytes: bytes) -> dict[str, Any]:
         "elapsedMs": elapsed_ms,
         "complete": res.complete,
         "text": res.text,
-        "boxes": boxes,
+        "boxes": cleaned,
+        "rawBoxCount": len(boxes),
         "usage": res.usage,
     }
 
 
 class AnalyzeBody(BaseModel):
     youtubeUrl: str
-    frameCount: int = Field(default=3, ge=1, le=6)
+    # Optional override; default is auto-scan (ignore manual frame counts).
+    maxDetectFrames: int | None = Field(default=None, ge=1, le=12)
     mode: Literal["live", "geometry_only"] = "live"
 
 
@@ -138,18 +192,20 @@ def health() -> dict[str, Any]:
     purge_expired()
     return {
         "ok": True,
-        "spike": "youtube-download-cache",
-        "primaryPath": "yt-dlp temporary cache → ffmpeg frames → Perceptron",
+        "spike": "youtube-auto-scan",
+        "primaryPath": "yt-dlp cache → local full-clip scan → Perceptron on best frames",
         "perceptronConfigured": _key_configured(),
         "model": MODEL,
-        "maxFrames": MAX_FRAMES_PER_SESSION,
-        "note": "Isolated experiment; not the ClipCart production API. Downloads are temporary/cached.",
+        "maxDetectFrames": MAX_DETECT_FRAMES,
+        "note": (
+            "The whole cached clip is scanned locally (scene + dense samples). "
+            "Only the sharpest diverse frames are sent to Perceptron — not every frame."
+        ),
     }
 
 
 @app.post("/api/analyze-youtube")
 def analyze_youtube(body: AnalyzeBody) -> dict[str, Any]:
-    """Download (or reuse cache), sample ≤6 frames, optionally run Perceptron."""
     t0 = time.perf_counter()
     try:
         cached = download_youtube(body.youtubeUrl)
@@ -157,24 +213,27 @@ def analyze_youtube(body: AnalyzeBody) -> dict[str, Any]:
         status = 400 if exc.code in {"invalid_url"} else 502
         if exc.code == "yt_dlp_missing":
             status = 503
-        raise HTTPException(status_code=status, detail={"code": exc.code, "message": exc.message}) from exc
+        raise HTTPException(
+            status_code=status, detail={"code": exc.code, "message": exc.message}
+        ) from exc
 
     run_id = uuid.uuid4().hex[:10]
     frame_dir = ARTIFACTS / f"run_{run_id}"
+    max_detect = body.maxDetectFrames or MAX_DETECT_FRAMES
     try:
-        samples = extract_frames(
+        samples, scan_stats = scan_video_for_detect(
             cached.path,
             frame_dir,
-            count=body.frameCount,
-            prefix=cached.video_id,
+            max_detect_frames=max_detect,
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=500,
-            detail={"code": "frame_extract_failed", "message": str(exc)[:300]},
+            detail={"code": "frame_scan_failed", "message": str(exc)[:300]},
         ) from exc
 
     frames_out: list[dict[str, Any]] = []
+    garment_hits = 0
     for sample in samples:
         raw = sample.path.read_bytes()
         img = Image.open(io.BytesIO(raw)).convert("RGB")
@@ -185,11 +244,18 @@ def analyze_youtube(body: AnalyzeBody) -> dict[str, Any]:
             "timeSec": sample.time_sec,
             "artifactPath": str(sample.path.relative_to(ROOT)),
             "imageSize": {"width": img.width, "height": img.height},
+            "sharpness": sample.sharpness,
+            "score": sample.score,
+            "pickReason": sample.reason,
             "luminance": stats,
             "blackFrame": black,
         }
         if black:
-            entry["detection"] = {"mode": "skipped", "reason": "black_frame", "boxes": []}
+            entry["detection"] = {
+                "mode": "skipped",
+                "reason": "black_frame",
+                "boxes": [],
+            }
         elif body.mode == "geometry_only":
             entry["detection"] = {
                 "mode": "geometry_only",
@@ -198,7 +264,7 @@ def analyze_youtube(body: AnalyzeBody) -> dict[str, Any]:
             }
         else:
             try:
-                entry["detection"] = _perceptron_detect(raw)
+                det = _perceptron_detect(raw)
             except HTTPException:
                 raise
             except Exception as exc:  # noqa: BLE001
@@ -206,23 +272,32 @@ def analyze_youtube(body: AnalyzeBody) -> dict[str, Any]:
                     status_code=502,
                     detail={"code": "perceptron_failed", "message": str(exc)[:300]},
                 ) from exc
+            entry["detection"] = det
+            if det.get("boxes"):
+                garment_hits += 1
         frames_out.append(entry)
 
     return {
-        "source": "youtube_download_cache",
+        "source": "youtube_download_cache_autoscans",
         "youtubeUrl": body.youtubeUrl,
         "videoId": cached.video_id,
         "title": cached.title,
         "cacheHit": cached.cached,
         "cachedMedia": cached.path.name,
-        "durationS": cached.duration_s,
+        "durationS": cached.duration_s or scan_stats.get("durationS"),
         "elapsedMs": int((time.perf_counter() - t0) * 1000),
         "mode": body.mode,
+        "scan": scan_stats,
+        "garmentFrames": garment_hits,
         "frames": frames_out,
+        "whyNotEveryFrame": (
+            "Sending every decoded frame to Perceptron would explode cost and latency "
+            f"(e.g. 90s × 30fps ≈ 2700 calls). We scan the whole clip locally, then run "
+            f"the model on up to {max_detect} sharp, time-diverse stills."
+        ),
         "warnings": [
-            "This spike temporarily downloads YouTube media via yt-dlp into a local TTL cache.",
-            "Do not present this as a no-download / tab-share-only flow.",
-            "Cache entries expire automatically (default 1 hour).",
+            "Temporary YouTube download via yt-dlp (TTL cache).",
+            "Full-clip scan is local; Perceptron sees selected stills only.",
         ],
     }
 
@@ -240,27 +315,20 @@ async def detect_frame(
     playerHeight: int = Form(0),
     mode: Literal["live", "geometry_only"] = Form("live"),
 ) -> dict[str, Any]:
-    """Legacy optional tab-capture upload path (kept for comparison)."""
-    if sampleIndex < 0 or sampleIndex >= MAX_FRAMES_PER_SESSION:
-        raise HTTPException(status_code=400, detail="sampleIndex out of range (max 6)")
-
+    """Legacy tab-capture upload path."""
+    if sampleIndex < 0 or sampleIndex >= 12:
+        raise HTTPException(status_code=400, detail="sampleIndex out of range")
     raw = await file.read()
     if not raw:
         raise HTTPException(status_code=400, detail="empty frame")
-    if len(raw) > 8_000_000:
-        raise HTTPException(status_code=413, detail="frame too large")
-
     try:
         img = Image.open(io.BytesIO(raw)).convert("RGB")
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"invalid image: {exc}") from exc
-
     stats = _luminance_stats(img)
-    black = _is_black_frame(stats)
     frame_id = f"ytf_{uuid.uuid4().hex[:12]}"
     out_path = ARTIFACTS / f"{frame_id}.jpg"
     img.save(out_path, format="JPEG", quality=90)
-
     result: dict[str, Any] = {
         "frameId": frame_id,
         "youtubeUrl": youtubeUrl,
@@ -271,12 +339,11 @@ async def detect_frame(
         "captureSize": {"width": captureWidth, "height": captureHeight},
         "playerSize": {"width": playerWidth, "height": playerHeight},
         "luminance": stats,
-        "blackFrame": black,
+        "blackFrame": _is_black_frame(stats),
         "artifactPath": str(out_path.relative_to(ROOT)),
         "path": "legacy_tab_capture",
     }
-
-    if black:
+    if result["blackFrame"]:
         result["detection"] = {"mode": "skipped", "reason": "black_frame", "boxes": []}
         return result
     if mode == "geometry_only":
@@ -286,15 +353,7 @@ async def detect_frame(
             "boxes": [],
         }
         return result
-    try:
-        result["detection"] = _perceptron_detect(raw)
-    except HTTPException:
-        raise
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(
-            status_code=502,
-            detail={"code": "perceptron_failed", "message": str(exc)[:300]},
-        ) from exc
+    result["detection"] = _perceptron_detect(raw)
     return result
 
 

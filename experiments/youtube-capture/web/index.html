@@ -3,17 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ClipCart spike — YouTube download cache → Perceptron</title>
+    <title>ClipCart spike — Scan YouTube → Perceptron</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <main class="page">
       <header class="hero">
         <p class="eyebrow">experiments/youtube-capture · not production UI</p>
-        <h1>YouTube → temp cache → Perceptron</h1>
+        <h1>Scan the video → find the clothes</h1>
         <p class="lede">
-          Paste a YouTube URL. The spike temporarily downloads a short bounded clip (yt-dlp, local TTL
-          cache), samples up to six frames with ffmpeg, and runs Perceptron Mk1.5. No tab share required.
+          Paste a YouTube URL. We temporarily cache a short download, <strong>scan the whole clip
+          locally</strong> (scene cuts + dense samples), then run Perceptron only on the best frames —
+          so it feels like a full scan without blowing the model budget.
         </p>
       </header>
 
@@ -21,43 +22,29 @@
         <h2 id="analyze-title">Analyze</h2>
         <label class="field">
           <span>YouTube URL</span>
-          <input
-            id="urlInput"
-            type="url"
-            placeholder="https://www.youtube.com/watch?v=..."
-            autocomplete="off"
-          />
+          <input id="urlInput" type="url" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" />
         </label>
-        <p class="hint">
-          Use a video you own or have permission to analyze. Default is Creative Commons Big Buck Bunny
-          for wiring; use a fashion clip for garment boxes.
-        </p>
+        <p class="hint" id="defaultHint"></p>
         <div class="row">
-          <label class="inline">
-            Frames
-            <input id="frameCount" type="number" min="1" max="6" value="3" />
-          </label>
+          <button type="button" id="analyzeBtn">Scan video</button>
           <label class="inline check">
             <input id="geometryOnly" type="checkbox" />
-            Geometry only (skip Perceptron)
+            Skip Perceptron (scan only)
           </label>
-          <button type="button" id="analyzeBtn">Download cache &amp; detect</button>
           <span id="healthChip" class="chip">checking…</span>
         </div>
         <p id="status" class="status" role="status">Idle.</p>
-        <div id="playerWrap" class="player-wrap" hidden>
-          <div id="player"></div>
-        </div>
+        <pre id="scanMeta" class="meta" hidden></pre>
+        <div id="playerWrap" class="player-wrap" hidden><div id="player"></div></div>
         <div id="results" class="results"></div>
       </section>
 
       <section class="panel notes">
-        <h2>How this works</h2>
+        <h2>Why not “every frame” into the model?</h2>
         <ul>
-          <li>yt-dlp pulls at most ~90s / ≤720p into <code>experiments/youtube-capture/cache/</code>.</li>
-          <li>Cache hits skip re-download for 1 hour (TTL).</li>
-          <li>ffmpeg samples stills; Perceptron sees those JPEGs only.</li>
-          <li>This is an explicit download path — not “link-only magic” and not tab capture.</li>
+          <li>A 90s clip at 30fps is ~2700 frames — that many Perceptron calls is too slow/expensive.</li>
+          <li>Instead we <em>do</em> walk the whole video on your machine, score sharpness, keep scene cuts, then send ~8 diverse stills to Mk1.5.</li>
+          <li>Cache hits skip re-download (1 hour TTL).</li>
         </ul>
       </section>
     </main>

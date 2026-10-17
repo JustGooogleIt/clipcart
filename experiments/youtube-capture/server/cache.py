@@ -133,7 +133,13 @@ def get_cached(video_id: str) -> CachedVideo | None:
     )
 
 
-def _yt_dlp_cmd(youtube_url: str, out_tmpl: str, *, cookies_from_browser: str | None) -> list[str]:
+def _yt_dlp_cmd(
+    youtube_url: str,
+    out_tmpl: str,
+    *,
+    cookies_from_browser: str | None,
+    player_client: str | None,
+) -> list[str]:
     fmt = (
         f"bv*[height<={MAX_HEIGHT}][ext=mp4]+ba[ext=m4a]/"
         f"b[height<={MAX_HEIGHT}][ext=mp4]/"
@@ -155,6 +161,8 @@ def _yt_dlp_cmd(youtube_url: str, out_tmpl: str, *, cookies_from_browser: str | 
         "--print",
         "after_move:%(title)s\t%(duration)s",
     ]
+    if player_client:
+        cmd.extend(["--extractor-args", f"youtube:player_client={player_client}"])
     if cookies_from_browser:
         cmd.extend(["--cookies-from-browser", cookies_from_browser])
     cookies_file = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
@@ -162,6 +170,21 @@ def _yt_dlp_cmd(youtube_url: str, out_tmpl: str, *, cookies_from_browser: str | 
         cmd.extend(["--cookies", cookies_file])
     cmd.append(youtube_url)
     return cmd
+
+
+def _is_retryable_yt_err(err: str) -> bool:
+    low = err.lower()
+    needles = (
+        "not a bot",
+        "sign in",
+        "page needs to be reloaded",
+        "confirm you're not a bot",
+        "http error 403",
+        "http error 429",
+        "unable to extract",
+        "requested format is not available",
+    )
+    return any(n in low for n in needles)
 
 
 def download_youtube(youtube_url: str) -> CachedVideo:
@@ -174,20 +197,41 @@ def download_youtube(youtube_url: str) -> CachedVideo:
     purge_expired()
     out_tmpl = str(CACHE_DIR / f"{video_id}.%(ext)s")
 
-    # Prefer explicit env, then try bare download, then browser cookies (bot walls).
-    preferred = os.getenv("YOUTUBE_COOKIES_FROM_BROWSER", "").strip() or None
-    attempts: list[str | None] = []
-    if preferred:
-        attempts.append(preferred)
-    attempts.append(None)
+    # Android/iOS clients usually bypass web bot walls; cookies as fallback.
+    preferred_cookies = os.getenv("YOUTUBE_COOKIES_FROM_BROWSER", "").strip() or None
+    preferred_client = os.getenv("YOUTUBE_PLAYER_CLIENT", "").strip() or None
+    attempts: list[tuple[str | None, str | None]] = []
+    if preferred_client:
+        attempts.append((preferred_client, preferred_cookies))
+    # Prefer no-cookie mobile clients first (fast + reliable on bot walls).
+    for client in ("android", "ios", "tv"):
+        attempts.append((client, None))
+    if preferred_cookies:
+        attempts.append(("web", preferred_cookies))
+        attempts.append((None, preferred_cookies))
+    attempts.append((None, None))
     for browser in ("chrome", "chromium", "brave", "edge", "safari"):
-        if browser != preferred:
-            attempts.append(browser)
+        if browser != preferred_cookies:
+            attempts.append(("web", browser))
+
+    # De-dupe while preserving order
+    seen: set[tuple[str | None, str | None]] = set()
+    unique_attempts: list[tuple[str | None, str | None]] = []
+    for a in attempts:
+        if a in seen:
+            continue
+        seen.add(a)
+        unique_attempts.append(a)
 
     last_err = "yt-dlp failed"
     proc = None
-    for cookies_browser in attempts:
-        cmd = _yt_dlp_cmd(youtube_url, out_tmpl, cookies_from_browser=cookies_browser)
+    for player_client, cookies_browser in unique_attempts:
+        cmd = _yt_dlp_cmd(
+            youtube_url,
+            out_tmpl,
+            cookies_from_browser=cookies_browser,
+            player_client=player_client,
+        )
         try:
             proc = subprocess.run(
                 cmd,
@@ -204,19 +248,18 @@ def download_youtube(youtube_url: str) -> CachedVideo:
         if proc.returncode == 0:
             break
         last_err = (proc.stderr or proc.stdout or "yt-dlp failed")[-800:]
-        # Only retry cookie strategies on bot / sign-in style failures.
-        if "not a bot" not in last_err.lower() and "sign in" not in last_err.lower():
+        if not _is_retryable_yt_err(last_err):
             break
     else:
         proc = None
 
     if proc is None or proc.returncode != 0:
         hint = ""
-        if "not a bot" in last_err.lower() or "sign in" in last_err.lower():
+        if _is_retryable_yt_err(last_err):
             hint = (
-                " YouTube bot-check blocked the download. Set "
-                "YOUTUBE_COOKIES_FROM_BROWSER=chrome (or export cookies to "
-                "YOUTUBE_COOKIES_FILE) and retry while logged into YouTube in that browser."
+                " YouTube blocked or rate-limited the download. Retry, or set "
+                "YOUTUBE_COOKIES_FROM_BROWSER=chrome / YOUTUBE_COOKIES_FILE while "
+                "logged into YouTube, or YOUTUBE_PLAYER_CLIENT=android."
             )
         raise CacheError("download_failed", last_err + hint)
 

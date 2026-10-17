@@ -1,19 +1,23 @@
-/* Primary path: URL → yt-dlp cache → ffmpeg frames → Perceptron */
+/* Auto-scan: URL → cache → full local scan → Perceptron on best frames */
 
-const DEFAULT_URL = "https://www.youtube.com/watch?v=aqz-KE-bpKQ";
+// Short jacket lookbook (~90s) — replace with a team-owned fashion URL when available.
+const DEFAULT_URL = "https://www.youtube.com/watch?v=7-etsr5-Z8A";
 
 const els = {
   urlInput: document.getElementById("urlInput"),
   analyzeBtn: document.getElementById("analyzeBtn"),
-  frameCount: document.getElementById("frameCount"),
   geometryOnly: document.getElementById("geometryOnly"),
   status: document.getElementById("status"),
   healthChip: document.getElementById("healthChip"),
   results: document.getElementById("results"),
   playerWrap: document.getElementById("playerWrap"),
+  scanMeta: document.getElementById("scanMeta"),
+  defaultHint: document.getElementById("defaultHint"),
 };
 
 els.urlInput.value = DEFAULT_URL;
+els.defaultHint.textContent =
+  "Default: Winter coats & jackets lookbook (demo). Prefer a URL you own/have permission to use.";
 
 function setStatus(text, tone) {
   els.status.textContent = text;
@@ -28,7 +32,6 @@ async function refreshHealth() {
     els.healthChip.textContent = data.perceptronConfigured
       ? `Perceptron ready · ${data.model}`
       : "Perceptron key missing";
-    els.healthChip.title = data.primaryPath || "";
   } catch {
     els.healthChip.textContent = "server offline";
   }
@@ -55,31 +58,46 @@ function loadPreview(videoId) {
   const mount = () => {
     document.getElementById("player").innerHTML = "";
     // eslint-disable-next-line no-new
-    new YT.Player("player", {
-      videoId,
-      playerVars: { playsinline: 1, rel: 0 },
-    });
+    new YT.Player("player", { videoId, playerVars: { playsinline: 1, rel: 0 } });
   };
   if (window.YT && window.YT.Player) mount();
   else window.onYouTubeIframeAPIReady = mount;
 }
 
+function shortLabel(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (s.includes("coat") || s.includes("jacket") || s.includes("blazer")) return "coat/jacket";
+  if (s.includes("sweater") || s.includes("hoodie") || s.includes("knit")) return "sweater";
+  if (s.includes("shirt") || s.includes("blouse") || s.includes("top")) return "top";
+  if (s.includes("dress") || s.includes("skirt")) return "dress/skirt";
+  if (s.includes("pants") || s.includes("jeans") || s.includes("trousers")) return "pants";
+  if (s.includes("bag") || s.includes("handbag") || s.includes("backpack")) return "bag";
+  return raw || "garment";
+}
+
 function drawBoxes(canvas, boxes) {
   const ctx = canvas.getContext("2d");
   ctx.lineWidth = Math.max(2, Math.round(canvas.width / 400));
-  ctx.font = `${Math.max(12, Math.round(canvas.width / 45))}px sans-serif`;
+  ctx.font = `600 ${Math.max(13, Math.round(canvas.width / 42))}px "Avenir Next", sans-serif`;
   for (const b of boxes || []) {
     const [x0, y0, x1, y1] = b.box01;
     const left = x0 * canvas.width;
     const top = y0 * canvas.height;
     const w = (x1 - x0) * canvas.width;
     const h = (y1 - y0) * canvas.height;
-    ctx.strokeStyle = "#00c853";
-    ctx.fillStyle = "rgba(0,200,83,0.12)";
+    ctx.strokeStyle = "#0f6a56";
+    ctx.fillStyle = "rgba(15,106,86,0.10)";
     ctx.fillRect(left, top, w, h);
     ctx.strokeRect(left, top, w, h);
-    ctx.fillStyle = "#00c853";
-    ctx.fillText(b.label || "garment", left + 4, Math.max(14, top - 6));
+    const label = shortLabel(b.label);
+    const pad = 4;
+    const tw = ctx.measureText(label).width + pad * 2;
+    const th = Math.max(16, Math.round(canvas.width / 38));
+    const ly = Math.max(th + 2, top - 4);
+    ctx.fillStyle = "#0f6a56";
+    ctx.fillRect(left, ly - th, tw, th);
+    ctx.fillStyle = "#fff";
+    ctx.fillText(label, left + pad, ly - 5);
   }
 }
 
@@ -95,28 +113,24 @@ async function renderFrame(frame) {
   const canvas = document.createElement("canvas");
   canvas.width = img.naturalWidth;
   canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0);
-  drawBoxes(canvas, (frame.detection && frame.detection.boxes) || []);
+  canvas.getContext("2d").drawImage(img, 0, 0);
+  const boxes = (frame.detection && frame.detection.boxes) || [];
+  drawBoxes(canvas, boxes);
 
   const meta = document.createElement("div");
   meta.className = "meta";
   const det = frame.detection || {};
+  const labels = boxes.map((b) => shortLabel(b.label)).filter(Boolean);
   meta.textContent = [
-    `t=${Number(frame.timeSec).toFixed(2)}s · sample #${frame.index}`,
-    `image ${frame.imageSize.width}×${frame.imageSize.height} · black=${frame.blackFrame}`,
-    `detect=${det.mode || "?"} · model=${det.model || "—"} · boxes=${(det.boxes || []).length}`,
-    det.requestId ? `requestId=${det.requestId}` : null,
-    (det.boxes || [])
-      .map((b) => `${b.label}: [${b.box01.map((n) => n.toFixed(3)).join(", ")}]`)
-      .join("\n") || "no boxes",
-  ]
-    .filter(Boolean)
-    .join("\n");
+    `t=${Number(frame.timeSec).toFixed(2)}s · score=${frame.score ?? "—"} · sharp=${frame.sharpness}`,
+    labels.length ? `found: ${labels.join(" · ")}` : "no garments in this still",
+  ].join("\n");
 
   card.appendChild(canvas);
   card.appendChild(meta);
-  els.results.appendChild(card);
+  // Prefer frames with garments at the top
+  if (boxes.length) els.results.prepend(card);
+  else els.results.appendChild(card);
 }
 
 async function analyze() {
@@ -128,8 +142,9 @@ async function analyze() {
   }
   els.analyzeBtn.disabled = true;
   els.results.innerHTML = "";
+  els.scanMeta.hidden = true;
   loadPreview(videoId);
-  setStatus("Downloading / using cache, extracting frames, running Perceptron…", "warn");
+  setStatus("Caching video, scanning the whole clip, then detecting garments…", "warn");
 
   try {
     const res = await fetch("/api/analyze-youtube", {
@@ -137,7 +152,6 @@ async function analyze() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         youtubeUrl,
-        frameCount: Math.min(6, Math.max(1, Number(els.frameCount.value) || 3)),
         mode: els.geometryOnly.checked ? "geometry_only" : "live",
       }),
     });
@@ -150,15 +164,27 @@ async function analyze() {
       );
       return;
     }
+
+    const scan = data.scan || {};
+    els.scanMeta.hidden = false;
+    els.scanMeta.textContent = [
+      `${data.title || "(unknown)"}`,
+      `cache ${data.cacheHit ? "hit" : "miss"} · ${(data.elapsedMs / 1000).toFixed(1)}s total`,
+      `scanned ${scan.candidateCount} stills across ${scan.durationS}s locally (${scan.sceneCutCount} scene cuts)`,
+      `Perceptron on ${scan.selectedCount} best frames → ${data.garmentFrames} with clothes`,
+    ].join("\n");
+
+    const tone = (data.garmentFrames || 0) > 0 ? "ok" : "warn";
     setStatus(
-      `Done · videoId=${data.videoId} · cacheHit=${data.cacheHit} · frames=${data.frames?.length || 0} · ${data.elapsedMs}ms`,
-      "ok",
+      `Scan complete · ${data.garmentFrames || 0} frame(s) with garments · ${scan.selectedCount} model calls`,
+      tone,
     );
+
     for (const frame of data.frames || []) {
       try {
         await renderFrame(frame);
       } catch (err) {
-        console.warn("render failed", err);
+        console.warn(err);
       }
     }
   } catch (err) {

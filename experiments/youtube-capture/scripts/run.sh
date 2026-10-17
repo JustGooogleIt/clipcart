@@ -18,8 +18,9 @@ if [[ -f .env ]]; then
 fi
 
 export PERCEPTRON_MODEL="${PERCEPTRON_MODEL:-perceptron-mk1.5}"
-# YouTube often bot-checks yt-dlp; Chrome cookies usually unblock local demos.
-export YOUTUBE_COOKIES_FROM_BROWSER="${YOUTUBE_COOKIES_FROM_BROWSER:-chrome}"
+# Mobile player clients usually bypass web bot walls; cookies are a fallback.
+export YOUTUBE_PLAYER_CLIENT="${YOUTUBE_PLAYER_CLIENT:-android}"
+export YOUTUBE_COOKIES_FROM_BROWSER="${YOUTUBE_COOKIES_FROM_BROWSER:-}"
 PORT="${YOUTUBE_CAPTURE_PORT:-8765}"
 
 echo "Starting YouTube download-cache spike on http://127.0.0.1:${PORT}"
@@ -28,7 +29,7 @@ if [[ -n "${PERCEPTRON_API_KEY:-}" ]]; then
 else
   echo "Perceptron configured: no — set PERCEPTRON_API_KEY or repo .env"
 fi
-echo "yt-dlp cookies-from-browser: ${YOUTUBE_COOKIES_FROM_BROWSER}"
+echo "yt-dlp player_client: ${YOUTUBE_PLAYER_CLIENT:-auto} cookies-from-browser: ${YOUTUBE_COOKIES_FROM_BROWSER:-none}"
 
 cd "$ROOT/server"
 exec python -m uvicorn app:app --host 127.0.0.1 --port "$PORT"
