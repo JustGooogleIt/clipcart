@@ -19,3 +19,5 @@ experiments/youtube-capture/artifacts/fashion-scan-*.jpg
 experiments/youtube-capture/artifacts/*-overlay.jpg
 # Temporary YouTube downloads (yt-dlp cache)
 experiments/youtube-capture/cache/
+# Product YouTube TTL cache (under media root when using default local store)
+.data/youtube-cache/

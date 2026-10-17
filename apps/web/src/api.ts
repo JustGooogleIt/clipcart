@@ -57,6 +57,13 @@ export const api = {
       `/api/sessions/${id}/messages`,
       { text, expectedRevision, idempotencyKey: key() },
     ),
+  youtubeAnalyze: (id: string, youtubeUrl: string, expectedRevision: number) =>
+    req<
+      SessionView & {
+        youtube?: { videoId: string; title: string | null; cacheHit: boolean; source: string };
+        warnings?: string[];
+      }
+    >("POST", `/api/sessions/${id}/youtube-analyze`, { youtubeUrl, expectedRevision }),
 };
 
 export function upload(

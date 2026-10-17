@@ -1,6 +1,8 @@
 # Smallest ClipCart contract (download-cache + auto-scan)
 
-Spike: `experiments/youtube-capture/`. Agree before merging into `apps/web` / `services/api`.
+Spike: `experiments/youtube-capture/`. Product path (on `feat/youtube-product` / `integration`):
+`POST /api/sessions/{id}/youtube-analyze` in `services/api` + URL paste in `apps/web`.
+This folder remains the reference spike; prefer the product route for demos.
 
 ## Browser → API
 

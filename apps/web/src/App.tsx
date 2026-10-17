@@ -164,6 +164,34 @@ export default function App() {
     }
   };
 
+  const onYoutube = async (youtubeUrl: string) => {
+    if (!s) return;
+    setNotice({
+      kind: "info",
+      text: "Downloading a temporary copy of the YouTube clip, then scanning for clothes…",
+    });
+    setBusy(true);
+    setProgress(null);
+    setSearch(null);
+    setSearchId(null);
+    setFrameId(null);
+    setDrawing(null);
+    setDraft(null);
+    try {
+      const v = await api.youtubeAnalyze(s.id, youtubeUrl, s.revision);
+      setView(v);
+      const title = v.youtube?.title ? `“${v.youtube.title}”` : "YouTube clip";
+      setNotice({
+        kind: "info",
+        text: `${title} ${v.youtube?.cacheHit ? "(cache hit)" : "downloaded"} — analyzing the best frames now.`,
+      });
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const selectGarment = async (gid: string) => {
     if (!s || gid === s.selectedGarmentId) return;
     setBusy(true);
@@ -263,7 +291,7 @@ export default function App() {
 
       {!view?.media ? (
         <main className="empty">
-          <Upload busy={busy || !s} progress={progress} onFile={onFile} />
+          <Upload busy={busy || !s} progress={progress} onFile={onFile} onYoutube={onYoutube} />
           <ol className="how">
             <li>
               <strong>Pick the piece.</strong> Jackets, tops and bags.
@@ -281,7 +309,7 @@ export default function App() {
           <section className="col-look" aria-label="Your look">
             <div className="section-head">
               <h2>1 · Pick the garment</h2>
-              <Upload busy={busy} progress={progress} onFile={onFile} compact />
+              <Upload busy={busy} progress={progress} onFile={onFile} onYoutube={onYoutube} compact />
             </div>
             {analyzing && (
               <div className="banner" role="status">

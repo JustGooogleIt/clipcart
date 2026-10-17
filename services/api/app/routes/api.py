@@ -17,6 +17,7 @@ from app.contracts.base import from_doc
 from app.jobs.analysis import create_analysis
 from app.jobs.search import create_search, dispatch
 from app.media.errors import AssetNotFoundError, MediaError
+from app.media.youtube_cache import YoutubeCacheError, download_youtube
 from app.providers.perceptron.adapter import correct_observation, manual_observation
 from app.sessions.service import (
     ApiProblem,
@@ -78,6 +79,11 @@ class MessageIn(In):
     text: str = Field(min_length=1, max_length=500)
     expected_revision: int
     idempotency_key: str | None = Field(default=None, max_length=100)
+
+
+class YoutubeAnalyzeIn(In):
+    youtube_url: str = Field(min_length=8, max_length=500)
+    expected_revision: int = Field(ge=1)
 
 
 # ------------------------------------------------------------------ system
@@ -254,6 +260,71 @@ async def upload(request: Request, sessionId: str, expectedRevision: int) -> dic
     )
     supersede_active_search(st.db, before)
     return session_view(st, doc)
+
+
+@router.post("/api/sessions/{session_id}/youtube-analyze")
+async def youtube_analyze(session_id: str, body: YoutubeAnalyzeIn, request: Request) -> dict:
+    """Temporary YouTube download → ingest as media → queue analysis (CONTRACT)."""
+    require_mutation_header(request)
+    owner = current_owner(request)
+    st = state_of(request)
+    limiter.check(owner, "youtube", 10)
+    get_owned(st.db, session_id, owner)
+
+    cache_dir = st.media.store.root / "youtube-cache"
+    try:
+        cached = await run_in_threadpool(download_youtube, cache_dir, body.youtube_url.strip())
+    except YoutubeCacheError as exc:
+        status = 400 if exc.code == "invalid_url" else 502
+        if exc.code == "yt_dlp_missing":
+            status = 503
+        if exc.code == "timeout":
+            status = 504
+        raise ApiProblem(status, exc.code, exc.message, retryable=exc.code in {"timeout", "download_failed"}) from None
+
+    def _ingest_cached() -> Any:
+        with cached.path.open("rb") as fh:
+            return st.media.ingest(
+                fh,
+                owner,
+                source_url=body.youtube_url.strip(),
+                source_type="youtube_download",
+            )
+
+    try:
+        asset = await run_in_threadpool(_ingest_cached)
+    except MediaError as exc:
+        raise ApiProblem(exc.http_status, exc.code, exc.message, exc.retryable) from None
+
+    st.bump("youtube_analyzes")
+    before = get_owned(st.db, session_id, owner)
+    job = create_analysis(st, session_id, owner, asset.id)
+    doc = cas_update(
+        st.db,
+        session_id,
+        owner,
+        body.expected_revision,
+        {
+            "mediaId": asset.id,
+            "analysisId": job.id,
+            "selectedGarmentId": None,
+            "activeSearchId": None,
+            "lastPresentedResultIds": [],
+        },
+    )
+    supersede_active_search(st.db, before)
+    view = session_view(st, doc)
+    view["youtube"] = {
+        "videoId": cached.video_id,
+        "title": cached.title,
+        "cacheHit": cached.cached,
+        "source": "youtube_download_cache_autoscans",
+    }
+    view["warnings"] = [
+        "Temporary YouTube download was used for analysis (TTL cache). This is not a tab-share or link-only flow.",
+        "The whole clip is scanned locally; Perceptron runs only on the best ranked stills.",
+    ]
+    return view
 
 
 @router.get("/api/media/{asset_id}")

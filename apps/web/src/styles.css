@@ -64,6 +64,15 @@ a { color: inherit; }
 .drop-sub { margin: 0; color: var(--ink-2); max-width: 44ch; }
 .drop-hint { margin: 0; font-size: 13px; color: var(--ink-3); }
 .drop-compact { width: auto; padding: 0; border: 0; background: none; }
+.drop-compact-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.yt-form { width: min(100%, 420px); display: grid; gap: 8px; margin-top: 12px; text-align: left; }
+.yt-label { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.yt-label input, .yt-compact input {
+  font: inherit; width: 100%; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--ink-3); background: #fff; color: var(--ink);
+}
+.yt-compact { display: flex; gap: 6px; align-items: center; }
+.yt-compact input { width: min(220px, 40vw); padding: 6px 10px; }
 .progress { width: 100%; max-width: 320px; height: 6px; background: var(--line); border-radius: 6px; overflow: hidden; }
 .progress span { display: block; height: 100%; background: var(--accent); transition: width .2s; }
 .how { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; width: min(900px, 100%); color: var(--ink-2); }
