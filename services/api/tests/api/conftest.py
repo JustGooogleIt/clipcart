@@ -55,8 +55,13 @@ def app_factory(tmp_path, monkeypatch):
         import pymongo
 
         client = pymongo.MongoClient(real, serverSelectionTimeoutMS=5000)
-        for name in dbs:
-            client.drop_database(name)
+        # Background job threads (search, analysis) can write a last event just after a test ends and
+        # recreate the database; drop, let them settle, then drop again.
+        for attempt in range(3):
+            for name in dbs:
+                client.drop_database(name)
+            if attempt < 2:
+                time.sleep(0.3)
         client.close()
 
 
