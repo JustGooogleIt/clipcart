@@ -67,12 +67,27 @@ class GarmentProfile:
         return bag
 
 
+# Multi-token names a word list can't catch, e.g. "Alpha Industries MA-1" is a bomber/flight jacket.
+CATEGORY_PATTERNS: dict[str, tuple[re.Pattern, ...]] = {
+    "jacket": (re.compile(r"\bma[-\s]?1\b", re.I), re.compile(r"\bflight\s+jacket\b", re.I)),
+}
+
+# Explicit women's labelling only. Never inferred from size, color or cut.
+_WOMENS = re.compile(r"\b(?:women(?:'?s)?|woman'?s|wmns|ladies)\b", re.I)
+
+
 def title_matches_category(title: str, category: str) -> bool:
     fam = CATEGORY_WORDS.get(category)
     if not fam:
         return True
     toks = set(words(title))
-    return any(w in toks for w in fam)
+    if any(w in toks for w in fam):
+        return True
+    return any(p.search(title or "") for p in CATEGORY_PATTERNS.get(category, ()))
+
+
+def explicitly_womens(text: str | None) -> bool:
+    return bool(_WOMENS.search((text or "").replace("\u2019", "'")))
 
 
 def norm_size(raw: str) -> tuple[str, str]:
@@ -177,6 +192,18 @@ def check_constraints(listing: Listing, prefs: Preferences) -> list[ConstraintCh
                         evidence_ids=ev,
                     )
                 )
+
+    # ClipCart has no fit-category preference yet, so the shopper's fit is always unspecified.
+    # An explicitly women's listing therefore needs checking. Size (e.g. "M") never implies fit.
+    if explicitly_womens(listing.title):
+        checks.append(
+            ConstraintCheck(
+                constraint="fit",
+                state="unknown",
+                detail="Listed as a women's item; your fit category isn't set",
+                evidence_ids=ev,
+            )
+        )
 
     text = f"{listing.title} {listing.material_text or ''}".lower()
     for m in prefs.excluded_materials:
