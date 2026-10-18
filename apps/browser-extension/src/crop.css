@@ -1,0 +1,26 @@
+body { min-height: 100vh; }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(40% 55% at 0% 40%, rgba(255, 90, 31, 0.12), transparent 70%), radial-gradient(45% 60% at 90% 30%, rgba(176, 107, 255, 0.16), transparent 70%); }
+.crop { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 20px clamp(16px, 3vw, 40px) 24px; min-height: 100vh; display: flex; flex-direction: column; gap: 18px; }
+.crop-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.crop-source { max-width: min(560px, 100%); }
+.crop-source #source-text { overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+.crop-title { margin: 6px 0 6px; font-size: clamp(28px, 3.6vw, 46px); line-height: 1; letter-spacing: -0.05em; font-weight: 700; }
+.crop-sub { margin: 0; }
+.crop-stage-wrap { flex: 1; display: grid; place-items: center; min-height: 0; }
+.crop-stage { position: relative; display: inline-block; line-height: 0; border-radius: 18px; overflow: hidden; cursor: crosshair; touch-action: none; user-select: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 50px 100px -40px rgba(176, 107, 255, 0.5), 0 30px 70px -30px rgba(255, 90, 31, 0.4); background: var(--card); }
+.crop-stage img { display: block; max-width: 100%; max-height: calc(100vh - 350px); min-height: 120px; object-fit: contain; }
+.crop-shade { position: absolute; inset: 0; pointer-events: none; }
+.crop-sel { position: absolute; pointer-events: none; border-radius: 6px; box-shadow: 0 0 0 9999px rgba(5, 5, 5, 0.62), inset 0 0 0 2px var(--ink); }
+.crop-sel::after { content: ""; position: absolute; inset: -2px; border-radius: 7px; border: 2px dashed rgba(255, 90, 31, 0.9); }
+.crop-size { position: absolute; left: 0; top: -28px; padding: 3px 8px; border-radius: 8px; background: rgba(20, 20, 22, 0.8); color: var(--ink); font: 500 11px/1.4 var(--mono); white-space: nowrap; }
+.crop-sel.top .crop-size { top: auto; bottom: -28px; }
+.crop-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.crop-msgs { flex: 1 1 360px; display: grid; gap: 8px; min-width: 0; }
+.crop-msgs .notice { margin: 0; }
+.crop-note { margin: 0; font-size: 12.5px; }
+.crop-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.status-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.status-row .btn { margin-left: auto; }
+@media (max-width: 640px) { .crop-actions { width: 100%; } .crop-actions .btn-main { flex: 1; } }

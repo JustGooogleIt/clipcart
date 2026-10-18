@@ -17,7 +17,7 @@ from .base import Record as _Record
 
 Category = Literal["jacket", "top", "pants", "bag", "other"]
 GroupingBasis = Literal["single", "within_shot", "user_confirmed"]
-SourceType = Literal["upload_image", "upload_video", "youtube_download"]
+SourceType = Literal["upload_image", "upload_video", "youtube_download", "browser_capture"]
 MediaKind = Literal["image", "video"]
 ProviderErrorCode = Literal[
     "auth_error",
@@ -64,6 +64,7 @@ class MediaAsset(_Record):
     duration_ms: int | None
     source_type: SourceType
     canonical_source_url: str | None = None
+    source_title: str | None = None  # page title for browser captures; display only
     storage_key: str
     byte_size: int
     rotation_degrees: int = 0

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Crop frame · ClipCart</title>
+  <link rel="stylesheet" href="ui.css" />
+  <link rel="stylesheet" href="crop.css" />
+</head>
+<body>
+  <div class="crop">
+    <header class="crop-head">
+      <span class="brand"><span class="brand-mark" aria-hidden="true">▶</span><span class="wordmark">ClipCart</span></span>
+      <span class="chip crop-source" id="source" hidden><span class="faint">From</span> <span id="source-text"></span></span>
+    </header>
+
+    <section class="crop-intro">
+      <p class="kicker">Captured frame</p>
+      <h1 class="crop-title">Drag around the piece <span class="grad">you want to shop.</span></h1>
+      <p class="muted crop-sub">Only the cropped area goes to ClipCart. Skip the crop to send the whole frame.</p>
+    </section>
+
+    <main class="crop-stage-wrap">
+      <div class="crop-stage" id="stage" aria-label="Captured frame. Drag to select an area; press Escape to clear.">
+        <img id="shot" alt="Screenshot of the video tab" draggable="false" />
+        <div class="crop-shade" id="shade" hidden></div>
+        <div class="crop-sel" id="sel" hidden><span class="crop-size" id="size"></span></div>
+      </div>
+      <p class="notice err" id="missing" hidden>This capture is gone (the preview was reloaded after the browser cleared it). Go back to the video and click ClipCart again.</p>
+    </main>
+
+    <footer class="crop-bar">
+      <div class="crop-msgs">
+        <p class="notice warn" id="blank" hidden><b>This frame came out black.</b> Some sites protect their video from screenshots. Try another player or a paused frame with the controls hidden.</p>
+        <div class="notice" id="status" role="status" aria-live="polite" hidden></div>
+        <p class="faint crop-note" id="note"><span class="muted" id="scope">Sending the whole frame.</span> Open in ClipCart uploads this image and starts garment detection, the same as uploading a photo in the studio.<span id="prov-note" hidden> The page address and title shown above are saved with it.</span></p>
+      </div>
+      <div class="crop-actions">
+        <button class="btn" id="cancel" type="button">Cancel</button>
+        <button class="btn" id="clear" type="button" hidden>Clear crop</button>
+        <button class="btn btn-main" id="send" type="button" disabled>Open in ClipCart</button>
+      </div>
+    </footer>
+  </div>
+  <script type="module" src="crop.js"></script>
+</body>
+</html>
