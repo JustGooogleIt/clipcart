@@ -110,6 +110,8 @@ def health(request: Request) -> dict:
                            "setting": s.perception_provider},
             "grok": {**st.status["grok"].snapshot(), "model": s.xai_model},
             "catalog": {**st.status["catalog"].snapshot(), "provider": s.catalog_provider, "error": st.catalog_error},
+            "styleModel": {**st.status["style_model"].snapshot(), "model": s.style_model,
+                           "provider": s.style_model_provider if s.feature_style_memory else None},
         },
         "features": {
             "photon": s.feature_photon,
@@ -117,6 +119,7 @@ def health(request: Request) -> dict:
             "solana": s.feature_solana,
             "agentResearch": s.feature_agent_research,
             "youtubeDownload": s.feature_youtube_download,
+            "styleMemory": s.feature_style_memory,
         },
         "youtube": {
             "enabled": s.feature_youtube_download,
@@ -659,4 +662,11 @@ def go(token: str, request: Request):
         st.bump("outbound_clicks")
     except Exception:  # noqa: BLE001 - analytics must never block the shopper
         log.exception("referral logging failed")
+    if st.settings.feature_style_memory:
+        try:  # a click is interest only: never a purchase, never a memory
+            from app.style.service import record_retailer_click
+
+            record_retailer_click(st.db, link["ownerId"], link["listingId"], link.get("recommendationId"), link["kind"])
+        except Exception:  # noqa: BLE001 - must never block the redirect
+            log.exception("style click logging failed")
     return RedirectResponse(link["url"], status_code=302, headers={"Referrer-Policy": "no-referrer"})

@@ -1,6 +1,6 @@
 # Contract: persistent style memory
 
-Status: **proposed, published early** on `feat/style-memory` so the UI lane can build against it. Backend owner: Claude. `apps/web/` is untouched by this branch. Flag: `FEATURE_STYLE_MEMORY`, default **false**. When it's off, every route below returns `404 {code: "feature_disabled"}` and search is unchanged.
+Status: **implemented on `feat/style-memory` (draft PR #15)**, first published early so the UI lane could build against it. Backend owner: Claude. `apps/web/` is untouched by this branch. Flag: `FEATURE_STYLE_MEMORY`, default **false**. When it's off, every route below returns `404 {code: "feature_disabled"}` and search is unchanged.
 
 Style memory is **owner-scoped**, keyed to the browser owner cookie like sessions. It persists across sessions for the same owner. One owner can never read, change or delete another owner's events or memories.
 
@@ -68,7 +68,7 @@ All need the owner cookie. Mutations also need `X-ClipCart-Request: 1` and accep
 }
 ```
 
-Lists are capped at 5 items, and `recentlyOwned` at 5. `styleModel.mode` is one of `unavailable`, `unverified` or `live`.
+Lists are capped at 5 items, and `recentlyOwned` at 5. `styleModel.mode` is one of `unavailable` (feature or provider off), `unverified` (configured, no successful call yet) or `live` (a real call succeeded since startup). The internal list of rejected product keys is never returned; only `rejectedOfferCount` is.
 
 ### `GET /api/style/memories?status=active|overridden|removed|all`
 
@@ -143,10 +143,37 @@ Proposes memory updates from text and **saves nothing**.
 
 `mode` is `model` (Gemma output validated in code) or `rule_based` (model unavailable or invalid). Every proposal's `quote` is checked as an exact substring of the input text. To save proposals, the UI posts each accepted one to `POST /api/style/memories` with `source: "style_note"`.
 
+## Health
+
+`GET /api/health` adds `features.styleMemory` and `providers.styleModel: {mode, configured, calls, failures, lastError, model, provider}`.
+
+## Configuration
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `FEATURE_STYLE_MEMORY` | `false` | Turns on every route and personalization |
+| `STYLE_MODEL_PROVIDER` | `ollama` | Set `none` to always use the rule-based parser |
+| `STYLE_MODEL` | `gemma4:e4b` | Ollama tag. Use `gemma4:e2b` if E4B is too slow (see the benchmark below) |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama |
+| `STYLE_MODEL_TIMEOUT_S` | `8` | Per-call read timeout. Connect timeout is 1.5 s. |
+| `STYLE_MODEL_EXPLANATIONS` | `false` | Model-written personalization sentences. Off by default to keep search fast. |
+
+When Ollama is down, `/api/style/notes` falls back to the rule-based parser. Measured with nothing listening on the port, that took 11 ms median and 45 ms max. Every other route never calls the model.
+
 ## Search personalization (when the flag is on)
 
 - **Snapshot:** search takes a compact profile snapshot at job creation. Session preferences stay the source of truth for hard constraints. The profile never relaxes or adds a hard constraint silently.
-- **Rejected offers:** hidden, with an agent event "Hid N item(s) you rejected".
-- **Reordering:** stated likes and avoids reorder results within each section. Inferred ones weigh less.
+- **Rejected products:** hidden, with an agent event "Hid N item(s) you rejected before". Matching uses provider + listing ID, so a search hit and its detail snapshot match.
+- **Reordering:** stated likes and avoids reorder results within each section, after identity tier and before relevance. Weights are stated like +2, inferred like +1, stated avoid −3, inferred avoid −1.5. Sections and constraint checks never change, and quality gates such as the category, color-mismatch and budget filters still apply.
 - **New field:** each `Recommendation` gains an optional `personalization: string[]`, for example `["You said you like black"]` or `["Matches brands from items you saved"]`.
 - **Explanations:** these come from templates. A model explanation is used only when it passes validation, which allows no prices, numbers, stock or retailer claims.
+
+## Model status (2026-10-18)
+
+Ollama is **not installed** on the development machine, so `gemma4:e4b` and `e2b` have not been run or benchmarked. Run `scripts/experiments/style_model_bench.py --models gemma4:e4b gemma4:e2b` once they're pulled. It never pulls models itself.
+
+Baseline for the rule-based fallback on the 10 labelled statements in that script:
+
+| Precision | Recall | False positives | Misses |
+| --- | --- | --- | --- |
+| 1.00 | 0.86 | 0 | 2 (brands, which are left to the model by design) |

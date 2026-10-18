@@ -33,6 +33,15 @@ class AppState:
         with self.lock:
             self.counters[key] = self.counters.get(key, 0) + 1
 
+    def style_model(self):
+        """Ollama-backed Gemma client, or None when style memory or the model provider is off."""
+        s = self.settings
+        if not (s.feature_style_memory and s.style_model_provider == "ollama"):
+            return None
+        from app.style.model import OllamaStyleModel
+
+        return OllamaStyleModel(base_url=s.ollama_base_url, model=s.style_model, timeout_s=s.style_model_timeout_s)
+
     def perception_provider(self):
         """Return (provider | None, detection_mode)."""
         mode = self.settings.perception_provider
@@ -78,6 +87,7 @@ def build_state(settings: Settings) -> AppState:
     status = {
         "perceptron": ProviderStatus("perceptron", settings.perception_provider == "perceptron" and settings.perceptron_key_present),
         "grok": ProviderStatus("grok", settings.xai_key_present),
+        "style_model": ProviderStatus("style_model", settings.feature_style_memory and settings.style_model_provider == "ollama"),
         "catalog": ProviderStatus(
             settings.catalog_provider,
             catalog is not None,

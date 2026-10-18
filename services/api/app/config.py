@@ -50,6 +50,12 @@ class Settings:
     research_resolve_dns: bool
     feature_youtube_download: bool
     youtube_allowed_video_ids: frozenset[str]
+    feature_style_memory: bool
+    style_model_provider: str  # ollama | none
+    style_model: str
+    ollama_base_url: str
+    style_model_timeout_s: float
+    style_model_explanations: bool
     feature_photon: bool
     feature_voice: bool
     feature_solana: bool
@@ -115,6 +121,12 @@ def load_settings() -> Settings:
         youtube_allowed_video_ids=frozenset(
             v.strip() for v in (os.getenv("YOUTUBE_ALLOWED_VIDEO_IDS") or "").split(",") if v.strip()
         ),
+        feature_style_memory=_flag("FEATURE_STYLE_MEMORY"),
+        style_model_provider=(os.getenv("STYLE_MODEL_PROVIDER") or "ollama").lower(),
+        style_model=os.getenv("STYLE_MODEL", "gemma4:e4b"),
+        ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/"),
+        style_model_timeout_s=float(os.getenv("STYLE_MODEL_TIMEOUT_S", "8")),
+        style_model_explanations=_flag("STYLE_MODEL_EXPLANATIONS"),
         feature_photon=_flag("FEATURE_PHOTON"),
         feature_voice=_flag("FEATURE_VOICE"),
         feature_solana=_flag("FEATURE_SOLANA"),

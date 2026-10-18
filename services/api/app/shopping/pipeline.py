@@ -101,6 +101,8 @@ def run_search(
     grok_status: ProviderStatus,
     grok_client_factory: Callable[[], Any] | None,
     is_current: Callable[[], bool],
+    style: Any = None,
+    explain_fn: Callable[[list[str]], str | None] | None = None,
 ) -> SearchOutcome:
     filters = CatalogFilters(
         category=profile.category,
@@ -155,6 +157,21 @@ def run_search(
     if off_cat:
         emit("verifying_listings", f"Set aside {len(off_cat)} result{'s' if len(off_cat) != 1 else ''} that are not a {profile.category}",
              worker="verifier")
+    if style is not None:
+        from app.style.personalize import is_rejected
+
+        hidden = [c for c in cands if is_rejected(c.listing, style)]
+        cands = [c for c in cands if c not in hidden]
+        if hidden:
+            emit("ranking", f"Hid {len(hidden)} item{'s' if len(hidden) != 1 else ''} you rejected before", worker="verifier")
+
+    def _style(listing):
+        if style is None:
+            return 0.0, []
+        from app.style.personalize import style_score
+
+        return style_score(listing, style)
+
 
     # When fabric is known and SoleScout returned fabric matches, drop lookalikes
     # in the wrong material (e.g. blue track jackets for a denim trucker).
@@ -175,6 +192,7 @@ def run_search(
         tier, _ = identity_tier(c.listing, profile)
         return (
             TIER_ORDER[tier],
+            -_style(c.listing)[0],  # soft personalization; identity evidence still ranks first
             0 if fabric_match(c.listing, profile) else 1,
             0 if c.submitted_by else 1,
             -relevance(c.listing, profile, prefs),
@@ -232,6 +250,7 @@ def run_search(
         price = c.listing.price.amount_minor if c.listing.price else 10**12
         return (
             TIER_ORDER[tier],
+            -_style(c.listing)[0],  # soft personalization; identity evidence still ranks first
             0 if fabric_match(c.listing, profile) else 1,
             -relevance(c.listing, profile, prefs),
             0 if c.listing.availability == "in_stock" else 1,
@@ -244,6 +263,14 @@ def run_search(
 
     out = SearchOutcome("completed", "", worker_modes=worker_modes, errors=tools.errors)
     seen_ev: set[str] = set()
+
+    def _personal(listing) -> list[str]:
+        reasons = _style(listing)[1]
+        if reasons and explain_fn is not None:
+            sentence = explain_fn(reasons)
+            if sentence and sentence not in reasons:
+                return [sentence, *reasons][:4]
+        return reasons
 
     def add_rec(section: str, c: Candidate, checks, tier, reason, rank: int) -> None:
         L = c.listing
@@ -270,6 +297,7 @@ def run_search(
                 ranking_version=RANKING_VERSION,
                 found_by=sorted(c.found_by & {"exact", "alternatives"}) or ["alternatives"],
                 links=links,
+                personalization=_personal(L),
             )
         )
         out.listings.append(L)
