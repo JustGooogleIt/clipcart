@@ -1,0 +1,827 @@
+{
+  "summary": {
+    "mode": "model",
+    "model": "gaunernst/gemma-3-12b-it-int4-awq",
+    "hosting": "remote",
+    "calls": 18,
+    "precision": 0.76,
+    "recall": 0.73,
+    "tp": 16,
+    "fp": 5,
+    "fn": 6,
+    "schemaInvalid": 0,
+    "rejectedProposals": 8,
+    "requestErrors": 0,
+    "wallMsMedian": 1017.0,
+    "wallMsP95": 3910,
+    "wallMsMax": 5191,
+    "promptTokensTotal": 6366,
+    "completionTokensTotal": 1012,
+    "completionTokensMax": 175
+  },
+  "cases": [
+    {
+      "case": 1,
+      "text": "I'm a medium and I never wear leather",
+      "expected": [
+        [
+          "material_avoid",
+          "leather",
+          "add"
+        ],
+        [
+          "size",
+          "M",
+          "set"
+        ]
+      ],
+      "predicted": [
+        [
+          "material_avoid",
+          "leather",
+          "remove"
+        ],
+        [
+          "size",
+          "M",
+          "set"
+        ]
+      ],
+      "falsePositives": [
+        [
+          "material_avoid",
+          "leather",
+          "remove"
+        ]
+      ],
+      "missed": [
+        [
+          "material_avoid",
+          "leather",
+          "add"
+        ]
+      ],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "size",
+            "value": "M",
+            "action": "set",
+            "quote": "I'm a medium"
+          },
+          {
+            "kind": "material_avoid",
+            "value": "leather",
+            "action": "remove",
+            "quote": "I never wear leather"
+          }
+        ]
+      },
+      "wallMs": 5191,
+      "promptTokens": 354,
+      "completionTokens": 67,
+      "finishReason": "stop"
+    },
+    {
+      "case": 2,
+      "text": "No orange please, I hate it",
+      "expected": [
+        [
+          "color_avoid",
+          "orange",
+          "add"
+        ]
+      ],
+      "predicted": [
+        [
+          "color_avoid",
+          "orange",
+          "remove"
+        ]
+      ],
+      "falsePositives": [
+        [
+          "color_avoid",
+          "orange",
+          "remove"
+        ]
+      ],
+      "missed": [
+        [
+          "color_avoid",
+          "orange",
+          "add"
+        ]
+      ],
+      "rejectedProposals": 5,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "size",
+            "value": "M",
+            "action": "set",
+            "quote": "size M"
+          },
+          {
+            "kind": "fit",
+            "value": "womens",
+            "action": "set",
+            "quote": "womens"
+          },
+          {
+            "kind": "budget_max",
+            "value": "120",
+            "action": "set",
+            "quote": "up to $120"
+          },
+          {
+            "kind": "color_avoid",
+            "value": "orange",
+            "action": "remove",
+            "quote": "no orange"
+          },
+          {
+            "kind": "material_like",
+            "value": "cotton",
+            "action": "add",
+            "quote": "cotton"
+          },
+          {
+            "kind": "brand_like",
+            "value": "Levi's",
+            "action": "add",
+            "quote": "Levi's"
+          }
+        ]
+      },
+      "wallMs": 3910,
+      "promptTokens": 351,
+      "completionTokens": 175,
+      "finishReason": "stop"
+    },
+    {
+      "case": 3,
+      "text": "I love black and navy, budget of $150",
+      "expected": [
+        [
+          "budget_max",
+          "15000",
+          "set"
+        ],
+        [
+          "color_like",
+          "black",
+          "add"
+        ],
+        [
+          "color_like",
+          "navy",
+          "add"
+        ]
+      ],
+      "predicted": [
+        [
+          "budget_max",
+          "15000",
+          "set"
+        ],
+        [
+          "color_like",
+          "black",
+          "add"
+        ],
+        [
+          "color_like",
+          "navy",
+          "add"
+        ]
+      ],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "color_like",
+            "value": "black",
+            "action": "add",
+            "quote": "black"
+          },
+          {
+            "kind": "color_like",
+            "value": "navy",
+            "action": "add",
+            "quote": "navy"
+          },
+          {
+            "kind": "budget_max",
+            "value": "150",
+            "action": "set",
+            "quote": "budget of $150"
+          }
+        ]
+      },
+      "wallMs": 2156,
+      "promptTokens": 356,
+      "completionTokens": 95,
+      "finishReason": "stop"
+    },
+    {
+      "case": 4,
+      "text": "Women's fit, size 8",
+      "expected": [
+        [
+          "fit",
+          "womens",
+          "set"
+        ],
+        [
+          "size",
+          "8",
+          "set"
+        ]
+      ],
+      "predicted": [
+        [
+          "fit",
+          "womens",
+          "set"
+        ],
+        [
+          "size",
+          "8",
+          "set"
+        ]
+      ],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "fit",
+            "value": "womens",
+            "action": "set",
+            "quote": "Women's fit"
+          },
+          {
+            "kind": "size",
+            "value": "8",
+            "action": "set",
+            "quote": "size 8"
+          }
+        ]
+      },
+      "wallMs": 1453,
+      "promptTokens": 352,
+      "completionTokens": 63,
+      "finishReason": "stop"
+    },
+    {
+      "case": 5,
+      "text": "Actually leather is fine now",
+      "expected": [
+        [
+          "material_avoid",
+          "leather",
+          "remove"
+        ]
+      ],
+      "predicted": [
+        [
+          "material_like",
+          "leather",
+          "add"
+        ]
+      ],
+      "falsePositives": [
+        [
+          "material_like",
+          "leather",
+          "add"
+        ]
+      ],
+      "missed": [
+        [
+          "material_avoid",
+          "leather",
+          "remove"
+        ]
+      ],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "material_like",
+            "value": "leather",
+            "action": "add",
+            "quote": "Actually leather is fine now"
+          }
+        ]
+      },
+      "wallMs": 942,
+      "promptTokens": 349,
+      "completionTokens": 40,
+      "finishReason": "stop"
+    },
+    {
+      "case": 6,
+      "text": "I like Acne Studios but avoid Gucci",
+      "expected": [
+        [
+          "brand_avoid",
+          "Gucci",
+          "add"
+        ],
+        [
+          "brand_like",
+          "Acne Studios",
+          "add"
+        ]
+      ],
+      "predicted": [
+        [
+          "brand_avoid",
+          "Gucci",
+          "add"
+        ],
+        [
+          "brand_like",
+          "Acne Studios",
+          "add"
+        ]
+      ],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "brand_like",
+            "value": "Acne Studios",
+            "action": "add",
+            "quote": "I like Acne Studios"
+          },
+          {
+            "kind": "brand_avoid",
+            "value": "Gucci",
+            "action": "add",
+            "quote": "avoid Gucci"
+          }
+        ]
+      },
+      "wallMs": 1675,
+      "promptTokens": 351,
+      "completionTokens": 69,
+      "finishReason": "stop"
+    },
+    {
+      "case": 7,
+      "text": "Nothing in wool, I'm allergic to wool",
+      "expected": [
+        [
+          "material_avoid",
+          "wool",
+          "add"
+        ]
+      ],
+      "predicted": [
+        [
+          "material_avoid",
+          "wool",
+          "add"
+        ]
+      ],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "material_avoid",
+            "value": "wool",
+            "action": "add",
+            "quote": "Nothing in wool"
+          }
+        ]
+      },
+      "wallMs": 935,
+      "promptTokens": 354,
+      "completionTokens": 38,
+      "finishReason": "stop"
+    },
+    {
+      "case": 8,
+      "text": "My name is Maria and I usually buy tops",
+      "expected": [],
+      "predicted": [],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": []
+      },
+      "wallMs": 399,
+      "promptTokens": 353,
+      "completionTokens": 11,
+      "finishReason": "stop"
+    },
+    {
+      "case": 9,
+      "text": "I'm 6 foot tall and broad shouldered",
+      "expected": [],
+      "predicted": [],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": []
+      },
+      "wallMs": 347,
+      "promptTokens": 355,
+      "completionTokens": 11,
+      "finishReason": "stop"
+    },
+    {
+      "case": 10,
+      "text": "Under $80, no polyester, prefer green",
+      "expected": [
+        [
+          "budget_max",
+          "8000",
+          "set"
+        ],
+        [
+          "color_like",
+          "green",
+          "add"
+        ],
+        [
+          "material_avoid",
+          "polyester",
+          "add"
+        ]
+      ],
+      "predicted": [
+        [
+          "budget_max",
+          "8000",
+          "set"
+        ],
+        [
+          "color_like",
+          "green",
+          "add"
+        ],
+        [
+          "material_avoid",
+          "polyester",
+          "add"
+        ]
+      ],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "budget_max",
+            "value": "80",
+            "action": "set",
+            "quote": "Under $80"
+          },
+          {
+            "kind": "material_avoid",
+            "value": "polyester",
+            "action": "add",
+            "quote": "no polyester"
+          },
+          {
+            "kind": "color_like",
+            "value": "green",
+            "action": "add",
+            "quote": "prefer green"
+          }
+        ]
+      },
+      "wallMs": 2150,
+      "promptTokens": 354,
+      "completionTokens": 95,
+      "finishReason": "stop"
+    },
+    {
+      "case": 11,
+      "text": "I said medium earlier but actually I'm a large",
+      "expected": [
+        [
+          "size",
+          "L",
+          "set"
+        ]
+      ],
+      "predicted": [],
+      "falsePositives": [],
+      "missed": [
+        [
+          "size",
+          "L",
+          "set"
+        ]
+      ],
+      "rejectedProposals": 1,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "size",
+            "value": "large",
+            "action": "set",
+            "quote": "I'm actually I'm a large"
+          }
+        ]
+      },
+      "wallMs": 1016,
+      "promptTokens": 355,
+      "completionTokens": 42,
+      "finishReason": "stop"
+    },
+    {
+      "case": 12,
+      "text": "Red is my favorite to look at but I never wear red",
+      "expected": [
+        [
+          "color_avoid",
+          "red",
+          "add"
+        ]
+      ],
+      "predicted": [
+        [
+          "color_avoid",
+          "red",
+          "add"
+        ]
+      ],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "color_avoid",
+            "value": "red",
+            "action": "add",
+            "quote": "I never wear red"
+          }
+        ]
+      },
+      "wallMs": 933,
+      "promptTokens": 356,
+      "completionTokens": 39,
+      "finishReason": "stop"
+    },
+    {
+      "case": 13,
+      "text": "I'm somewhere between a small and a medium",
+      "expected": [],
+      "predicted": [],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 2,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "size",
+            "value": "small",
+            "action": "add",
+            "quote": "somewhere between a small and a medium"
+          },
+          {
+            "kind": "size",
+            "value": "medium",
+            "action": "add",
+            "quote": "somewhere between a small and a medium"
+          }
+        ]
+      },
+      "wallMs": 1724,
+      "promptTokens": 354,
+      "completionTokens": 72,
+      "finishReason": "stop"
+    },
+    {
+      "case": 14,
+      "text": "I don't mind wool, but I really don't like polyester",
+      "expected": [
+        [
+          "material_avoid",
+          "polyester",
+          "add"
+        ]
+      ],
+      "predicted": [
+        [
+          "material_avoid",
+          "polyester",
+          "add"
+        ]
+      ],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "material_avoid",
+            "value": "polyester",
+            "action": "add",
+            "quote": "I really don't like polyester"
+          }
+        ]
+      },
+      "wallMs": 1018,
+      "promptTokens": 359,
+      "completionTokens": 43,
+      "finishReason": "stop"
+    },
+    {
+      "case": 15,
+      "text": "Not a fan of black, but navy is great",
+      "expected": [
+        [
+          "color_avoid",
+          "black",
+          "add"
+        ],
+        [
+          "color_like",
+          "navy",
+          "add"
+        ]
+      ],
+      "predicted": [
+        [
+          "color_avoid",
+          "black",
+          "remove"
+        ],
+        [
+          "color_like",
+          "navy",
+          "add"
+        ]
+      ],
+      "falsePositives": [
+        [
+          "color_avoid",
+          "black",
+          "remove"
+        ]
+      ],
+      "missed": [
+        [
+          "color_avoid",
+          "black",
+          "add"
+        ]
+      ],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "color_avoid",
+            "value": "black",
+            "action": "remove",
+            "quote": "Not a fan of black"
+          },
+          {
+            "kind": "color_like",
+            "value": "navy",
+            "action": "add",
+            "quote": "navy"
+          }
+        ]
+      },
+      "wallMs": 1519,
+      "promptTokens": 354,
+      "completionTokens": 66,
+      "finishReason": "stop"
+    },
+    {
+      "case": 16,
+      "text": "I bought a Patagonia fleece last month for my dad",
+      "expected": [],
+      "predicted": [
+        [
+          "brand_like",
+          "Patagonia",
+          "add"
+        ]
+      ],
+      "falsePositives": [
+        [
+          "brand_like",
+          "Patagonia",
+          "add"
+        ]
+      ],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "brand_like",
+            "value": "Patagonia",
+            "action": "add",
+            "quote": "Patagonia"
+          }
+        ]
+      },
+      "wallMs": 929,
+      "promptTokens": 354,
+      "completionTokens": 38,
+      "finishReason": "stop"
+    },
+    {
+      "case": 17,
+      "text": "I just bought Nike sneakers, and honestly I love Nike",
+      "expected": [
+        [
+          "brand_like",
+          "Nike",
+          "add"
+        ]
+      ],
+      "predicted": [
+        [
+          "brand_like",
+          "Nike",
+          "add"
+        ]
+      ],
+      "falsePositives": [],
+      "missed": [],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": [
+          {
+            "kind": "brand_like",
+            "value": "Nike",
+            "action": "add",
+            "quote": "Nike sneakers"
+          }
+        ]
+      },
+      "wallMs": 883,
+      "promptTokens": 355,
+      "completionTokens": 37,
+      "finishReason": "stop"
+    },
+    {
+      "case": 18,
+      "text": "Please forget that I avoid orange",
+      "expected": [
+        [
+          "color_avoid",
+          "orange",
+          "remove"
+        ]
+      ],
+      "predicted": [],
+      "falsePositives": [],
+      "missed": [
+        [
+          "color_avoid",
+          "orange",
+          "remove"
+        ]
+      ],
+      "rejectedProposals": 0,
+      "malformed": false,
+      "raw": {
+        "updates": []
+      },
+      "wallMs": 324,
+      "promptTokens": 350,
+      "completionTokens": 11,
+      "finishReason": "stop"
+    }
+  ]
+}

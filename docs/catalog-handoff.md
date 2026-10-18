@@ -9,11 +9,19 @@ Latest useful commits: catalog adapter + fixtures + provider docs
 | Piece | Path | Status |
 | --- | --- | --- |
 | Live SoleScout search/detail | `services/api/app/providers/catalog/solescout.py` | Proven live |
+| Honest destinations | `offers.py` + `destinationKind` | `retailer_offer` vs `comparison` |
 | Fixture/demo catalog | `fixture_catalog.py` + `fixtures/catalog/` | Labeled `mode: fixture` |
 | eBay Browse skeleton | `ebay.py` | Code ready; **blocked on credentials** |
 | Factory | `factory.py` | `CATALOG_PROVIDER=solescout\|fixture\|ebay` |
-| Smoke | `scripts/catalog_smoke.py` | Works |
+| Smoke | `scripts/catalog_smoke.py` | Works (`--detail`, `--resolve-first`) |
 | Evidence docs | `docs/provider-access.md`, `docs/evaluation.md` | Written |
+
+### Demo retailer redirect
+
+- Query: `polo ralph lauren t-shirt`
+- Detail: `3-pack-classic-slim-crew-tee-nscnp3whd` size `M`
+- Destination: Farfetch URL at **$74** (`destinationKind: retailer_offer`)
+- Do not show hidden aggregate **$55** as the Farfetch price
 
 ## Interface freeze wait
 

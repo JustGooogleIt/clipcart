@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ClipCart</title>
+  <link rel="stylesheet" href="ui.css" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main class="pop">
+    <header class="pop-head">
+      <span class="brand"><span class="brand-mark" aria-hidden="true">▶</span><span class="wordmark">ClipCart</span></span>
+      <button class="link pop-settings" id="settings" type="button">Settings</button>
+    </header>
+    <p class="kicker">Shop the fit · from any frame</p>
+    <h1 class="pop-title">Paused on the look? <span class="grad">Grab it.</span></h1>
+    <p class="pop-sub muted">We screenshot this tab, then you crop the piece you want. Nothing is analyzed until you choose <b>Open in ClipCart</b>.</p>
+    <button class="btn btn-main pop-cta" id="shop" type="button">Shop this frame</button>
+    <p class="notice err" id="error" role="alert" hidden></p>
+    <footer class="pop-foot">
+      <span class="chip" id="server" title=""><span class="dot" id="server-dot"></span><span id="server-text">Checking ClipCart…</span></span>
+    </footer>
+  </main>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

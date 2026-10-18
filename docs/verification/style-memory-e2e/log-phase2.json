@@ -1,0 +1,113 @@
+[
+  {
+    "step": "after restart: same memory, same id",
+    "ok": true,
+    "detail": [
+      [
+        "mem__XYaC-HE3bAWnFPc",
+        "brown"
+      ]
+    ]
+  },
+  {
+    "step": "after restart: same events",
+    "ok": true,
+    "detail": [
+      "explicit_preference",
+      "saved_item"
+    ]
+  },
+  {
+    "step": "after restart: restored results still show the reason and saved state",
+    "ok": true,
+    "detail": [
+      [
+        "Jacket Calvin Klein Jeans Faux",
+        "\u2726 Your style You said you like brown",
+        "Saved \u2713"
+      ],
+      [
+        "011 - Ennis Del Mar Denim Jack",
+        null,
+        "Save"
+      ]
+    ]
+  },
+  {
+    "step": "after restart: panel shows the preference and the saved item",
+    "ok": true
+  },
+  {
+    "step": "after restart: fresh search still personalizes",
+    "ok": true,
+    "detail": [
+      [
+        "Jacket Calvin Klein Jeans Faux",
+        "\u2726 Your style You said you like brown"
+      ],
+      [
+        "011 - Ennis Del Mar Denim Jack",
+        null
+      ]
+    ]
+  },
+  {
+    "step": "correction: green active, brown no longer active",
+    "ok": true,
+    "detail": [
+      [
+        "brown",
+        "removed",
+        "style_note"
+      ],
+      [
+        "green",
+        "active",
+        "preferences_form"
+      ]
+    ]
+  },
+  {
+    "step": "correction: panel shows green, not brown",
+    "ok": true
+  },
+  {
+    "step": "correction takes effect: brown reason gone after re-search",
+    "ok": true,
+    "detail": [
+      [
+        "011 - Ennis Del Mar Denim Jack",
+        null
+      ],
+      [
+        "Jacket Calvin Klein Jeans Faux",
+        null
+      ]
+    ]
+  },
+  {
+    "step": "deletion: no active preferences remain",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "step": "deletion: profile has no liked colors; saved item kept",
+    "ok": true
+  },
+  {
+    "step": "deletion takes effect: no personalization reasons after re-search",
+    "ok": true,
+    "detail": [
+      [
+        "011 - Ennis Del Mar Denim Jack",
+        null,
+        "Save"
+      ],
+      [
+        "Jacket Calvin Klein Jeans Faux",
+        null,
+        "Saved \u2713"
+      ]
+    ]
+  }
+]

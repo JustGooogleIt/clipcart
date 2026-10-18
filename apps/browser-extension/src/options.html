@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ClipCart settings</title>
+  <link rel="stylesheet" href="ui.css" />
+  <style>
+    body { min-width: 420px; }
+    .opt { padding: 20px 22px; display: grid; gap: 14px; max-width: 560px; }
+    .opt h1 { margin: 0; font-size: 22px; letter-spacing: -0.03em; }
+    label { font-weight: 600; font-size: 14px; }
+    .row { display: flex; gap: 8px; }
+    input { flex: 1; min-width: 0; font: 14px var(--mono); color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+    input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    p { margin: 0; font-size: 13.5px; }
+  </style>
+</head>
+<body>
+  <form class="opt" id="form">
+    <span class="brand"><span class="brand-mark" aria-hidden="true">▶</span><span class="wordmark">ClipCart</span></span>
+    <h1>Where ClipCart runs</h1>
+    <label for="url">ClipCart address</label>
+    <div class="row">
+      <input id="url" type="text" inputmode="url" spellcheck="false" autocomplete="off" placeholder="http://127.0.0.1:8000" />
+      <button class="btn btn-main btn-sm" type="submit">Save</button>
+    </div>
+    <p class="muted">Local development: <code>scripts/dev.sh</code> serves on <code>http://127.0.0.1:8000</code>; <code>npm run dev</code> in apps/web serves on <code>http://127.0.0.1:5173</code>. Any other host asks for your OK once.</p>
+    <button class="link" id="reset" type="button" style="justify-self: start">Reset to default</button>
+    <p class="notice" id="msg" role="status" hidden></p>
+  </form>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

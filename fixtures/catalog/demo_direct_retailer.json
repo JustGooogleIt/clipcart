@@ -1,0 +1,13 @@
+{
+  "label": "live_demo_candidate",
+  "demoQuery": "polo ralph lauren t-shirt",
+  "slug": "3-pack-classic-slim-crew-tee-nscnp3whd",
+  "variant": "M",
+  "destinationKind": "retailer_offer",
+  "retailer": "Grp-Ff",
+  "destinationUrl": "https://www.farfetch.com/us/shopping/men/polo-ralph-lauren-slim-fit-3-pack-t-shirts-set-of-three-item-39280997.aspx",
+  "storePriceUsd": 74,
+  "aggregateLowestUsd": 55,
+  "note": "Call get_details(slug, variant='M'). Never use $55 with the Farfetch URL.",
+  "capturedFrom": "fixtures/catalog/raw/product_3-pack-classic-slim-crew-tee-nscnp3whd.json"
+}

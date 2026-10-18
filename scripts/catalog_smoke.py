@@ -25,6 +25,11 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=3)
     parser.add_argument("--detail", default=None, help="provider listing id / slug")
     parser.add_argument("--variant", default=None)
+    parser.add_argument(
+        "--resolve-first",
+        action="store_true",
+        help="After search, get_details on the first hit (honest destination)",
+    )
     args = parser.parse_args()
 
     provider = get_catalog_provider(args.provider)
@@ -36,6 +41,22 @@ def main() -> int:
             result = provider.get_details(args.detail, args.variant)
         else:
             result = provider.search(args.query, filters, args.limit)
+            if args.resolve_first and result.listings:
+                slug = result.listings[0]["providerListingId"]
+                detail = provider.get_details(slug, args.variant)
+                payload = {
+                    "mode": detail.mode,
+                    "provider": detail.provider,
+                    "query": args.query,
+                    "resolvedFromSearch": slug,
+                    "elapsed_ms": (result.elapsed_ms or 0) + (detail.elapsed_ms or 0),
+                    "diagnostics": detail.diagnostics,
+                    "listing_count": len(detail.listings),
+                    "listings": detail.listings,
+                    "evidence": detail.evidence,
+                }
+                print(json.dumps(payload, indent=2))
+                return 0
     except CatalogProviderError as exc:
         print(json.dumps({"error": {"code": exc.code, "message": exc.message}}))
         return 2
@@ -51,9 +72,6 @@ def main() -> int:
         "evidence": result.evidence,
     }
     print(json.dumps(payload, indent=2))
-    if result.mode == "live" and not result.listings and args.detail is None:
-        # Empty live search is valid; still exit 0.
-        pass
     return 0
 
 

@@ -40,3 +40,29 @@ class NormalizeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SoleScoutRetailerLabelTest(unittest.TestCase):
+    """Regression: an aggregate lowest price must not be attributed to a visible store."""
+
+    def test_detail_keeps_aggregator_as_retailer_and_exposes_stores(self):
+        import json
+        from pathlib import Path
+        from unittest import mock
+
+        from app.providers.catalog.solescout import SoleScoutCatalogProvider
+
+        raw = json.loads(
+            (Path(__file__).resolve().parents[4] / "fixtures/catalog/raw/solescout_hoodie.json").read_text()
+        )
+        p = SoleScoutCatalogProvider(base_url="https://example.invalid")
+        with mock.patch.object(p, "_get_json", return_value=(raw, 5)):
+            res = p.get_details(raw["slug"])
+        listing = res.listings[0]
+        # Unpriced visible store: stays a comparison destination on SoleScout's page.
+        self.assertEqual(listing["destinationKind"], "comparison")
+        self.assertTrue(listing["retailer"].startswith("SoleScout"))
+        self.assertTrue(listing["canonicalUrl"].startswith("https://solescout.ai/"))
+        self.assertEqual(res.diagnostics["stores"][0]["name"], "Offseason")
+        self.assertIsNone(res.diagnostics["stores"][0]["price_usd"])
+        self.assertEqual(res.diagnostics["hidden_stores"]["count"], 2)

@@ -1,8 +1,8 @@
 # ClipCart provider access (catalog)
 
 Owner: teammate (Cursor) — ticket T03  
-Branch: `feat/catalog-access`  
-Checked: 2026-10-17T20:40:36Z (UTC)
+Branch: `feat/catalog-honest-destinations` (base: `integration`)  
+Checked: 2026-10-17 (honesty rules + Farfetch demo offer)
 
 ## Selected live provider: SoleScout public API
 
@@ -16,39 +16,40 @@ SoleScout’s no-key public JSON API returns fashion product search hits and pro
 
 Rate limit (documented): 60 requests/minute per IP. No signup for read endpoints.
 
-### Real query proof
+### Purchase destination honesty
 
-Command:
+SoleScout often exposes an aggregate `lowest_price_usd` from **hidden** retailers while only showing a different store’s link (sometimes with `price_usd: null`).
+
+| `destinationKind` | When | `canonicalUrl` | `price` |
+| --- | --- | --- | --- |
+| `retailer_offer` | Same visible `stores[]` row has `url` + `price_usd` (+ requested size if any) | That store URL | That store’s `price_usd` |
+| `comparison` | Otherwise (search hits, hidden-only lowest, unpriced visible store) | SoleScout product page | Aggregate lowest (labeled); **not** checkout |
+
+Never pair hidden/aggregate lowest with a different store URL. Never label a SoleScout product page as retailer checkout.
+
+### Demo: real direct retailer link (top)
 
 ```bash
-python3 scripts/catalog_smoke.py --query "denim jacket" --limit 3
+python3 scripts/catalog_smoke.py \
+  --detail 3-pack-classic-slim-crew-tee-nscnp3whd --variant M
 ```
 
-Observed live call (2026-10-17):
-
-| Field | Observed |
+| Field | Value |
 | --- | --- |
-| Query | `denim jacket` |
-| HTTP | 200 |
-| Retrieval time | ~1.8s (search) / ~70ms (cached-ish product detail) |
-| Product URL | SoleScout product page, e.g. `https://solescout.ai/product/...` |
-| Image | `https://solescout.ai/api/goat-image?slug=...` |
-| Price | `lowest_price_usd` integer dollars (not minor units) |
-| Currency | USD implied; no ISO currency field in response |
-| Variants / sizes | `sizes_in_stock[]` with `{size, lowest_price_usd}` when present |
-| Stock | Inferred from non-empty `sizes_in_stock` or visible `stores`; otherwise unknown |
-| Retailer identity | Often **hidden** on free tier (`stores: []` + `hidden_stores`) |
+| Demo query | `polo ralph lauren t-shirt` (then `get_details` on the slim tee slug) |
+| Slug | `3-pack-classic-slim-crew-tee-nscnp3whd` |
+| Destination kind | `retailer_offer` |
+| Retailer | `Grp-Ff` (Farfetch) |
+| Destination URL | `https://www.farfetch.com/us/shopping/men/polo-ralph-lauren-slim-fit-3-pack-t-shirts-set-of-three-item-39280997.aspx` |
+| Store price | **$74** (Farfetch) |
+| Aggregate lowest | $55 from **hidden** retailers — must not be shown as the Farfetch price |
 
-Example product detail (hoodie, live):
+Meta: `fixtures/catalog/demo_direct_retailer.json`.  
+Raw: `fixtures/catalog/raw/product_3-pack-classic-slim-crew-tee-nscnp3whd.json`.
 
-- Title: `032c Oversized Graphic Printed Hoodie`
-- Brand: `032c`
-- Price: `$100` (`lowest_price_usd`)
-- Sizes in stock: `XS` only
-- One visible store URL: `https://off--season.com/products/032c-oversize-mask-hoodie` with `price_usd: null`
-- Cheapest retailers: names withheld (`hidden_stores.count: 2`)
+### Counter-example (comparison only)
 
-Raw captured responses: `fixtures/catalog/raw/`.
+`032c` hoodie: visible Offseason URL has `price_usd: null` → adapter returns `destinationKind: comparison` to the SoleScout page, not Offseason checkout.
 
 ### What SoleScout actually supplies vs missing
 

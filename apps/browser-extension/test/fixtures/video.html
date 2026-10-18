@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Fit check: denim trucker jacket (test page)</title>
+<style>
+  body { margin: 0; background: #0f0f0f; color: #f1f1f1; font: 14px/1.4 Roboto, Arial, sans-serif; }
+  .bar { height: 56px; display: flex; align-items: center; padding: 0 24px; gap: 12px; font-weight: 700; }
+  .bar span { color: #f33; }
+  .wrap { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; padding: 0 24px; }
+  .player { position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; display: grid; place-items: center; }
+  .player img { height: 100%; }
+  .ctrl { position: absolute; inset: auto 0 0 0; height: 44px; background: linear-gradient(transparent, rgba(0,0,0,.7)); display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 13px; }
+  .track { flex: 1; height: 4px; background: rgba(255,255,255,.3); border-radius: 2px; } .track i { display: block; width: 38%; height: 100%; background: #f00; }
+  h1 { font-size: 20px; margin: 14px 0 4px; } .side div { height: 94px; background: #222; border-radius: 10px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+  <div class="bar"><span>▶</span> VideoSite (test page)</div>
+  <div class="wrap">
+    <div>
+      <div class="player"><img src="fc01-0022.jpg" alt="" /><div class="ctrl">▶ <div class="track"><i></i></div> 0:22 / 0:58</div></div>
+      <h1>Fit check: denim trucker jacket</h1>
+      <div style="color:#aaa">Paused at 0:22 · frame from downloads/fit-checks/fc01</div>
+    </div>
+    <div class="side"><div></div><div></div><div></div><div></div></div>
+  </div>
+</body>
+</html>
