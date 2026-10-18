@@ -15,6 +15,8 @@ from pydantic.alias_generators import to_camel
 from app.contracts import Garment, GarmentObservation, PreferencePatch, Preferences
 from app.contracts.base import from_doc
 from app.jobs.analysis import create_analysis
+from app.jobs.find_in_media import run_find_in_media
+from app.jobs.find_query import normalize_find_query
 from app.jobs.search import create_search, dispatch
 from app.media.errors import AssetNotFoundError, MediaError
 from app.media.youtube_cache import YoutubeCacheError, download_youtube, parse_video_id
@@ -66,8 +68,8 @@ class ManualGarmentIn(In):
 
 class GarmentPatchIn(In):
     box01: tuple[float, float, float, float] | None = None
-    category: str | None = Field(default=None, pattern="^(jacket|top|pants|bag)$")
-    description: str | None = Field(default=None, max_length=200)
+    category: str | None = Field(default=None, pattern="^(jacket|top|pants|bag|other)$")
+    description: str | None = Field(default=None, max_length=800)
 
 
 class StartSearchIn(In):
@@ -79,6 +81,13 @@ class MessageIn(In):
     text: str = Field(min_length=1, max_length=500)
     expected_revision: int
     idempotency_key: str | None = Field(default=None, max_length=100)
+
+
+class FindInMediaIn(In):
+    text: str = Field(min_length=2, max_length=400)
+    expected_revision: int = Field(ge=1)
+    idempotency_key: str | None = Field(default=None, max_length=100)
+    start_search: bool = True
 
 
 class YoutubeAnalyzeIn(In):
@@ -527,6 +536,65 @@ def cancel_search(search_id: str, request: Request) -> dict:
     return {"status": st.db.search_jobs.find_one({"_id": search_id})["status"]}
 
 
+def _apply_find_in_media(st, owner: str, session_id: str, before: dict, text: str, *, start_search: bool) -> dict:
+    found = run_find_in_media(st, session_id, owner, text)
+    if not found.get("ok"):
+        code = found.get("code") or "find_failed"
+        status = 404 if code in ("not_found", "no_media", "no_frames", "no_analysis") else 422
+        if code == "perception_unavailable":
+            status = 503
+        if code == "analysis_running":
+            status = 409
+        raise ApiProblem(
+            status,
+            code,
+            found.get("reply") or "Find failed",
+            retryable=code in ("find_failed", "analysis_running"),
+        )
+    gid = found["garment"]["id"]
+    supersede_active_search(st.db, before)
+    doc = cas_update(
+        st.db,
+        session_id,
+        owner,
+        before["revision"],
+        {"selectedGarmentId": gid, "activeSearchId": None},
+    )
+    resp: dict[str, Any] = {
+        "applied": True,
+        "find": {
+            "query": found.get("query"),
+            "searchDescription": found.get("searchDescription"),
+            "garmentId": gid,
+        },
+        "reply": found.get("reply") or "Found it.",
+        **session_view(st, doc),
+    }
+    if start_search:
+        resp.update(_start_search(st, owner, session_id, doc["revision"]))
+    return resp
+
+
+# ------------------------------------------------------------------ find-in-video (open vocabulary)
+@router.post("/api/sessions/{session_id}/find-in-media")
+def find_in_media(session_id: str, body: FindInMediaIn, request: Request) -> dict:
+    """Natural-language find: locate anything in the scanned frames, describe richly, search."""
+    require_mutation_header(request)
+    owner = current_owner(request)
+    st = state_of(request)
+    limiter.check(owner, "find_in_media", 20)
+    replay, commit = idempotent(st.db, owner, f"find:{session_id}", body.idempotency_key, body.model_dump(mode="json"))
+    if replay is not None:
+        return replay
+    before = get_owned(st.db, session_id, owner)
+    if before["revision"] != body.expected_revision:
+        raise ApiProblem(409, "stale_revision", "Session changed since you loaded it; refresh and retry", retryable=True)
+    resp = _apply_find_in_media(st, owner, session_id, before, body.text, start_search=body.start_search)
+    st.bump("find_in_media")
+    commit(resp)
+    return resp
+
+
 # ------------------------------------------------------------------ refinement
 @router.post("/api/sessions/{session_id}/messages")
 def message(session_id: str, body: MessageIn, request: Request) -> dict:
@@ -540,11 +608,19 @@ def message(session_id: str, body: MessageIn, request: Request) -> dict:
     before = get_owned(st.db, session_id, owner)
     if before["revision"] != body.expected_revision:
         raise ApiProblem(409, "stale_revision", "Session changed since you loaded it; refresh and retry", retryable=True)
+    # "find me the …" is find-in-video, not a preference refinement.
+    lead = body.text.strip().lower()
+    if lead.startswith(("find ", "find me", "look for", "search for", "show me the", "locate ")):
+        if normalize_find_query(body.text):
+            resp = _apply_find_in_media(st, owner, session_id, before, body.text, start_search=True)
+            st.bump("find_in_media")
+            commit(resp)
+            return resp
     current = Preferences.model_validate(before["preferences"])
     interp = parse_refinement(body.text, current)
     if not interp.changes:
         resp = {"applied": False, "changes": [], "reply": interp.selection_hint
-                or "I can change budget, size, color, excluded materials or condition. Try “under $80 in black”.",
+                or "I can find objects (“find me the plant by the window”) or change budget, size, color, materials, condition.",
                 **session_view(st, before)}
         commit(resp)
         return resp

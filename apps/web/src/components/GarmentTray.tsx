@@ -56,6 +56,7 @@ export default function GarmentTray({
                     <option value="top">Top</option>
                     <option value="pants">Pants</option>
                     <option value="bag">Bag</option>
+                    <option value="other">Other / object</option>
                   </select>
                 </label>
                 <button type="button" className="btn btn-quiet btn-sm" onClick={() => onRedraw(g)} disabled={busy}>
