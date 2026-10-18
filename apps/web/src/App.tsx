@@ -3,6 +3,7 @@ import { api, ApiError, timestamp, upload } from "./api";
 import { categoryOf, croppable, grouped, isAccessory, useCategories } from "./categories";
 import { loadMemory, memoryApi, MemoryContext, type MemoryActions, type MemoryState } from "./memory";
 import Constraints, { draftFrom, findLabel, patchFrom, type PrefsDraft } from "./components/Constraints";
+import DemoCheckout from "./components/DemoCheckout";
 import Diagnostics from "./components/Diagnostics";
 import FindInVideo, { type FindReply } from "./components/FindInVideo";
 import GarmentTray, { cleanLabel, wordSafe } from "./components/GarmentTray";
@@ -206,6 +207,14 @@ export default function App() {
   const selected = view?.garments.find((g) => g.id === s?.selectedGarmentId) ?? null;
   const selectedCat = categoryOf(categories.list, selected?.category);
   const accessory = isAccessory(selectedCat);
+
+  if (route.startsWith("#/demo-checkout")) {
+    return (
+      <div className="shell">
+        <DemoCheckout orderId={route.split("/")[2] || null} receiptsEnabled={health?.features.solanaCnftReceipts === true} />
+      </div>
+    );
+  }
 
   if (route.startsWith("#/diagnostics")) {
     return (
@@ -453,6 +462,12 @@ export default function App() {
             {memory.state === "ready" && memory.memories.length > 0 && <span className="style-count">{memory.memories.length}</span>}
             {memory.state === "unavailable" && <span className="style-off">off</span>}
           </button>
+          {/* Only the controlled demo item is sold here; it never appears on retailer results. */}
+          {health?.features.solana && (
+            <a className="demo-entry" href="#/demo-checkout">
+              Demo checkout <small>Devnet</small>
+            </a>
+          )}
           <ModeChips health={health} />
         </header>
         <StylePanel open={styleOpen} onClose={closeStyle} memory={memory} vocab={categories} onReload={() => reloadMemory(true)} />

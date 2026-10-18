@@ -182,6 +182,11 @@ export default function ModeChips({ health }: { health: Health | null }) {
             simulated data. These reset when the server restarts.
           </p>
           <ModeList health={health} />
+          {health.features.solana && (
+            <a className="diag-pop-link" href="#/demo-checkout" onClick={() => setOpen(false)}>
+              Demo checkout · Devnet test funds →
+            </a>
+          )}
           <a className="diag-pop-link" href="#/diagnostics" onClick={() => setOpen(false)}>
             Open full diagnostics →
           </a>
