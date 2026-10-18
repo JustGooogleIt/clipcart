@@ -44,6 +44,7 @@ export default function App() {
   const [searchId, setSearchId] = useState<string | null>(null);
   const [search, setSearch] = useState<SearchView | null>(null);
   const [reply, setReply] = useState<string | null>(null);
+  const [findReply, setFindReply] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const seqRef = useRef(0);
   const resultsRef = useRef<HTMLElement>(null);
@@ -277,12 +278,12 @@ export default function App() {
   const findInVideo = async (text: string) => {
     if (!s) return;
     setBusy(true);
-    setReply(null);
+    setFindReply(null);
     try {
       setNotice({ kind: "info", text: "Searching the video for that…" });
       const r = await api.findInMedia(s.id, text, s.revision);
       setView(r);
-      setReply(r.reply);
+      setFindReply(r.reply);
       if (r.find?.searchDescription) {
         setNotice({ kind: "info", text: `Using full description: ${r.find.searchDescription}` });
       } else {
@@ -464,7 +465,7 @@ export default function App() {
             />
             {/* PR #11: natural-language find in the analyzed frames; adds and selects a garment. */}
             {frames.length > 0 && !analyzing && (
-              <FindInVideo disabled={busy} busy={busy} onFind={findInVideo} reply={reply} />
+              <FindInVideo disabled={busy} busy={busy} onFind={findInVideo} reply={findReply} />
             )}
           </section>
 

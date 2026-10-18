@@ -285,11 +285,13 @@ input[aria-invalid="true"] { border-color: var(--bad); }
 .refine-row { display: flex; gap: 8px; }
 .refine-row input { flex: 1; }
 .refine-reply { margin: 0; color: var(--ink-2); font-size: 14px; }
-.find-in-video { margin: 16px 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 8px; }
-.find-in-video label { font-weight: 600; font-size: 13px; }
+.find-in-video { margin: 16px 0 0; background: var(--stage-2); border: 1px solid var(--stage-line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 8px; color: var(--stage-ink); }
+.find-in-video label { font-weight: 700; font-size: 14px; }
+.find-in-video .muted { margin: 0; color: var(--stage-ink-2); font-size: 13px; }
+.find-in-video input { background: var(--stage); color: var(--stage-ink); border-color: var(--stage-line); }
 .find-row { display: flex; gap: 8px; }
-.find-row input { flex: 1; }
-.find-reply { margin: 0; color: var(--ink-2); font-size: 14px; }
+.find-row input { flex: 1; min-width: 0; }
+.find-reply { margin: 0; color: var(--stage-ink-2); font-size: 14px; }
 
 /* Phone action dock */
 .dock { display: none; }
