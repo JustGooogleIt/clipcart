@@ -281,6 +281,21 @@ export interface MediaAsset {
   width: number;
 }
 /**
+ * Offers ClipCart treats as the same product, for price comparison.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "OfferGroup".
+ */
+export interface OfferGroup {
+  basis: string;
+  equivalence: "identifier_match" | "approximate" | "single";
+  id: string;
+  isLowestConfirmed: boolean;
+  lowestConfirmedPrice: Money | null;
+  offerCount: number;
+  uncertainPriceCount: number;
+}
+/**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
  * via the `definition` "OutboundLink".
  */
@@ -300,6 +315,14 @@ export interface OwnedItem {
   brand: string | null;
   source: "user_confirmed_purchase" | "verified_order";
   title: string;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "PageEvidence".
+ */
+export interface PageEvidence {
+  excerpt: string;
+  field: "title" | "price" | "availability" | "size" | "condition" | "brand" | "identifier" | "image";
 }
 /**
  * Partial update. Only fields present in the request are applied (FR14).
@@ -370,6 +393,17 @@ export interface Preferences {
   maxItemPriceMinor?: number | null;
   ringSize?: SizePref | null;
   size?: SizePref | null;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "ProductIdentifiers".
+ */
+export interface ProductIdentifiers {
+  catalogRef?: string | null;
+  gtin?: string | null;
+  mpn?: string | null;
+  sku?: string | null;
+  styleCode?: string | null;
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -456,13 +490,15 @@ export interface ResearchJob {
   finishedAt?: string | null;
   garment: ResearchGarmentContext;
   id: string;
-  mode: "live" | "fixture";
+  mode: "live" | "fixture" | "manual";
   preferences: Preferences;
   products?: ResearchProduct[];
-  provider: "fixture";
+  provider: "fixture" | "solescout" | "manual";
   rejected?: RejectedItem[];
+  resultSource?: "provider" | "manual_import";
   sessionId: string;
   status: "pending" | "completed" | "failed" | "expired";
+  styleHints?: StyleHints | null;
   summary?: string | null;
 }
 /**
@@ -471,26 +507,112 @@ export interface ResearchJob {
  */
 export interface ResearchProduct {
   availability: "in_stock" | "out_of_stock" | "unknown";
+  brand?: string | null;
+  brandBasis?: ("page_text" | "catalog_record") | null;
+  condition?: "new" | "used" | "unknown";
   constraintChecks: ConstraintCheck[];
   domain: string;
+  evidence?: PageEvidence[];
   id: string;
   identityTier: "likely" | "similar";
+  imageUrl?: string | null;
   jobId: string;
   links: OutboundLink[];
   matchClaim: "exact" | "similar";
-  mode: "live" | "fixture";
+  mode: "live" | "fixture" | "manual";
   observedAt: string;
+  offerGroup?: OfferGroup | null;
   price: Money | null;
   priceBasis: "agent_observed" | "unknown";
   priceExcerpt: string | null;
   retailer: string;
   section: "primary" | "needs_checking" | "excluded";
+  sellerKind?: "retailer" | "marketplace" | "resale" | "unknown";
   sizesAvailable: string[];
+  source?: "agent" | "catalog" | "manual_import";
   title: string;
   uncertainty: string | null;
   validatedAt: string;
+  variants?: ResearchVariant[];
   verification: "url_checked_page_not_fetched";
   warnings: string[];
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "ResearchVariant".
+ */
+export interface ResearchVariant {
+  availability: "available" | "unavailable" | "unknown";
+  label: string;
+  price?: Money | null;
+}
+/**
+ * Compact, soft hints from the shopper's style profile. Never hard constraints.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleHints".
+ */
+export interface StyleHints {
+  /**
+   * @maxItems 5
+   */
+  brandsAvoid?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 5
+   */
+  brandsLike?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 5
+   */
+  colorsAvoid?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 5
+   */
+  colorsLike?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 5
+   */
+  materialsAvoid?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 5
+   */
+  tonesLike?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -734,12 +856,80 @@ export interface ResearchSubmission {
  */
 export interface SubmittedProduct {
   availability?: "in_stock" | "out_of_stock" | "unknown";
+  brand?: string | null;
+  condition?: "new" | "used" | "pre_owned" | "unknown";
+  /**
+   * @maxItems 12
+   */
+  evidence?:
+    | []
+    | [PageEvidence]
+    | [PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence]
+    | [
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence
+      ]
+    | [
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence
+      ]
+    | [
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence
+      ]
+    | [
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence
+      ];
+  identifiers?: ProductIdentifiers | null;
+  imageUrl?: string | null;
   matchType: "exact" | "similar";
   observedAt: string;
   observedPrice?: SubmittedPrice | null;
   priceExcerpt?: string | null;
   productUrl: string;
   retailer: string;
+  sellerKind?: "retailer" | "marketplace" | "resale" | "unknown";
   /**
    * @maxItems 30
    */
@@ -747,6 +937,10 @@ export interface SubmittedProduct {
   sourceUrl?: string | null;
   title: string;
   uncertainty?: string | null;
+  /**
+   * @maxItems 60
+   */
+  variants?: SubmittedVariant[];
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -755,6 +949,18 @@ export interface SubmittedProduct {
 export interface SubmittedPrice {
   amountMinor: number;
   currency: string;
+}
+/**
+ * A size or variant as the page showed it. ``available`` False is kept, never dropped.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "SubmittedVariant".
+ */
+export interface SubmittedVariant {
+  available?: boolean | null;
+  label: string;
+  price?: SubmittedPrice | null;
+  priceExcerpt?: string | null;
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
