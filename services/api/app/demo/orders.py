@@ -63,15 +63,12 @@ def transfer_request(doc: dict) -> dict:
     # Fixed demo price is always 0.01 SOL for the controlled item.
     if lamports == DEFAULT_AMOUNT_LAMPORTS:
         amount = "0.01"
-    return {
-        "recipient": doc["recipientWallet"],
-        "amount": amount,
-        "splToken": None,
-        "reference": doc["paymentReference"],
-        "label": doc.get("merchantLabel") or MERCHANT_LABEL,
-        "message": f"ClipCart demo order {doc['id']}",
-        "memo": None,
-    }
+    from app.contracts import DemoTransferRequest
+
+    return DemoTransferRequest(
+        recipient=doc["recipientWallet"], amount=amount, spl_token=None, reference=doc["paymentReference"],
+        label=doc.get("merchantLabel") or MERCHANT_LABEL, message=f"ClipCart demo order {doc['id']}", memo=None,
+    ).wire()
 
 
 def _expire_if_needed(db: Any, doc: dict) -> dict:

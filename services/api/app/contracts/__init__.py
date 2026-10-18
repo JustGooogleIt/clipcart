@@ -13,7 +13,7 @@ from .media import (
     ProviderIssue,
     ProviderRequestMeta,
 )
-from .demo_orders import DemoCatalogItem, DemoMerchantOrder
+from .demo_orders import DemoCatalogItem, DemoMerchantOrder, DemoReceipt, DemoTransferRequest
 from .research import ResearchJob, ResearchProduct, ResearchSubmission, SubmittedProduct
 from .style_memory import (
     InterpretationApplied,
@@ -60,7 +60,7 @@ from .shopping import (
 __all__ = [
     "AgentEvent", "AnalysisJob", "CategoriesResponse", "CategoryInfo", "InterpretationApplied",
     "InterpretationRejected", "InterpretationRun", "InterpretationRunResult", "StyleInterpretations", "StyleTag", "Tone",
-    "WarningCode", "AnalysisResult", "ApiError", "ConstraintCheck", "CropRef", "DemoCatalogItem", "DemoMerchantOrder",
+    "WarningCode", "AnalysisResult", "ApiError", "ConstraintCheck", "CropRef", "DemoCatalogItem", "DemoMerchantOrder", "DemoReceipt", "DemoTransferRequest",
     "Evidence", "EvidenceClaim",
     "FrameRef", "FrameTransform", "Garment", "GarmentObservation", "JobError", "Listing", "MediaAsset", "Money",
     "OutboundLink", "PreferencePatch", "Preferences", "ProviderIssue", "ProviderRequestMeta", "Recommendation", "Record",

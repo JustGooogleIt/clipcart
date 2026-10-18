@@ -1,0 +1,76 @@
+/* Demo checkout (#/demo-checkout). Scoped under .co so it can't touch the shopping UI. */
+.co { max-width: 1080px; margin: 0 auto; padding: 20px 20px 64px; }
+.co-back { margin: 0 0 12px; font-size: 14px; }
+.co-back a { color: var(--ink-2); text-decoration: none; }
+.co-back a:hover { color: var(--ink); }
+.co-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; }
+.co-head h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; }
+.co-kicker { margin: 0 0 2px; font-size: 13px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .06em; }
+.co-label { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 14px; border-radius: 999px; background: var(--fixture-bg); color: var(--fixture); border: 1px solid color-mix(in srgb, var(--fixture) 30%, transparent); font: 600 13px var(--sans); }
+.co-label-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fixture); }
+.co-scope { margin: 12px 0 20px; max-width: 64ch; color: var(--ink-2); }
+
+.co-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 16px; align-items: start; }
+.co-receipt { grid-column: 1 / -1; }
+.co-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); min-width: 0; }
+.co-card h2 { margin: 0 0 8px; font-size: 20px; }
+.co-tag { display: inline-block; margin: 0 0 10px; padding: 3px 10px; border-radius: 999px; background: var(--paper); color: var(--ink-2); font-size: 12px; font-weight: 600; }
+.co-price { margin: 14px 0 8px; font-size: 30px; font-weight: 700; letter-spacing: -0.01em; display: flex; flex-direction: column; }
+.co-price span { font-size: 13px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
+.co-terms { margin: 0 0 12px; font-size: 13px; color: var(--unk); background: var(--unk-bg); border-radius: 10px; padding: 8px 12px; }
+.co-fine { margin: 14px 0 0; font-size: 12px; color: var(--ink-3); }
+
+.co-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 16px; margin: 14px 0 0; }
+.co-field { min-width: 0; }
+.co-field dt { font-size: 12px; color: var(--ink-3); }
+.co-field dd { margin: 2px 0 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.co-field a { color: var(--focus); text-decoration: none; }
+.co-field a:hover { text-decoration: underline; }
+.co-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+
+.co-wallet { margin: 0 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.co-wallet p { margin: 0; }
+.co-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.co-dot-ok { background: #2f9a46; box-shadow: 0 0 0 3px rgba(47, 154, 70, .15); }
+.co-cta { width: 100%; margin-top: 16px; min-height: 48px; font-size: 15px; }
+.co-cta-2 { width: 100%; margin-top: 10px; }
+.co-error { margin-bottom: 0; }
+.co-sig { display: block; width: 100%; word-break: break-all; }
+.co-hint { margin: 8px 0 0; font-size: 12px; color: var(--ink-3); text-align: center; }
+
+.co-steps { list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 0 0 14px; padding: 0; }
+.co-steps li { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 12px; color: var(--ink-3); position: relative; }
+.co-steps li::before { content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--line); z-index: 0; }
+.co-steps li:first-child::before { display: none; }
+.co-step-n { position: relative; z-index: 1; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--paper); border: 1px solid var(--line); font-weight: 600; }
+.co-step-done { color: var(--ok); }
+.co-step-done .co-step-n { background: var(--ok); border-color: var(--ok); color: #fff; }
+.co-step-done::before, .co-step-now::before { background: var(--ok) !important; }
+.co-step-now { color: var(--ink); font-weight: 600; }
+.co-step-now .co-step-n { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.co-state, .co-receipt-state { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; padding: 10px 12px; border-radius: 12px; font-weight: 600; background: var(--paper); }
+.co-state-paid, .co-receipt-confirmed { background: var(--ok-bg); color: var(--ok); }
+.co-state-failed, .co-state-expired, .co-receipt-failed { background: var(--bad-bg); color: var(--bad); }
+.co-state-awaiting_approval, .co-state-submitted, .co-state-verifying, .co-receipt-minting, .co-receipt-needs_reconciliation { background: var(--unk-bg); color: var(--unk); }
+.co-timer { font-weight: 500; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.co-spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: co-spin .8s linear infinite; }
+@keyframes co-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .co-spin { animation: none; } }
+
+.demo-entry { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); font: 500 13px var(--sans); text-decoration: none; white-space: nowrap; }
+.demo-entry:hover { border-color: var(--ink-3); color: var(--ink); }
+.demo-entry small { font-size: 11px; color: var(--fixture); font-weight: 600; }
+.shell-landing .demo-entry { border-color: rgba(255, 255, 255, .25); color: rgba(255, 255, 255, .8); }
+.shell-landing .demo-entry small { color: #c8b2ec; }
+
+@media (max-width: 760px) {
+  .co { padding: 14px 16px 48px; }
+  .co-grid { grid-template-columns: minmax(0, 1fr); }
+  .co-card { padding: 16px; }
+  .co-steps li { font-size: 11px; }
+}
+/* No room in the phone header: the Diagnostics menu carries the entry there. */
+@media (max-width: 520px) {
+  .demo-entry { display: none; }
+}

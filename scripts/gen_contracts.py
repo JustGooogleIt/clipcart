@@ -23,6 +23,7 @@ MODELS = [
     C.ResearchJob, C.ResearchSubmission,
     C.StyleEvent, C.StyleMemory, C.StyleProfileView, C.StyleProposal, C.StyleModelInfo, C.StyleNoteResult,
     C.StyleInterpretations, C.InterpretationRunResult, C.CategoriesResponse,
+    C.DemoCatalogItem, C.DemoMerchantOrder, C.DemoTransferRequest, C.DemoReceipt,
 ]
 
 _, schema = models_json_schema([(m, "serialization") for m in MODELS], by_alias=True, title="ClipCart contracts")

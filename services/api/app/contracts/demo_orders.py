@@ -61,3 +61,32 @@ class DemoMerchantOrder(Record):
     ui_label: str = Field(default="Demo purchase on Solana devnet", max_length=120)
     explorer_payment_url: str | None = None
     verification_error: str | None = None
+
+
+class DemoTransferRequest(Record):
+    """Solana Pay-style transfer the wallet must send. ``reference`` goes on the transfer as a read-only non-signer key."""
+
+    recipient: str
+    amount: str  # SOL, e.g. "0.01"
+    spl_token: str | None = None
+    reference: str
+    label: str
+    message: str
+    memo: str | None = None
+
+
+class DemoReceipt(Record):
+    """The order's demo cNFT receipt (``receipt`` on GET /api/demo-orders/{id} and POST …/receipt/mint).
+
+    Ownership is shown only when ``status`` is ``confirmed``. Devnet only; no retailer fulfillment.
+    """
+
+    status: ReceiptStatus
+    asset_id: str | None = None
+    mint_signature: str | None = None
+    explorer_mint_url: str | None = None
+    buyer_wallet: str | None = None
+    merkle_tree: str | None = None
+    indexing_status: Literal["unavailable", "pending", "ready"]
+    metadata_uri: str | None = None
+    label: str
