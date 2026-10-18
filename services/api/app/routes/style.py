@@ -19,7 +19,7 @@ router = APIRouter()
 
 class MemoryIn(In):
     kind: Literal["size", "fit", "budget_max", "color_like", "color_avoid", "material_like", "material_avoid",
-                  "brand_like", "brand_avoid"]
+                  "brand_like", "brand_avoid", "tone_like", "tone_avoid", "ring_size"]
     value: Any
     source: Literal["preferences_form", "style_panel", "style_note", "chat_refinement"] = "preferences_form"
     idempotency_key: str | None = Field(default=None, max_length=100)

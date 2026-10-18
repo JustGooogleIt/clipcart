@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.categories import SELLER_CLAIMS_WARNING, is_accessory, seller_claims
 from app.contracts import Evidence, Listing, OutboundLink, Preferences, Recommendation
 from app.providers.catalog import CatalogFilters
 from app.providers.status import ProviderStatus
@@ -104,6 +105,8 @@ def run_search(
     style: Any = None,
     explain_fn: Callable[[list[str]], str | None] | None = None,
 ) -> SearchOutcome:
+    if is_accessory(profile.category) and prefs.size is not None:
+        prefs = prefs.model_copy(update={"size": None})  # clothing size never governs watches or jewelry
     filters = CatalogFilters(
         category=profile.category,
         country=prefs.country,
@@ -170,7 +173,7 @@ def run_search(
             return 0.0, []
         from app.style.personalize import style_score
 
-        return style_score(listing, style)
+        return style_score(listing, style, profile.category)
 
 
     # When fabric is known and SoleScout returned fabric matches, drop lookalikes
@@ -204,7 +207,8 @@ def run_search(
     # price above budget means every listed offer is above it, or the title
     # names an excluded material). Spend detail calls only on the rest.
     def already_excluded(c: Candidate) -> bool:
-        return any(k.state == "violated" and k.constraint != "size" for k in check_constraints(c.listing, prefs))
+        return any(k.state == "violated" and k.constraint not in ("size", "ring size")
+                   for k in check_constraints(c.listing, prefs, profile.category))
 
     detail_threads = []
     for c in [c for c in cands if not already_excluded(c)]:
@@ -229,7 +233,7 @@ def run_search(
     original_over_budget = None
     for c in cands:
         L = c.listing
-        checks = check_constraints(L, prefs)
+        checks = check_constraints(L, prefs, profile.category)
         tier, reason = identity_tier(L, profile)
         sec = section_for(checks)
         if sec == "excluded":
@@ -277,6 +281,8 @@ def run_search(
         rec_id = "rec_" + hashlib.sha256(f"{search_id}|{L.id}|{section}".encode()).hexdigest()[:20]
         links, targets = _links_for(rec_id, L, prefs)
         warnings = list(L.warnings)
+        if is_accessory(profile.category) and seller_claims(L.title, L.material_text):
+            warnings.append(SELLER_CLAIMS_WARNING)
         if L.availability == "unknown":
             warnings.append("Availability unknown")
         if L.mode in ("fixture", "catalog"):

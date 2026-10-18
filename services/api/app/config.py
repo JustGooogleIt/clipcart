@@ -45,6 +45,7 @@ class Settings:
     xai_model: str
     xai_base_url: str
     feature_agent_research: bool
+    feature_accessory_detection: bool
     research_provider: str
     research_job_ttl_s: int
     research_resolve_dns: bool
@@ -120,6 +121,7 @@ def load_settings() -> Settings:
         xai_model=os.getenv("XAI_MODEL", "grok-4.3"),
         xai_base_url=os.getenv("XAI_BASE_URL", "https://api.x.ai/v1").rstrip("/"),
         feature_agent_research=_flag("FEATURE_AGENT_RESEARCH"),
+        feature_accessory_detection=_flag("FEATURE_ACCESSORY_DETECTION"),
         research_provider=(os.getenv("RESEARCH_PROVIDER") or "fixture").lower(),
         research_job_ttl_s=int(os.getenv("RESEARCH_JOB_TTL_S", "900")),
         research_resolve_dns=_flag("RESEARCH_RESOLVE_DNS", True),

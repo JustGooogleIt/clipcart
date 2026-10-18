@@ -8,8 +8,11 @@ candidates.
 
 from __future__ import annotations
 
+import re
+
 import json
 
+from app.categories import is_accessory
 from app.contracts import Preferences
 from app.providers.grok.client import GrokClient, GrokError
 from app.providers.status import ProviderStatus
@@ -162,8 +165,45 @@ def _synonym_queries(product: str, fabric: str, type_word: str, generic: str, ca
     return out
 
 
+_ACC_NOUN = {"watch": "watch", "necklace": "necklace", "bracelet": "bracelet", "ring": "ring", "earrings": "earrings"}
+_ACC_FORMS = (
+    "hoop", "hoops", "stud", "studs", "drop", "huggie", "chain", "pendant", "choker", "locket", "bangle", "cuff",
+    "link", "beaded", "tennis", "band", "signet", "stacking", "chronograph", "digital", "dive", "dress",
+)
+_TONES = (("rose-gold-tone", "rose gold tone"), ("gold-tone", "gold tone"), ("silver-tone", "silver tone"), ("two-tone", "two tone"))
+
+
+def accessory_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list[str]:
+    """Watches/jewelry: tone + form + noun. Lettering seen on the item is never used as a brand query."""
+    noun = _ACC_NOUN[profile.category]
+    blob = " ".join([*profile.colors, *profile.cut, *profile.details, profile.label, profile.description or ""]).lower()
+    tone = next((q for t, q in _TONES if t in blob), "")
+    form = next((f for f in _ACC_FORMS if re.search(rf"\b{f}\b", blob)), "")
+    if form in {"hoops", "studs"}:
+        form = form[:-1]
+    hue = next((c for c in profile.hue_colors() if c not in {"gold", "silver"}), "")
+    if role != "exact" and prefs.colors:
+        pref = prefs.colors[0].lower()
+        tone = {"gold": "gold tone", "silver": "silver tone", "rose gold": "rose gold tone"}.get(pref, tone)
+        hue = "" if pref in {"gold", "silver", "rose gold"} else pref
+    stone = "stone" if "stone" in blob else ""
+    cands = (
+        [f"{tone} {form} {noun}", f"{form} {noun}", f"{tone} {noun}", f"{hue} {form} {noun}", f"{tone} {stone} {noun}"]
+        if role == "exact" else
+        [f"{tone} {noun}", f"{form} {noun}", f"{hue} {noun}", f"{tone} {form} {noun}"]
+    )
+    out: list[str] = []
+    for q in cands:
+        q = " ".join(dict.fromkeys(q.split()))
+        if len(q.split()) >= 2 and q not in out:
+            out.append(q)
+    return out[:5] or [f"{noun}s" if noun != "earrings" else "earrings"]
+
+
 def rule_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list[str]:
     """Build catalog queries. Apparel uses short product phrases; open-vocab finds keep full text."""
+    if is_accessory(profile.category):
+        return accessory_queries(role, profile, prefs)
     qs: list[str] = []
 
     def add(*parts: str) -> None:

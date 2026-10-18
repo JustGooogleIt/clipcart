@@ -256,6 +256,7 @@ def build_profile(db, owner: str) -> StyleProfile:
         colors_like=entries("color_like"), colors_avoid=entries("color_avoid"),
         materials_avoid=entries("material_avoid"), materials_like=entries("material_like"),
         brands_like=entries("brand_like"), brands_avoid=entries("brand_avoid"),
+        tones_like=entries("tone_like"), tones_avoid=entries("tone_avoid"), ring_size=one("ring_size"),
         recently_owned=owned, rejected_product_keys=rejected, updated_at=max(stamps) if stamps else None,
     )
 

@@ -27,6 +27,7 @@ def test_health_reports_honest_modes(app_factory):
         "agentResearch": False,
         "youtubeDownload": False,
         "styleMemory": False,
+        "accessoryDetection": False,
     }
     assert h["providers"]["styleModel"]["mode"] == "unavailable"
 

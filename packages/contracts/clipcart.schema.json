@@ -541,6 +541,11 @@
             "top",
             "pants",
             "bag",
+            "watch",
+            "necklace",
+            "bracelet",
+            "ring",
+            "earrings",
             "other"
           ],
           "type": "string"
@@ -1220,6 +1225,17 @@
           ],
           "default": null
         },
+        "ringSize": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SizePref"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "size": {
           "anyOf": [
             {
@@ -1275,6 +1291,17 @@
               "maximum": 10000000,
               "minimum": 0,
               "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ringSize": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SizePref"
             },
             {
               "type": "null"
@@ -2436,7 +2463,10 @@
             "material_like",
             "material_avoid",
             "brand_like",
-            "brand_avoid"
+            "brand_avoid",
+            "tone_like",
+            "tone_avoid",
+            "ring_size"
           ],
           "type": "string"
         },
@@ -2774,6 +2804,17 @@
           "default": 0,
           "type": "integer"
         },
+        "ringSize": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProfileEntry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "size": {
           "anyOf": [
             {
@@ -2784,6 +2825,20 @@
             }
           ],
           "default": null
+        },
+        "tonesAvoid": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "tonesLike": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
         },
         "updatedAt": {
           "anyOf": [
@@ -2822,7 +2877,10 @@
             "material_like",
             "material_avoid",
             "brand_like",
-            "brand_avoid"
+            "brand_avoid",
+            "tone_like",
+            "tone_avoid",
+            "ring_size"
           ],
           "type": "string"
         },
