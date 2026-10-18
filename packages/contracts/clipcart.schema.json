@@ -2244,7 +2244,8 @@
           "enum": [
             "fixture",
             "solescout",
-            "manual"
+            "manual",
+            "grok_bot"
           ],
           "type": "string"
         },

@@ -1,19 +1,76 @@
 # Grok Bot as shopping research agent: bridge findings
 
-## What you need to provide (owner)
+## Status (2026-10-18)
 
-The probe has **not been run**, so nothing about the callback is proven. Each of these needs you:
+- **Callback probe passed** (`probe_3a9b8b501a75`):
+  - **Trigger:** the webhook returned 200 and a run started. Its response held no answer.
+  - **Payload:** the Bot echoed the exact nonce and probe ID.
+  - **Callback:** an authenticated POST with the one-time token arrived **14.1 s** after the trigger.
+- **Unattended operation is unverified.** The owner hasn't yet confirmed whether they approved an action in Cursor during the run. Until they do, treat the bridge as "works, possibly with a person approving".
+- **Research is not yet operational.** Health reports `research.status: "unverified"` for a configured `grok_bot` until a Bot research job completes with the Bot's own results. A manual import doesn't count. Only then does health report `operational` and the UI read Live. `research.mode: "live"` describes the data source only; it never claims the provider works.
 
-1. **A routine.** In the app where your Grok Bot runs (these findings cite the Cursor desktop app, 0.53+), ask the Bot to create a routine with a **webhook trigger** and exactly this instruction:
-   > When triggered, read the JSON body. Send an HTTP POST to body.callbackUrl with header Authorization set to body.callbackAuthorization and JSON body {"probeId": body.probeId, "nonce": body.nonce, "echo": "pong"}. Do nothing else.
-2. **The webhook URL and key** the app shows for that routine. Set them in your shell as `GROK_BOT_WEBHOOK_URL` and `GROK_BOT_WEBHOOK_KEY`, not in a committed file. Don't assume a Grok or SuperGrok subscription gives an xAI API key. It doesn't, and this bridge doesn't need one.
-3. **An Allow rule** in the Bot's approvals for **POST requests to your tunnel's host**. Without it, an unattended callback is expected to wait for approval and expire after about 10 minutes.
-4. **A public HTTPS callback.** Run a tunnel to the probe's local port 8765, for example `cloudflared tunnel --url http://127.0.0.1:8765`, and set its `https://` address as `PROBE_PUBLIC_BASE_URL`. No tunnel tool is installed on this machine.
-5. **Run the probe once:** `python3 scripts/experiments/grokbot_bridge_probe.py`. It makes **one webhook call**, which spends Bot usage. It waits up to 10 minutes for the callback and prints which step passed or failed: `trigger`, `payload` or `callback`. The webhook response only confirms the run started. **It never contains results.**
+### Certificates (macOS, python.org Python)
 
-**If all three steps pass,** Claude implements the `grok_bot` provider below, through the existing job lifecycle and validation. **If the callback fails or is held,** the bridge isn't viable unattended. Research results can then still be brought in through the **labelled manual import** (`POST /api/research-jobs/{id}/import`, see `docs/contracts/agent-research.md` v2). That import also works on failed and expired jobs.
+The python.org build of Python 3.11 here ships with no CA bundle. Run without one, the probe failed at the TLS handshake with `CERTIFICATE_VERIFY_FAILED`, before anything was sent. **Don't disable verification.** Point Python at a trusted bundle instead, for example the API venv's certifi:
 
-Checked 2026-10-17 against official xAI and Cursor documentation. Status: **not proven; not implemented**. Only the provider-neutral job interface and a labelled fixture ship on `feat/grok-bot-research`.
+```
+SSL_CERT_FILE="$(services/api/.venv/bin/python -c 'import certifi; print(certifi.where())')" \
+  python3 scripts/experiments/grokbot_bridge_probe.py
+```
+
+Alternatively, run the python.org "Install Certificates.command" once. The API server itself uses httpx with certifi and needs neither.
+
+### Local configuration
+
+Settings live only in gitignored, `chmod 600` files in the integration worktree: `grokbot-probe.local.env` for the probe routine, and `grokbot-research.local.env` for the research routine. The research file holds the webhook URL and key, `CLIPCART_PUBLIC_BASE_URL` (a tunnel to the ClipCart server, not to the probe port) and a persistent `RESEARCH_URL_SECRET`.
+
+## Prove the callback: the smallest exact setup (owner, done once)
+
+Rechecked 2026-10-18 against [Cursor help: Grok Bot routines](https://cursor.com/help/grok-bot/routines), the [Grok Bot FAQ](https://cursor.com/help/grok-bot/faqs.md) and [xAI: approvals, security and privacy](https://docs.x.ai/grok-bot/approvals-security-and-privacy).
+
+1. **Tunnel.** In one terminal, run `brew install cloudflared`, then `cloudflared tunnel --url http://127.0.0.1:8765`. That's a quick tunnel and needs no account. Copy the `https://….trycloudflare.com` address it prints. Quick tunnels can expire; one stopped answering with "Tunnel not found" after several hours, and a new tunnel gets a new address.
+2. **Routine.** In the Grok Bot **desktop app** (only desktop shows webhook details), send the Bot exactly this:
+   > Create a routine named "ClipCart callback probe" with a webhook trigger and no schedule. Instruction: When triggered, read the JSON body. Send an HTTP POST to body.callbackUrl with header Authorization set to body.callbackAuthorization and JSON body {"probeId": body.probeId, "nonce": body.nonce, "echo": "pong"}. Do nothing else.
+3. **Webhook URL and key.** Click the Bot's name, then **Details**, then **Routines**, then the routine. In the **Webhook** section, copy **POST to** and **key**. A Grok or SuperGrok subscription is not an xAI API key, and this needs none.
+4. **Allow rule.** Go to **Settings → General → Auto-review → Allow automatically** and add a narrow rule: *"Allow the ClipCart callback probe routine to send one HTTP POST to https://<your-tunnel-host>/probe/ with the Authorization header from its trigger body."*
+   - **Why:** approvals for routine-started work expire after about 10 minutes and the action doesn't run.
+   - **Caveat:** Allow rules apply only when the automated review finds no other reason to stop. A community report says the review still weighs recent typed chat, so also type in the Bot chat: *"I'm about to trigger the ClipCart callback probe; it should POST the nonce back to my tunnel."* That part is undocumented.
+5. **Run the probe once** from the repo root, in the same shell, with no secrets in files. It makes **one webhook call**, which spends Bot usage, and waits up to 10 minutes:
+   ```
+   GROK_BOT_WEBHOOK_URL='<POST to>' GROK_BOT_WEBHOOK_KEY='<key>' PROBE_PUBLIC_BASE_URL='https://<tunnel-host>' \
+     python3 scripts/experiments/grokbot_bridge_probe.py
+   ```
+   It prints `verdict.triggerProven`, `payloadAccessProven` and `callbackProven`. The webhook's 200 response only means a run started. **It never contains results.**
+
+**Reading the verdict:**
+- **All three true:** the unattended callback works. Point the dormant provider below at the same routine design.
+- **Trigger proven, no callback:** check the Bot chat for an "Expired" approval card. If you approve it in time and the probe then passes, the path works only with a person in the loop, not unattended.
+- **Trigger fails:** re-copy the current key, and check the routine isn't paused.
+
+**If the callback can't be made reliable,** bring results in through the **labelled manual import** (`POST /api/research-jobs/{id}/import`, contract v2). It also works on failed and expired jobs.
+
+## The `grok_bot` provider
+
+The provider is implemented (`app/research/grokbot.py`) and tested against a simulated Bot. A real research run is pending (see Status). It is **not selected by default**: `RESEARCH_PROVIDER` defaults to `fixture`, and `FEATURE_AGENT_RESEARCH` is off. To try it after the probe passes, set these in the process environment only:
+
+```
+FEATURE_AGENT_RESEARCH=1 RESEARCH_PROVIDER=grok_bot \
+GROK_BOT_WEBHOOK_URL=<research routine POST to> GROK_BOT_WEBHOOK_KEY=<its key> \
+CLIPCART_PUBLIC_BASE_URL=https://<tunnel-host-pointing-at-:8000>   # tunnel to the ClipCart server, not the probe port
+```
+
+1. **Dispatch.** The provider POSTs `{jobId, expiresAt, garment (with a signed cropUrl, never an asset id), preferences, styleHints, instructions, callbackUrl, callbackAuthorization, resultSchema}` with `Authorization: Bearer <key>`.
+   - **Timeout:** 8 s, with one retry on a network error only.
+   - **Failure:** any non-200 answer fails the job with `dispatch_failed`. The manual import still works afterwards.
+2. **Callback.** `POST /api/research-jobs/{id}/results` with `Authorization: Bearer <one-time token>`. Only the token's SHA-256 is stored, and it's compared in constant time. The body is capped at 256 KB. The results go through the same validation as every submission and are labelled `source: "agent"`. The token is used up on acceptance. A late callback after expiry is refused with 409.
+3. **Crop link.** `GET /api/research-crops/{signed}` serves the crop as an HMAC-signed link that expires with the job (15 min) and sends `no-store`. Set `RESEARCH_URL_SECRET` so links survive a restart; otherwise each server start makes a new secret.
+
+**Research routine instruction**, for a second routine named "ClipCart research". Its body includes the same text as `instructions`:
+> When triggered, follow body.instructions exactly. Research only the item in body.garment for body.preferences, using several independent retailers and resale marketplaces, and report only pages you opened. Send exactly one HTTP POST to body.callbackUrl with header Authorization set to body.callbackAuthorization and a JSON body matching body.resultSchema. Do nothing else.
+
+That routine needs its own narrow Allow rule, for POST to `https://<tunnel-host>/api/research-jobs/`. **No retailer coverage is claimed** until a real run's results have been retrieved and checked.
+
+Original findings (2026-10-17), kept for reference. The callback step in the table below has since been proven by the probe; unattended operation and real research are still to be confirmed (see Status).
 
 ## Proposed bridge versus documentation
 

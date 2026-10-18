@@ -101,7 +101,7 @@ function ModeList({ health: hp }: { health: Health }) {
   );
 }
 
-/** Research jobs: off, or which provider runs them. Never Grok Bot: no bridge is implemented. */
+/** Research jobs: off, or which provider runs them. A bridge provider reads Live only once a job of its completed. */
 function ResearchChip({ health: hp, catalogMode }: { health: Health; catalogMode: string }) {
   const r = researchProvider(hp);
   if (!r) return <Chip name="More offers" mode="unavailable" note="Off" />;
@@ -109,7 +109,15 @@ function ResearchChip({ health: hp, catalogMode }: { health: Health; catalogMode
   // "live" only says jobs aren't fixtures: the SoleScout fallback is as healthy as the catalog it calls, and any other
   // live provider stays unverified until it has returned results.
   const mode =
-    r.mode === "manual" ? "rule" : r.mode === "live" ? (r.id === "solescout" ? catalogMode : "unverified") : (r.mode ?? "unavailable");
+    r.mode === "manual"
+      ? "rule"
+      : r.mode === "live"
+        ? r.id === "solescout"
+          ? catalogMode
+          : hp.research?.status === "operational"
+            ? "live"
+            : "unverified"
+        : (r.mode ?? "unavailable");
   return <Chip name="More offers" mode={mode} note={r.name} />;
 }
 
