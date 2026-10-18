@@ -410,83 +410,114 @@ class PerceptronPerceptionProvider:
         request_context: RequestContext,
     ) -> AnalysisResult:
         """Open-vocabulary find: detect ``query`` on frames, describe the best crop richly."""
+        from app.jobs.find_query import detect_classes_for_query
+
         ctx = request_context
         q = " ".join((query or "").split())
         if len(q) < 2:
             raise ValueError("query must be non-empty")
+        classes = detect_classes_for_query(q) or [q]
         frames = list({f.asset_id: f for f in frame_refs}.values())[: self.max_frames]
         issues: list[ProviderIssue] = []
         metas: list[ProviderRequestMeta] = []
         abort = Event()
         frame_bytes = {f.asset_id: self.media.store.read_bytes(f.asset_id, ctx.owner_id) for f in frames}
 
-        def detect_job(frame: FrameRef):
+        def detect_job(frame: FrameRef, class_list: list[str]):
             def call():
-                # Pass the full shopper phrase as the open-vocab class — do not shorten.
-                return self.backend.detect(frame_bytes[frame.asset_id], [q], max_outputs=self.max_outputs_per_frame)
+                return self.backend.detect(
+                    frame_bytes[frame.asset_id], class_list, max_outputs=self.max_outputs_per_frame
+                )
 
             res, err, m = self._call_with_policy(
                 call, ctx, abort, {"frame_asset_id": frame.asset_id, "crop_asset_id": None, "purpose": "detect"}
             )
             return _FrameOutcome(frame, res, err, m)
 
-        outcomes = self._run_bounded([(f.asset_id, (lambda f=f: detect_job(f))) for f in frames], ctx)
-        candidates: list[GarmentObservation] = []
-        dropped = 0
-        ok_frames = 0
-        for frame in frames:
-            out = outcomes.get(frame.asset_id)
-            if out is None:
-                code = "cancelled" if ctx.cancelled else "timeout"
-                issues.append(
-                    ProviderIssue(
-                        code=code,
-                        message="frame not analyzed before the deadline" if code == "timeout" else "analysis cancelled",
-                        retryable=code == "timeout",
-                        frame_asset_id=frame.asset_id,
+        def collect(class_list: list[str]) -> tuple[list[GarmentObservation], int, int]:
+            outcomes = self._run_bounded(
+                [(f.asset_id, (lambda f=f: detect_job(f, class_list))) for f in frames], ctx
+            )
+            cands: list[GarmentObservation] = []
+            dropped_n = 0
+            ok_n = 0
+            for frame in frames:
+                out = outcomes.get(frame.asset_id)
+                if out is None:
+                    code = "cancelled" if ctx.cancelled else "timeout"
+                    issues.append(
+                        ProviderIssue(
+                            code=code,
+                            message="frame not analyzed before the deadline" if code == "timeout" else "analysis cancelled",
+                            retryable=code == "timeout",
+                            frame_asset_id=frame.asset_id,
+                        )
                     )
-                )
-                continue
-            metas.extend(out.metas)
-            if out.error is not None:
-                issues.append(
-                    ProviderIssue(
-                        code=out.error.code,
-                        message=out.error.message,
-                        retryable=out.error.retryable,
-                        frame_asset_id=frame.asset_id,
-                        provider_request_id=out.error.request_id,
-                    )
-                )
-                continue
-            resp = out.response
-            ok_frames += 1
-            for det in resp.detections or []:
-                try:
-                    box = perceptron_box_to_box01(det.x1, det.y1, det.x2, det.y2)
-                    crop = self.media.crop(frame.asset_id, box, ctx.owner_id)
-                except InvalidBoxError:
-                    dropped += 1
                     continue
-                candidates.append(
-                    GarmentObservation(
-                        id=_obs_id(frame.asset_id, box, det.label or q, resp.request_id),
-                        media_id=frame.media_id,
-                        frame_asset_id=frame.asset_id,
-                        timestamp_ms=frame.timestamp_ms,
-                        box01=box,
-                        crop_asset_id=crop.crop_asset_id,
-                        category="other",
-                        person_track_id=None,
-                        observed_attributes={},
-                        visible_text=[],
-                        provider_request_id=resp.request_id,
-                        model_id=resp.model or self.model_id,
-                        edited_by_user=False,
-                        raw_label=det.label or q,
-                        model_generated_fields=["box01", "category"],
+                metas.extend(out.metas)
+                if out.error is not None:
+                    issues.append(
+                        ProviderIssue(
+                            code=out.error.code,
+                            message=out.error.message,
+                            retryable=out.error.retryable,
+                            frame_asset_id=frame.asset_id,
+                            provider_request_id=out.error.request_id,
+                        )
                     )
-                )
+                    continue
+                resp = out.response
+                ok_n += 1
+                for det in resp.detections or []:
+                    try:
+                        box = perceptron_box_to_box01(det.x1, det.y1, det.x2, det.y2)
+                    except InvalidBoxError:
+                        dropped_n += 1
+                        continue
+                    x0, y0, x1, y1 = box
+                    area = max(0.0, x1 - x0) * max(0.0, y1 - y0)
+                    # Reject dust specs and near-full-frame "detections" (usually wrong).
+                    if area < 0.004 or area > 0.88:
+                        dropped_n += 1
+                        continue
+                    try:
+                        crop = self.media.crop(frame.asset_id, box, ctx.owner_id)
+                    except InvalidBoxError:
+                        dropped_n += 1
+                        continue
+                    # Dedup near-identical boxes within this pass.
+                    if any(iou(k.box01, box) > 0.85 and k.frame_asset_id == frame.asset_id for k in cands):
+                        dropped_n += 1
+                        continue
+                    cands.append(
+                        GarmentObservation(
+                            id=_obs_id(frame.asset_id, box, det.label or q, resp.request_id),
+                            media_id=frame.media_id,
+                            frame_asset_id=frame.asset_id,
+                            timestamp_ms=frame.timestamp_ms,
+                            box01=box,
+                            crop_asset_id=crop.crop_asset_id,
+                            category="other",
+                            person_track_id=None,
+                            observed_attributes={},
+                            visible_text=[],
+                            provider_request_id=resp.request_id,
+                            model_id=resp.model or self.model_id,
+                            edited_by_user=False,
+                            raw_label=det.label or q,
+                            model_generated_fields=["box01", "category"],
+                        )
+                    )
+            return cands, dropped_n, ok_n
+
+        candidates, dropped, ok_frames = collect(classes)
+        # Recall pass only when the shortest class wasn't already tried (avoids a 2× bill).
+        shortest = classes[-1]
+        if not candidates and len(classes) > 1 and shortest != classes[0] and ctx.remaining() > 12:
+            # Only re-hit frames if the first pass used a long multi-class list that may have
+            # diluted open-vocab attention — try the shortest class alone once.
+            more, d2, ok2 = collect([shortest])
+            candidates, dropped, ok_frames = more, dropped + d2, max(ok_frames, ok2)
 
         if not candidates:
             return AnalysisResult(
@@ -498,16 +529,18 @@ class PerceptronPerceptionProvider:
                 dropped_detections=dropped,
             )
 
-        # Prefer larger, sharper crops — one best hit for the tray.
+        # Prefer mid-size sharp crops (full-frame and tiny boxes already filtered).
         def score(o: GarmentObservation) -> float:
             x0, y0, x1, y1 = o.box01
             area = max(0.0, x1 - x0) * max(0.0, y1 - y0)
+            # Sweet spot ~4–45% of the frame for product-like objects.
+            size_score = 1.0 - abs(area - 0.18) / 0.18
             try:
                 c = self.media.get_crop(o.crop_asset_id, ctx.owner_id)
                 sharp = c.sharpness
             except Exception:  # noqa: BLE001
                 sharp = 0.0
-            return area * 10 + sharp
+            return size_score * 5 + min(sharp / 200.0, 3.0) + area
 
         best = max(candidates, key=score)
         crop_bytes = self.media.store.read_bytes(best.crop_asset_id, ctx.owner_id)

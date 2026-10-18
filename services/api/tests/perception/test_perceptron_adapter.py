@@ -301,6 +301,27 @@ def test_development_fixture_end_to_end(media, tmp_path):
     ]
 
 
+def test_find_open_vocab_describes_best_crop_and_drops_tiny_boxes(media, frame):
+    tiny = RawDetection("noise", 0, 0, 5, 5)  # ~0% area → dropped
+    huge = RawDetection("bg", 0, 0, 1000, 1000)  # full frame → dropped
+    good = _red_box_detection("denim trucker jacket")
+
+    def detect(n):
+        return DetectResponse([tiny, huge, good], f"d-{n}", "m", None, True)
+
+    be = FakeBackend(detect=detect)
+    res = provider(media, be, max_attribute_calls=1).find_open_vocab(
+        [frame], "blue denim trucker jacket with chest pockets", ctx()
+    )
+    assert res.status == "ok" and len(res.observations) == 1
+    o = res.observations[0]
+    assert o.category == "other"
+    assert o.observed_attributes.get("details")
+    assert "search_description" in (o.model_generated_fields or []) or o.observed_attributes.get("details")
+    assert be.describe_calls >= 1
+    assert res.dropped_detections >= 2
+
+
 def test_fixture_requires_explicit_label(tmp_path):
     p = tmp_path / "f.json"
     p.write_text('{"frames": []}')

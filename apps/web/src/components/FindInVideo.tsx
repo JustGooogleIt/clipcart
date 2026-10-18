@@ -23,14 +23,14 @@ export default function FindInVideo({
     >
       <label htmlFor="find-in-video">Find in video</label>
       <p className="muted small">
-        Anything visible — clothes, a plant, a painting. Be specific; short labels make weak searches.
+        Anything visible — clothes, a plant, a painting. Name color, material, shape, and distinctive details; we keep that full description for search.
       </p>
       <div className="find-row">
         <input
           id="find-in-video"
           value={text}
           maxLength={400}
-          placeholder='e.g. find me the tall monstera in the speckled pot'
+          placeholder='e.g. find me the light-wash denim trucker with copper rivets'
           onChange={(e) => setText(e.target.value)}
           disabled={disabled || busy}
         />

@@ -170,15 +170,17 @@ def rule_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list
         qs.append(" ".join(p for p in parts if p))
 
     # Non-apparel / Find-in-video: NEVER collapse a rich description to "green plant".
-    if profile.category == "other" or (
-        profile.description and profile.category not in {"jacket", "top", "pants", "bag"}
-    ):
+    if profile.category == "other":
         blob = (profile.description or "").strip()
         if not blob:
             blob = " ".join(profile.descriptors())
         if blob:
             add(blob[:120])
-            # Second query: distinctive tokens if the full line is very long.
+            # Alternate windows — SoleScout ranks shorter rich phrases differently.
+            words = blob.split()
+            if len(words) > 10:
+                add(*words[:10])
+                add(*words[-10:])
             toks = [d for d in profile.descriptors() if d not in _COLOR_SET][:8]
             if toks:
                 add(*toks)
@@ -187,11 +189,11 @@ def rule_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list
         out: list[str] = []
         for q in qs:
             q = " ".join(dict.fromkeys(q.lower().split()))
-            if len(q.split()) < 2:
+            if len(q.split()) < 3:  # force denser queries for open-vocab finds
                 continue
             if q and q.lower() not in [o.lower() for o in out]:
                 out.append(q)
-        return out[:4]
+        return out[:5]
 
     product, fabric, type_word, generic = _product_phrase(profile)
     color = (profile.hue_colors()[:1] or [""])[0]

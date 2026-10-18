@@ -15,7 +15,8 @@ from pydantic.alias_generators import to_camel
 from app.contracts import Garment, GarmentObservation, PreferencePatch, Preferences
 from app.contracts.base import from_doc
 from app.jobs.analysis import create_analysis
-from app.jobs.find_in_media import normalize_find_query, run_find_in_media
+from app.jobs.find_in_media import run_find_in_media
+from app.jobs.find_query import normalize_find_query
 from app.jobs.search import create_search, dispatch
 from app.media.errors import AssetNotFoundError, MediaError
 from app.media.youtube_cache import YoutubeCacheError, download_youtube, parse_video_id
@@ -542,7 +543,14 @@ def _apply_find_in_media(st, owner: str, session_id: str, before: dict, text: st
         status = 404 if code in ("not_found", "no_media", "no_frames", "no_analysis") else 422
         if code == "perception_unavailable":
             status = 503
-        raise ApiProblem(status, code, found.get("reply") or "Find failed", retryable=code == "find_failed")
+        if code == "analysis_running":
+            status = 409
+        raise ApiProblem(
+            status,
+            code,
+            found.get("reply") or "Find failed",
+            retryable=code in ("find_failed", "analysis_running"),
+        )
     gid = found["garment"]["id"]
     supersede_active_search(st.db, before)
     doc = cas_update(

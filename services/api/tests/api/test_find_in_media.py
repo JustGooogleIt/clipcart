@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.jobs.find_in_media import normalize_find_query
+from app.jobs.find_query import normalize_find_query
 
 from .conftest import H, bootstrap, new_client, wait
 
