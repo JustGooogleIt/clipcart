@@ -86,7 +86,7 @@ def category_noun(profile: GarmentProfile) -> str:
     for w in words(f"{profile.description or ''} {' '.join(profile.cut)} {' '.join(profile.details)}"):
         if w in fam:
             return w
-    return {"jacket": "jacket", "top": "top", "bag": "bag"}.get(profile.category, "")
+    return {"jacket": "jacket", "top": "top", "pants": "pants", "bag": "bag"}.get(profile.category, "")
 
 
 def rule_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list[str]:
@@ -102,7 +102,7 @@ def rule_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list
         qs.append(" ".join(x for x in [color, *desc_words, *detail_words, noun] if x))
     else:
         want_color = (prefs.colors[:1] or [color])[0]
-        generic = {"jacket": "jacket", "top": "top", "bag": "bag"}.get(profile.category, "")
+        generic = {"jacket": "jacket", "top": "top", "pants": "pants", "bag": "bag"}.get(profile.category, "")
         style = [w for w in [*desc_words[:1], noun] if w and w not in _COLOR_SET]
         qs.append(" ".join(dict.fromkeys(x for x in [want_color, *style, generic] if x)))
         if profile.pattern and profile.pattern[0].lower() not in {"solid", "plain"}:

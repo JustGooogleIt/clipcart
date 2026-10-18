@@ -83,7 +83,9 @@ export default function Upload({
       ) : (
         <>
           <p className="drop-title">Send us a look</p>
-          <p className="drop-sub">A photo, a short clip, or a YouTube URL. We temporarily download YouTube clips to find the clothes.</p>
+          <p className="drop-sub">
+            Fit-check Short, street interview, or closet selfie. Paste a YouTube URL (we download a short temporary copy) or drop a file.
+          </p>
           <label htmlFor="file" className="btn btn-primary" aria-disabled={busy}>
             {busy ? "Working…" : "Choose photo or clip"}
           </label>

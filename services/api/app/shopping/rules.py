@@ -19,6 +19,10 @@ CATEGORY_WORDS: dict[str, tuple[str, ...]] = {
         "shirt", "t-shirt", "tee", "top", "blouse", "sweater", "hoodie", "sweatshirt", "cardigan",
         "polo", "tank", "jersey", "knit", "crewneck", "pullover", "henley", "camisole", "turtleneck",
     ),
+    "pants": (
+        "pants", "jeans", "trousers", "chinos", "shorts", "leggings", "skirt", "denim", "cargos",
+        "joggers", "sweatpants", "khakis",
+    ),
     "bag": (
         "bag", "handbag", "tote", "backpack", "purse", "clutch", "satchel", "crossbody", "duffle",
         "hobo", "bucket", "messenger", "pouch",
@@ -34,7 +38,10 @@ _COLOR_WORDS = {
     "cream", "ivory", "pink", "purple", "yellow", "orange", "khaki", "camel", "burgundy", "maroon",
     "silver", "gold", "denim", "charcoal",
 }
-_STOP = {"the", "a", "an", "and", "or", "with", "of", "in", "for", "on", "to", "this", "that", "jacket", "top", "bag"}
+_STOP = {
+    "the", "a", "an", "and", "or", "with", "of", "in", "for", "on", "to", "this", "that",
+    "jacket", "top", "pants", "bag",
+}
 
 
 def words(text: str | None) -> list[str]:

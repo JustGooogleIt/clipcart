@@ -270,7 +270,9 @@ export default function App() {
       <header className="top">
         <div>
           <h1 className="wordmark">ClipCart</h1>
-          <p className="tagline">Send us a look. We find the original, search alternatives, and bring back options that fit your budget.</p>
+          <p className="tagline">
+            Drop a fit check, photo, or YouTube Short. We find the clothes, then search real listings that match your budget.
+          </p>
         </div>
         <ModeChips health={health} />
       </header>
@@ -294,13 +296,13 @@ export default function App() {
           <Upload busy={busy || !s} progress={progress} onFile={onFile} onYoutube={onYoutube} />
           <ol className="how">
             <li>
-              <strong>Pick the piece.</strong> Jackets, tops and bags.
+              <strong>Send a look.</strong> Photo, short clip, or YouTube URL — we scan for jackets, tops, pants and bags.
             </li>
             <li>
-              <strong>Set your rules.</strong> Budget, size, materials to avoid.
+              <strong>Pick the piece</strong> in the tray (or draw a box if we missed it).
             </li>
             <li>
-              <strong>Get sourced options.</strong> Every price links to where it came from.
+              <strong>Set your rules</strong> — budget, size, materials to avoid — then shop sourced options.
             </li>
           </ol>
         </main>
@@ -313,7 +315,8 @@ export default function App() {
             </div>
             {analyzing && (
               <div className="banner" role="status">
-                <span className="spinner" aria-hidden /> {analysis?.frameIds?.length ? "Looking for jackets, tops and bags…" : "Reading frames…"}
+                <span className="spinner" aria-hidden />{" "}
+                {analysis?.frameIds?.length ? "Looking for jackets, tops, pants and bags…" : "Scanning the best frames…"}
               </div>
             )}
             {analysis?.message && !analyzing && (
@@ -357,6 +360,7 @@ export default function App() {
                           <select value={manualCat} onChange={(e) => setManualCat(e.target.value)}>
                             <option value="jacket">Jacket</option>
                             <option value="top">Top</option>
+                            <option value="pants">Pants</option>
                             <option value="bag">Bag</option>
                           </select>
                         </label>

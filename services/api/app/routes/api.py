@@ -60,13 +60,13 @@ class SessionPatchIn(In):
 class ManualGarmentIn(In):
     frame_asset_id: str
     box01: tuple[float, float, float, float]
-    category: str = Field(pattern="^(jacket|top|bag)$")
+    category: str = Field(pattern="^(jacket|top|pants|bag)$")
     description: str | None = Field(default=None, max_length=200)
 
 
 class GarmentPatchIn(In):
     box01: tuple[float, float, float, float] | None = None
-    category: str | None = Field(default=None, pattern="^(jacket|top|bag)$")
+    category: str | None = Field(default=None, pattern="^(jacket|top|pants|bag)$")
     description: str | None = Field(default=None, max_length=200)
 
 
