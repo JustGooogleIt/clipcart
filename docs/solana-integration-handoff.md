@@ -138,6 +138,21 @@ Idempotent mint route (must not create a second tx when attempt exists):
 
 `POST /api/demo-orders/{order_id}/receipt/mint` — see contract.
 
+## Atlas blockers fixed (2026-10-18)
+
+| Blocker | Fix |
+| --- | --- |
+| Real Mongo rejects 2nd unpaid order (`paymentSignature: null` + sparse unique) | Partial unique index `paymentSignature_paid_unique` (`$type: string`) in `app/storage/db.py` |
+| Concurrent receipt POSTs can double-mint | Durable attempt insert + atomic build lease (`claimed`→`building`) before `build_sign_mint` |
+
+Regression: `pytest tests/demo_orders tests/demo_receipts -q` and `python scripts/cnft_atlas_blocker_regression.py` (FakeMint only).
+
+### Preserved receipt vs Atlas API
+
+- On-chain receipt (tree / mint / asset) remains as documented above.
+- **Atlas DB `clipcart` on `cluster0.dcwwk1j.mongodb.net` currently has no `demo_orders` / `receipt_mint_attempts` / `payment_signatures` row for the preserved payment or asset** — live mint was performed via the worker CLI before durable Mongo was available.
+- Therefore the preserved receipt is **not** available through `GET /api/demo-orders/{id}` on the main app until an authorized session seeds that order (without reminting). Do not create another on-chain receipt.
+
 ## Review coordination
 
 - Findings → comment on #13 / #29; this lane will fix quickly against frozen contracts.

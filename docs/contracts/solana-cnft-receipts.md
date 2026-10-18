@@ -101,11 +101,14 @@ Include minimal facts only: demo order id, amount display, payment signature (pu
 
 ## Reliability
 
-1. Atomically claim one mint attempt per `orderId` (unique index).
-2. Persist the **signed** transaction bytes + intent before broadcast.
-3. On timeout/restart: reload attempt; confirm/reconcile signature before building another tx.
-4. Uncertain broadcast → `needs_reconciliation`, never a duplicate mint.
-5. Unit tests use a fake mint adapter; live Bubblegum calls are opt-in scripts only.
+1. Atomically claim one mint attempt per `orderId` (unique `_id` / `orderId` index).
+2. Only one caller may hold the attempt’s **build lease** (`claimed`/`stale building` → `building`) before `build_sign_mint`.
+3. Persist the **signed** transaction bytes + intent before broadcast.
+4. On timeout/restart: reload attempt; confirm/reconcile signature (or re-broadcast persisted bytes) before building another tx.
+5. Uncertain broadcast → `needs_reconciliation`, never a duplicate mint.
+6. Unit tests use a fake mint adapter; live Bubblegum calls are opt-in scripts only.
+
+Paid `paymentSignature` uniqueness on `demo_orders` uses a **partial** unique index (`paymentSignature` type string). Sparse unique is insufficient: real MongoDB indexes BSON `null`, so a second unpaid order would fail with E11000.
 
 ## Env (names only; secrets local)
 

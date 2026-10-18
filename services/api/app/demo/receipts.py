@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -15,6 +16,8 @@ from app.demo.verify import explorer_tx_url
 from app.sessions.service import ApiProblem, now
 
 RECEIPT_LABEL = "ClipCart demo receipt · Devnet · No retailer fulfillment."
+# Stale "building" lease (process died before persisting a signed tx).
+_BUILD_LEASE_STALE_S = 60
 
 
 class MintAdapter(Protocol):
@@ -179,6 +182,7 @@ def _eligible_order(doc: dict) -> None:
 
 
 def _claim_attempt(db: Any, order: dict, *, tree: str, metadata_uri: str) -> dict:
+    """Insert the durable attempt row (unique _id/orderId). Concurrent callers share one row."""
     oid = order["id"]
     t = now().isoformat()
     doc = {
@@ -207,6 +211,48 @@ def _claim_attempt(db: Any, order: dict, *, tree: str, metadata_uri: str) -> dic
         if not existing:
             raise ApiProblem(409, "order_conflict", "Receipt attempt conflict", retryable=True)
         return existing
+
+
+def _attempt_has_mint_work(attempt: dict) -> bool:
+    return bool(
+        attempt.get("mintSignature")
+        or attempt.get("signedTxBase64")
+        or attempt.get("status") in ("signed", "submitted", "confirmed", "needs_reconciliation")
+    )
+
+
+def _acquire_build_lease(db: Any, order_id: str) -> dict | None:
+    """Exactly one concurrent caller may build a mint tx for this attempt.
+
+    Transitions claimed → building. A stale building lease (no signed tx) may be
+    reclaimed after _BUILD_LEASE_STALE_S so restart can finish without a second mint
+    once a signed tx exists — callers must still reconcile before any new build.
+    """
+    t = now().isoformat()
+    won = db.receipt_mint_attempts.find_one_and_update(
+        {
+            "_id": order_id,
+            "status": "claimed",
+            "signedTxBase64": None,
+            "mintSignature": None,
+        },
+        {"$set": {"status": "building", "updatedAt": t}},
+        return_document=ReturnDocument.AFTER,
+    )
+    if won:
+        return won
+    stale_before = (now() - timedelta(seconds=_BUILD_LEASE_STALE_S)).isoformat()
+    return db.receipt_mint_attempts.find_one_and_update(
+        {
+            "_id": order_id,
+            "status": "building",
+            "signedTxBase64": None,
+            "mintSignature": None,
+            "updatedAt": {"$lt": stale_before},
+        },
+        {"$set": {"status": "building", "updatedAt": t}},
+        return_document=ReturnDocument.AFTER,
+    )
 
 
 def _set_attempt(db: Any, order_id: str, **fields: Any) -> dict:
@@ -360,11 +406,7 @@ def mint_receipt(
 
     existing = st.db.receipt_mint_attempts.find_one({"_id": order_id})
     if existing:
-        if (
-            existing.get("status") in ("signed", "submitted", "confirmed", "needs_reconciliation")
-            or existing.get("mintSignature")
-            or existing.get("signedTxBase64")
-        ):
+        if _attempt_has_mint_work(existing):
             order, attempt = _reconcile_existing(adapter, st.db, doc, existing)
             return order, receipt_card(order, attempt)
         if existing.get("status") == "failed":
@@ -374,9 +416,22 @@ def mint_receipt(
         {"_id": order_id, "receiptStatus": {"$in": ["eligible", "failed"]}},
         {"$set": {"receiptStatus": "minting", "updatedAt": now().isoformat()}},
     )
+    # Durable unique row first — concurrent POSTs share one attempt document.
     attempt = _claim_attempt(st.db, doc, tree=tree, metadata_uri=metadata_uri)
-    if attempt.get("signedTxBase64") or attempt.get("mintSignature"):
+    if _attempt_has_mint_work(attempt):
         order, attempt = _reconcile_existing(adapter, st.db, doc, attempt)
+        return order, receipt_card(order, attempt)
+    if attempt.get("status") == "failed":
+        return doc, receipt_card(doc, attempt)
+
+    # Only the lease holder may call build_sign_mint (prevents double mint under concurrency).
+    leased = _acquire_build_lease(st.db, order_id)
+    if leased is None:
+        attempt = st.db.receipt_mint_attempts.find_one({"_id": order_id}) or attempt
+        if _attempt_has_mint_work(attempt):
+            order, attempt = _reconcile_existing(adapter, st.db, doc, attempt)
+            return order, receipt_card(order, attempt)
+        order = _set_order_receipt(st.db, order_id, receiptStatus="minting")
         return order, receipt_card(order, attempt)
 
     try:
@@ -389,6 +444,7 @@ def mint_receipt(
         )
         if built.get("leafOwner") != doc["buyerWallet"]:
             raise CnftWorkerError("worker leafOwner mismatch", retryable=False)
+        # Persist signed bytes before broadcast so restart reconciles instead of reminting.
         attempt = _set_attempt(
             st.db,
             order_id,

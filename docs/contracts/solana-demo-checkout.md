@@ -4,6 +4,8 @@ Status: implemented on `feat/solana-demo-checkout` (payment + verification only)
 
 Flag `FEATURE_SOLANA` is **off by default**. While off, every demo route returns `404` with `code: "feature_disabled"` (including `GET /api/demo-catalog`).
 
+Multiple unpaid orders per owner are allowed. `paymentSignature` uniqueness applies only after a string signature is stored (partial unique index); unpaid rows may keep `paymentSignature: null`.
+
 External SoleScout / retailer listings keep the existing `/go/{token}` path. They cannot create demo orders. A paid demo order never claims retailer fulfillment, shipment, or affiliate revenue.
 
 UI copy before signing: **Demo purchase on Solana devnet**, fixed amount, recipient, merchant label, test-funds warning, and no-fulfillment terms.
