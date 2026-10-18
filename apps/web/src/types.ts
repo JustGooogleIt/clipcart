@@ -62,5 +62,12 @@ export interface Health {
   api: string;
   database: { mode: string; ok: boolean; note: string | null };
   providers: { perceptron: ProviderSnapshot; grok: ProviderSnapshot; catalog: ProviderSnapshot };
-  features: { photon: boolean; voice: boolean; solana: boolean };
+  features: {
+    photon: boolean;
+    voice: boolean;
+    solana: boolean;
+    agentResearch?: boolean;
+    youtubeDownload?: boolean;
+  };
+  youtube?: { enabled: boolean; allowedVideoCount: number; maxDurationS: number };
 }

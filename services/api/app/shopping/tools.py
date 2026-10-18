@@ -111,11 +111,11 @@ class ToolBox:
         return out
 
     # ----------------------------------------------------------- tools
-    def search_catalog(self, worker: str, query: str, limit: int = 6) -> dict:
+    def search_catalog(self, worker: str, query: str, limit: int = 12) -> dict:
         query = " ".join(str(query).split())[:120]
         if not query:
             return {"error": "empty_query"}
-        limit = max(1, min(int(limit or 6), 8))
+        limit = max(1, min(int(limit or 12), 16))
         key = (getattr(self.provider, "name", "catalog"), query.lower(), limit)
         cached = _cache_get(key)
         try:

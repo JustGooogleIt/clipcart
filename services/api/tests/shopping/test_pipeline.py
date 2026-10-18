@@ -97,4 +97,4 @@ def test_off_color_listing_is_not_recommended_as_similar():
     out, events, _ = run(cat, Preferences(max_item_price_minor=12000))
     titles = [L.title for L in out.listings]
     assert "Black Nylon Bomber Jacket" in titles and "Green Varsity Bomber Jacket" not in titles
-    assert any("weaker match" in s for _, s in events)
+    assert any("mismatch" in s for _, s in events)

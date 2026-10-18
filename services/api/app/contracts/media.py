@@ -15,7 +15,7 @@ from pydantic import Field, field_validator
 
 from .base import Record as _Record
 
-Category = Literal["jacket", "top", "bag", "other"]
+Category = Literal["jacket", "top", "pants", "bag", "other"]
 GroupingBasis = Literal["single", "within_shot", "user_confirmed"]
 SourceType = Literal["upload_image", "upload_video", "youtube_download"]
 MediaKind = Literal["image", "video"]

@@ -7,7 +7,8 @@ from app.contracts import Preferences, SearchBudget, SizePref
 from app.shopping.budget import BudgetExceeded, BudgetLedger
 from app.shopping.canonical import safe_url, to_evidence, to_listing
 from app.shopping.refine import apply_patch, parse_refinement
-from app.shopping.rules import GarmentProfile, check_constraints, identity_tier, price_phrase, section_for
+from app.shopping.rules import GarmentProfile, check_constraints, identity_tier, price_phrase, relevance, section_for
+from app.shopping.workers import rule_queries
 
 from .fakes import FakeCatalog, item
 
@@ -92,6 +93,57 @@ def test_visual_resemblance_never_verified():
     assert identity_tier(L, GarmentProfile(category="jacket", colors=["black"]))[0] == "similar"
     assert identity_tier(L, GarmentProfile(category="jacket", visible_text=["ACME"]))[0] == "likely"
     assert identity_tier(L, GarmentProfile(category="jacket", visible_text=["ac12345"]))[0] == "verified"
+
+
+def test_rule_queries_prefer_denim_over_bare_blue_jacket():
+    prof = GarmentProfile(
+        category="jacket",
+        colors=["blue"],
+        cut=["trucker", "button front"],
+        details=["denim weave", "chest pockets", "metal rivets", "faded wash"],
+        description="blue denim trucker jacket",
+    )
+    qs = rule_queries("exact", prof, prefs())
+    joined = " | ".join(qs)
+    assert qs[0] in {"denim trucker jacket", "jean jacket", "denim trucker"}, qs
+    assert any("denim" in q and "trucker" in q for q in qs), qs
+    assert any("jean" in q for q in qs), qs  # SoleScout synonym
+    assert not any(q.strip() == "blue jacket" for q in qs), qs
+    assert "denim" in joined
+
+
+def test_relevance_ranks_denim_above_random_blue_jacket():
+    from app.shopping.rules import fabric_match
+
+    prof = GarmentProfile(
+        category="jacket",
+        colors=["blue"],
+        cut=["trucker"],
+        details=["denim"],
+        description="denim trucker",
+    )
+    denim = detail_listing(slug="d", title="Blue Denim Trucker Jacket")
+    jean = detail_listing(slug="j", title="Vintage Blue Jean Jacket")
+    track = detail_listing(slug="t", title="Blue Track Jacket")
+    leather = detail_listing(slug="l", title="Blue Leather Biker Jacket")
+    assert fabric_match(denim, prof) and fabric_match(jean, prof)
+    assert not fabric_match(track, prof)
+    assert relevance(denim, prof, prefs()) > relevance(track, prof, prefs())
+    assert relevance(jean, prof, prefs()) > relevance(track, prof, prefs())
+    assert relevance(denim, prof, prefs()) > relevance(leather, prof, prefs())
+
+
+def test_descriptors_pull_from_all_attribute_fields():
+    prof = GarmentProfile(
+        category="jacket",
+        colors=["indigo", "blue"],
+        pattern=["faded"],
+        cut=["trucker", "oversized"],
+        details=["denim weave", "chest pockets", "copper rivets"],
+    )
+    d = prof.descriptors()
+    assert "denim" in d and "trucker" in d and "blue" in d
+    assert any(x in d for x in ("faded", "oversized", "pockets", "rivets", "indigo"))
 
 
 def test_refinement_preserves_unspecified_fields():

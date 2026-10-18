@@ -22,11 +22,14 @@ from .rules import (
     TIER_ORDER,
     GarmentProfile,
     check_constraints,
+    clear_mismatch,
     explanation,
+    fabric_match,
     identity_tier,
     money_str,
     price_phrase,
     relevance,
+    required_fabrics,
     section_for,
     title_matches_category,
 )
@@ -35,7 +38,6 @@ from .workers import GrokWorker, RuleWorker
 
 MAX_PRIMARY = 3
 MAX_NEEDS_CHECKING = 3
-MIN_SIMILAR_RELEVANCE = 0.1
 
 
 @dataclass
@@ -154,10 +156,26 @@ def run_search(
         emit("verifying_listings", f"Set aside {len(off_cat)} result{'s' if len(off_cat) != 1 else ''} that are not a {profile.category}",
              worker="verifier")
 
+    # When fabric is known and SoleScout returned fabric matches, drop lookalikes
+    # in the wrong material (e.g. blue track jackets for a denim trucker).
+    if required_fabrics(profile):
+        with_fabric = [c for c in cands if fabric_match(c.listing, profile)]
+        if with_fabric:
+            skipped = len(cands) - len(with_fabric)
+            cands = with_fabric
+            if skipped:
+                emit(
+                    "verifying_listings",
+                    f"Kept {len(with_fabric)} {required_fabrics(profile)[0]} match{'es' if len(with_fabric) != 1 else ''}; "
+                    f"set aside {skipped} without that fabric",
+                    worker="verifier",
+                )
+
     def pre_score(c: Candidate) -> tuple:
         tier, _ = identity_tier(c.listing, profile)
         return (
             TIER_ORDER[tier],
+            0 if fabric_match(c.listing, profile) else 1,
             0 if c.submitted_by else 1,
             -relevance(c.listing, profile, prefs),
             0 if "exact" in c.found_by else 1,
@@ -203,8 +221,8 @@ def run_search(
             if tier in ("verified", "likely") and violated == ["budget"] and original_over_budget is None:
                 original_over_budget = (c, checks, tier, reason)
             continue
-        if tier == "similar" and relevance(L, profile, prefs) < MIN_SIMILAR_RELEVANCE:
-            weak += 1  # e.g. a different color than the garment; not a useful "similar option"
+        if tier == "similar" and clear_mismatch(L, profile, prefs):
+            weak += 1  # wrong named color or conflicting fabric — not a useful option
             continue
         scored.append((sec, c, checks, tier, reason))
 
@@ -214,6 +232,7 @@ def run_search(
         price = c.listing.price.amount_minor if c.listing.price else 10**12
         return (
             TIER_ORDER[tier],
+            0 if fabric_match(c.listing, profile) else 1,
             -relevance(c.listing, profile, prefs),
             0 if c.listing.availability == "in_stock" else 1,
             0 if size_ok else 1,
@@ -279,12 +298,17 @@ def run_search(
         emit("ranking", f"Excluded {n} result{'s' if n != 1 else ''} {label}", worker="verifier")
 
     if weak:
-        emit("ranking", f"Set aside {weak} weaker match{'es' if weak != 1 else ''} (different color or few shared details)",
+        emit("ranking", f"Set aside {weak} clear mismatch{'es' if weak != 1 else ''} (wrong color or conflicting fabric)",
              worker="verifier")
     n_p, n_n = len(primary), len(needs)
     if n_p == 0 and n_n == 0:
         out.status = "partial" if tools.errors else "no_match"
-        out.summary = "No listings met your constraints" + (f" ({sum(exclusions.values())} excluded)" if exclusions else "")
+        if exclusions:
+            out.summary = f"No listings met your constraints ({sum(exclusions.values())} excluded)"
+        elif weak:
+            out.summary = f"Catalog returned options, but all conflicted with the garment look ({weak} mismatched)"
+        else:
+            out.summary = "No listings found for this garment"
     else:
         out.status = "partial" if tools.errors else "completed"
         bits = []

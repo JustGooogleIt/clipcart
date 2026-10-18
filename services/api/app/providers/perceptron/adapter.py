@@ -11,7 +11,9 @@ Policy:
   and counted, never clamped into a plausible-looking crop.
 * Optional attribute calls on the largest crops, capped by
   ``max_attribute_calls``. Only visible attributes are kept: brand,
-  material, size and identity fields are never requested or stored.
+  fiber composition, size and identity fields are never requested or
+  stored. Fabric *appearance* words (denim weave, leather sheen) may
+  appear in details for shopping search.
 * Transient failures retry once with jitter if the deadline allows.
   Authentication failures stop the whole analysis and are not retried.
 * An empty detection list is a valid ``ok`` result, distinct from failure.
@@ -50,12 +52,14 @@ PROVIDER = "perceptron"
 CATEGORY_PROMPTS: dict[str, str] = {
     "jacket": "jacket or coat",
     "top": "top or shirt or sweater",
+    "pants": "pants or jeans or trousers",
     "bag": "bag or handbag or backpack",
 }
 
 _LABEL_KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
     ("jacket", ("jacket", "coat", "blazer", "parka", "windbreaker", "bomber", "puffer", "vest", "gilet")),
     ("bag", ("bag", "handbag", "backpack", "purse", "tote", "clutch", "satchel", "crossbody")),
+    ("pants", ("pants", "jeans", "trousers", "chinos", "shorts", "leggings", "skirt")),
     (
         "top",
         ("top", "shirt", "t-shirt", "tee", "blouse", "sweater", "hoodie", "sweatshirt", "cardigan", "polo", "tank"),
@@ -221,7 +225,7 @@ class PerceptronPerceptionProvider:
         ctx = request_context
         cats = [c for c in categories if c in CATEGORY_PROMPTS or c == "other"]
         if not cats:
-            raise ValueError("at least one of jacket/top/bag must be requested")
+            raise ValueError("at least one of jacket/top/pants/bag must be requested")
         classes = [CATEGORY_PROMPTS[c] for c in cats if c in CATEGORY_PROMPTS]
         # Drop repeated frame IDs so a frame is never paid for twice.
         frames = list({f.asset_id: f for f in frame_refs}.values())[: self.max_frames]
@@ -384,7 +388,8 @@ class PerceptronPerceptionProvider:
                 )
                 continue
             assert isinstance(res, AttributeResponse)
-            attrs = {k: _clean_list(res.attributes.get(k), 6) for k in _ALLOWED_ATTRIBUTE_KEYS}
+            limits = {"color": 5, "pattern": 4, "cut": 6, "details": 10}
+            attrs = {k: _clean_list(res.attributes.get(k), limits.get(k, 6)) for k in _ALLOWED_ATTRIBUTE_KEYS}
             attrs = {k: v for k, v in attrs.items() if v}
             text = _clean_list(res.attributes.get("visible_text"), 6)
             updated[o.id] = o.model_copy(

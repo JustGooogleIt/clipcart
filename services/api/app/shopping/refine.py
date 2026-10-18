@@ -105,7 +105,7 @@ def parse_refinement(text: str, current: Preferences) -> Interpretation:
         changes.append("any condition")
 
     hint = None
-    if re.search(r"\b(different|another|other) (one|garment|item|jacket|top|bag)\b", t):
+    if re.search(r"\b(different|another|other) (one|garment|item|jacket|top|pants|bag)\b", t):
         hint = "Pick a different garment in the tray to change the selection."
     return Interpretation(patch=PreferencePatch(**upd), changes=changes, selection_hint=hint)
 

@@ -14,21 +14,30 @@ ATTRIBUTE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "color": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
-        "pattern": {"type": "array", "items": {"type": "string"}, "maxItems": 3},
-        "cut": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
-        "details": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
+        "color": {"type": "array", "items": {"type": "string"}, "maxItems": 5},
+        "pattern": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
+        "cut": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
+        "details": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
         "visible_text": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
     },
     "required": ["color", "pattern", "cut", "details", "visible_text"],
 }
 
 ATTRIBUTE_PROMPT = (
-    "Describe only what is directly visible on this {category}. Return JSON with: "
-    "color (main visible colors), pattern (e.g. solid, striped, plaid), cut (silhouette, length, "
-    "collar, closure), details (pockets, hardware, trims, logos as seen), visible_text (exact text or "
-    "logo lettering you can read, else empty). Do not guess brand, material or fabric composition, "
-    "size, price or the wearer's identity. Use empty arrays when unsure."
+    "Describe only what is directly visible on this {category}. Be specific and thorough — "
+    "shopping search needs many visual descriptors. Return JSON with: "
+    "color (main hue names like blue, black, olive, indigo, off-white — not fabric names), "
+    "pattern (solid, striped, plaid, check, floral, graphic, color-block, distressed, faded, "
+    "washed, etc.), "
+    "cut (garment type and silhouette as seen: trucker, bomber, biker, oversized, slim, "
+    "cropped, boxy, longline; plus collar, lapel, hood, closure type like button/zip/snap), "
+    "details (every distinctive visible cue: fabric appearance such as denim weave, leather "
+    "sheen, knit, fleece, corduroy, quilted, nylon sheen; wash/finish; pocket style; "
+    "hardware color; stitching; rivets; patches; embroidery; logos as shapes; distressing; "
+    "cuffs; hem; lining peek; graphic motifs), "
+    "visible_text (exact readable lettering only, else empty). "
+    "Prefer short concrete phrases (2-4 words each). Do not guess fiber %, brand identity, "
+    "size, price or the wearer's identity. Use empty arrays only when truly unsure."
 )
 
 

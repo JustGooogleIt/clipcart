@@ -158,7 +158,7 @@ export interface GarmentObservation {
    * @maxItems 4
    */
   box01: [unknown, unknown, unknown, unknown];
-  category: "jacket" | "top" | "bag" | "other";
+  category: "jacket" | "top" | "pants" | "bag" | "other";
   cropAssetId: string;
   editedByUser: boolean;
   frameAssetId: string;
@@ -275,7 +275,7 @@ export interface MediaAsset {
   ownerId: string;
   rotationDegrees?: number;
   sha256: string;
-  sourceType: "upload_image" | "upload_video";
+  sourceType: "upload_image" | "upload_video" | "youtube_download";
   storageKey: string;
   width: number;
 }

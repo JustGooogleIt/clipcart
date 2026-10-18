@@ -12,7 +12,7 @@ from app.sessions.service import new_id, now
 from app.state import AppState
 
 log = logging.getLogger("clipcart.analysis")
-CATEGORIES = ["jacket", "top", "bag"]
+CATEGORIES = ["jacket", "top", "pants", "bag"]
 
 
 def create_analysis(state: AppState, session_id: str, owner_id: str, media_id: str) -> AnalysisJob:
@@ -48,7 +48,11 @@ def run_analysis(state: AppState, job_id: str) -> None:
     n_frames = state.settings.perception_max_frames if (provider is not None and mode != "fixture") else 12
     try:
         media = state.media.get_media(media_id, owner)
-        if media.source_type == "youtube_download":
+        # Short clips (fit-checks / YouTube) use ranked local scan; long uploads stay even-spaced.
+        use_ranked = media.source_type == "youtube_download" or (
+            media.kind == "video" and (media.duration_ms or 0) <= 90_000
+        )
+        if use_ranked:
             frames = state.media.extract_ranked_frames(media_id, owner, max_frames=n_frames)
         else:
             frames = state.media.extract_frames(media_id, owner, max_frames=n_frames)
@@ -107,7 +111,7 @@ def run_analysis(state: AppState, job_id: str) -> None:
         codes = sorted({i.code for i in result.issues})
         msg = f"Garment detection failed ({', '.join(codes)}). Draw a box around the garment instead."
     elif not garments:
-        msg = "No jackets, tops or bags were detected. Draw a box around the garment if one is visible."
+        msg = "No jackets, tops, pants or bags were detected. Draw a box around the garment if one is visible."
     detection_mode = "fixture" if result.mode == "fixture" else state.status["perceptron"].mode
     _finish(
         state,

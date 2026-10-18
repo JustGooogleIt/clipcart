@@ -39,6 +39,15 @@ export default function ModeChips({ health }: { health: Health | null }) {
         }
       />
       <Chip name="Storage" mode={db === "local_memory" ? "rule" : "live"} note={db === "local_memory" ? "Local dev store (not Atlas)" : db === "atlas" ? "MongoDB Atlas" : "MongoDB"} />
+      <Chip
+        name="YouTube URL"
+        mode={health.features.youtubeDownload ? "live" : "unavailable"}
+        note={
+          health.features.youtubeDownload
+            ? `On · ${health.youtube?.allowedVideoCount ?? 0} permitted clips`
+            : "Off · upload clips instead"
+        }
+      />
       <a className="chip chip-link" href="#/diagnostics">
         Diagnostics
       </a>

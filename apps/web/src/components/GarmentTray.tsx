@@ -54,6 +54,7 @@ export default function GarmentTray({
                   <select value={g.category} onChange={(e) => onRelabel(g.id, e.target.value)} disabled={busy}>
                     <option value="jacket">Jacket</option>
                     <option value="top">Top</option>
+                    <option value="pants">Pants</option>
                     <option value="bag">Bag</option>
                   </select>
                 </label>

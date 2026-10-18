@@ -1,7 +1,8 @@
 """Temporary YouTube download cache (yt-dlp). Bounded duration/height/TTL.
 
-Ported from experiments/youtube-capture for the product ingest path.
-Cache lives under the media store root; never commit bytes.
+Product path: permitted video IDs only (enforced in the route). Cache lives under
+the media store root; never commit bytes. No browser cookie harvesting — blocked
+videos fail with an honest upload-fallback message.
 """
 
 from __future__ import annotations
@@ -22,6 +23,18 @@ TTL_S = int(os.getenv("YOUTUBE_CACHE_TTL_S", "3600"))
 DOWNLOAD_TIMEOUT_S = int(os.getenv("YOUTUBE_CACHE_DOWNLOAD_TIMEOUT_S", "180"))
 
 _VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,20}$")
+
+_BLOCKED_HINTS = (
+    "not a bot",
+    "sign in",
+    "page needs to be reloaded",
+    "confirm you're not a bot",
+    "http error 403",
+    "http error 429",
+    "private video",
+    "members-only",
+    "age-restricted",
+)
 
 
 class YoutubeCacheError(Exception):
@@ -53,6 +66,13 @@ def parse_video_id(raw: str) -> str:
     host = (u.hostname or "").lower()
     if host not in {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.youtu.be"}:
         raise YoutubeCacheError("invalid_url", "only youtube.com / youtu.be URLs are allowed")
+    # Reject credentialed / weird ports early (malformed ports raise ValueError).
+    try:
+        if u.username or u.password or (u.port not in (None, 80, 443)):
+            raise YoutubeCacheError("invalid_url", "paste the plain YouTube link")
+    except ValueError as exc:
+        raise YoutubeCacheError("invalid_url", "could not parse URL") from exc
+
     vid: str | None = None
     if "youtu.be" in host:
         vid = u.path.strip("/").split("/")[0] or None
@@ -136,24 +156,26 @@ def get_cached(cache_dir: Path, video_id: str) -> CachedVideo | None:
     )
 
 
-def _yt_dlp_cmd(
-    youtube_url: str,
-    out_tmpl: str,
-    *,
-    cookies_from_browser: str | None,
-    player_client: str | None,
-) -> list[str]:
+def _yt_dlp_cmd(youtube_url: str, out_tmpl: str) -> list[str]:
+    """Single yt-dlp invocation: ignore user config, no cookie jars.
+
+    Uses the Android player client (fixed) so public Shorts usually succeed without
+    harvesting browser sessions. Env cookie / client overrides are intentionally ignored.
+    """
     fmt = (
         f"bv*[height<={MAX_HEIGHT}][ext=mp4]+ba[ext=m4a]/"
         f"b[height<={MAX_HEIGHT}][ext=mp4]/"
         f"b[height<={MAX_HEIGHT}]/best"
     )
-    cmd = [
+    return [
         sys.executable,
         "-m",
         "yt_dlp",
         "--no-playlist",
         "--no-warnings",
+        "--ignore-config",
+        "--extractor-args",
+        "youtube:player_client=android",
         "-f",
         fmt,
         "--merge-output-format",
@@ -165,35 +187,17 @@ def _yt_dlp_cmd(
         out_tmpl,
         "--print",
         "after_move:%(title)s\t%(duration)s",
+        youtube_url,
     ]
-    if player_client:
-        cmd.extend(["--extractor-args", f"youtube:player_client={player_client}"])
-    if cookies_from_browser:
-        cmd.extend(["--cookies-from-browser", cookies_from_browser])
-    cookies_file = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
-    if cookies_file:
-        cmd.extend(["--cookies", cookies_file])
-    cmd.append(youtube_url)
-    return cmd
 
 
-def _is_retryable_yt_err(err: str) -> bool:
+def _is_blocked(err: str) -> bool:
     low = err.lower()
-    needles = (
-        "not a bot",
-        "sign in",
-        "page needs to be reloaded",
-        "confirm you're not a bot",
-        "http error 403",
-        "http error 429",
-        "unable to extract",
-        "requested format is not available",
-    )
-    return any(n in low for n in needles)
+    return any(n in low for n in _BLOCKED_HINTS)
 
 
 def download_youtube(cache_dir: Path, youtube_url: str) -> CachedVideo:
-    """Download (or reuse cache) a short bounded clip for analysis ingest."""
+    """Download (or reuse cache) a short bounded clip. One attempt."""
     cache_dir.mkdir(parents=True, exist_ok=True)
     video_id = parse_video_id(youtube_url)
     hit = get_cached(cache_dir, video_id)
@@ -202,67 +206,25 @@ def download_youtube(cache_dir: Path, youtube_url: str) -> CachedVideo:
 
     purge_expired(cache_dir)
     out_tmpl = str(cache_dir / f"{video_id}.%(ext)s")
+    cmd = _yt_dlp_cmd(youtube_url, out_tmpl)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=DOWNLOAD_TIMEOUT_S, check=False)
+    except FileNotFoundError as exc:
+        raise YoutubeCacheError("yt_dlp_missing", "yt-dlp is not installed in the API environment") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise YoutubeCacheError("timeout", f"download exceeded {DOWNLOAD_TIMEOUT_S}s") from exc
 
-    preferred_cookies = os.getenv("YOUTUBE_COOKIES_FROM_BROWSER", "").strip() or None
-    preferred_client = os.getenv("YOUTUBE_PLAYER_CLIENT", "").strip() or "android"
-    attempts: list[tuple[str | None, str | None]] = []
-    attempts.append((preferred_client, preferred_cookies))
-    for client in ("android", "ios", "tv"):
-        attempts.append((client, None))
-    if preferred_cookies:
-        attempts.append(("web", preferred_cookies))
-        attempts.append((None, preferred_cookies))
-    attempts.append((None, None))
-    for browser in ("chrome", "chromium", "brave", "edge", "safari"):
-        if browser != preferred_cookies:
-            attempts.append(("web", browser))
-
-    seen: set[tuple[str | None, str | None]] = set()
-    unique_attempts: list[tuple[str | None, str | None]] = []
-    for a in attempts:
-        if a in seen:
-            continue
-        seen.add(a)
-        unique_attempts.append(a)
-
-    last_err = "yt-dlp failed"
-    proc = None
-    for player_client, cookies_browser in unique_attempts:
-        cmd = _yt_dlp_cmd(
-            youtube_url,
-            out_tmpl,
-            cookies_from_browser=cookies_browser,
-            player_client=player_client,
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "yt-dlp failed")[-400:]
+        if _is_blocked(err):
+            raise YoutubeCacheError(
+                "youtube_blocked",
+                "YouTube didn't allow this download. Upload the clip from your device instead.",
+            )
+        raise YoutubeCacheError(
+            "download_failed",
+            "The YouTube download failed. Upload the clip from your device instead.",
         )
-        try:
-            proc = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=DOWNLOAD_TIMEOUT_S,
-                check=False,
-            )
-        except FileNotFoundError as exc:
-            raise YoutubeCacheError("yt_dlp_missing", "yt-dlp is not installed in the API environment") from exc
-        except subprocess.TimeoutExpired as exc:
-            raise YoutubeCacheError("timeout", f"download exceeded {DOWNLOAD_TIMEOUT_S}s") from exc
-
-        if proc.returncode == 0:
-            break
-        last_err = (proc.stderr or proc.stdout or "yt-dlp failed")[-800:]
-        if not _is_retryable_yt_err(last_err):
-            break
-    else:
-        proc = None
-
-    if proc is None or proc.returncode != 0:
-        hint = ""
-        if _is_retryable_yt_err(last_err):
-            hint = (
-                " YouTube blocked or rate-limited the download. Retry, or set "
-                "YOUTUBE_COOKIES_FROM_BROWSER / YOUTUBE_COOKIES_FILE, or YOUTUBE_PLAYER_CLIENT=android."
-            )
-        raise YoutubeCacheError("download_failed", last_err + hint)
 
     media = _find_media(cache_dir, video_id)
     if media is None:
