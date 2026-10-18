@@ -96,6 +96,18 @@ class YoutubeAnalyzeIn(In):
 
 
 # ------------------------------------------------------------------ system
+def _style_model_info(s) -> dict:
+    """Never claims local processing for a hosted model."""
+    if not s.feature_style_memory:
+        return {"provider": None, "model": s.style_model, "hosting": None, "label": None}
+    if s.style_model_provider == "openai_compatible":
+        return {"provider": "openai_compatible", "model": s.style_remote_model, "hosting": "remote",
+                "label": s.style_remote_label}
+    if s.style_model_provider == "ollama":
+        return {"provider": "ollama", "model": s.style_model, "hosting": "local", "label": f"{s.style_model} via local Ollama"}
+    return {"provider": "none", "model": None, "hosting": None, "label": "Rule-based parser only"}
+
+
 @router.get("/api/health")
 def health(request: Request) -> dict:
     st = state_of(request)
@@ -110,8 +122,7 @@ def health(request: Request) -> dict:
                            "setting": s.perception_provider},
             "grok": {**st.status["grok"].snapshot(), "model": s.xai_model},
             "catalog": {**st.status["catalog"].snapshot(), "provider": s.catalog_provider, "error": st.catalog_error},
-            "styleModel": {**st.status["style_model"].snapshot(), "model": s.style_model,
-                           "provider": s.style_model_provider if s.feature_style_memory else None},
+            "styleModel": {**st.status["style_model"].snapshot(), **_style_model_info(s)},
         },
         "features": {
             "photon": s.feature_photon,

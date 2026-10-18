@@ -36,11 +36,23 @@ class AppState:
     def style_model(self):
         """Ollama-backed Gemma client, or None when style memory or the model provider is off."""
         s = self.settings
-        if not (s.feature_style_memory and s.style_model_provider == "ollama"):
+        if not s.feature_style_memory:
             return None
-        from app.style.model import OllamaStyleModel
+        if s.style_model_provider == "openai_compatible":
+            if not (s.style_remote_base_url and s.style_remote_api_key and s.style_remote_model):
+                return None
+            from app.style.model import OpenAICompatibleStyleModel
 
-        return OllamaStyleModel(base_url=s.ollama_base_url, model=s.style_model, timeout_s=s.style_model_timeout_s)
+            return OpenAICompatibleStyleModel(
+                base_url=s.style_remote_base_url, api_key=s.style_remote_api_key, model=s.style_remote_model,
+                label=s.style_remote_label, timeout_s=max(s.style_model_timeout_s, 20.0),
+                json_mode=s.style_remote_json_mode, max_tokens=s.style_remote_max_tokens,
+            )
+        if s.style_model_provider == "ollama":
+            from app.style.model import OllamaStyleModel
+
+            return OllamaStyleModel(base_url=s.ollama_base_url, model=s.style_model, timeout_s=s.style_model_timeout_s)
+        return None
 
     def perception_provider(self):
         """Return (provider | None, detection_mode)."""
@@ -87,7 +99,10 @@ def build_state(settings: Settings) -> AppState:
     status = {
         "perceptron": ProviderStatus("perceptron", settings.perception_provider == "perceptron" and settings.perceptron_key_present),
         "grok": ProviderStatus("grok", settings.xai_key_present),
-        "style_model": ProviderStatus("style_model", settings.feature_style_memory and settings.style_model_provider == "ollama"),
+        "style_model": ProviderStatus("style_model", settings.feature_style_memory and (
+            settings.style_model_provider == "ollama"
+            or (settings.style_model_provider == "openai_compatible" and bool(settings.style_remote_base_url
+                and settings.style_remote_api_key and settings.style_remote_model)))),
         "catalog": ProviderStatus(
             settings.catalog_provider,
             catalog is not None,

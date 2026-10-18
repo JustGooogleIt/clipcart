@@ -75,9 +75,12 @@ class ProposalResult:
 
 
 class OllamaStyleModel:
+    hosting = "local"
+
     def __init__(self, *, base_url: str, model: str, timeout_s: float = 8.0, http: httpx.Client | None = None):
         self.base_url = base_url.rstrip("/")
         self.model = model
+        self.label = f"{model} via local Ollama"
         self.timeout_s = timeout_s
         self.http = http
 
@@ -116,6 +119,82 @@ class OllamaStyleModel:
             return json.loads(content), timings
         except (TypeError, json.JSONDecodeError):
             return content, timings  # caller validates and treats as malformed
+
+
+def _extract_json(content: Any) -> Any:
+    """Parse a JSON object from model text: plain JSON, fenced JSON, or the first {...} block."""
+    if not isinstance(content, str):
+        return content
+    t = content.strip()
+    if t.startswith("```"):
+        t = t.strip("`")
+        t = t[t.find("\n") + 1:] if "\n" in t else t
+    try:
+        return json.loads(t)
+    except json.JSONDecodeError:
+        a, b = t.find("{"), t.rfind("}")
+        if a != -1 and b > a:
+            try:
+                return json.loads(t[a:b + 1])
+            except json.JSONDecodeError:
+                pass
+    return content  # caller treats non-dict as malformed
+
+
+class OpenAICompatibleStyleModel:
+    """Hosted model behind an OpenAI-compatible /chat/completions API (e.g. vLLM on a Lambda GPU).
+
+    Not local: shopper text is sent to the configured endpoint. ``json_mode`` is
+    "prompt" (ask for JSON and extract it) or "schema" (``response_format``
+    json_schema, for servers whose guided decoding is known to work).
+    """
+
+    hosting = "remote"
+
+    def __init__(self, *, base_url: str, api_key: str, model: str, label: str, timeout_s: float = 20.0,
+                 json_mode: str = "prompt", max_tokens: int = 300, http: httpx.Client | None = None):
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.model = model
+        self.label = label
+        self.timeout_s = timeout_s
+        self.json_mode = json_mode
+        self.max_tokens = max_tokens
+        self.http = http
+
+    def chat_json(self, system: str, user: str, schema: dict, *, max_tokens: int = 300) -> tuple[Any, dict]:
+        body: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system + "\nRespond with only one JSON object matching this schema: "
+                 + json.dumps(schema)},
+                {"role": "user", "content": user},
+            ],
+            "temperature": 0,
+            "max_tokens": min(max_tokens, self.max_tokens),
+        }
+        if self.json_mode == "schema":
+            body["response_format"] = {"type": "json_schema", "json_schema": {"name": "clipcart_style", "schema": schema}}
+        t0 = time.monotonic()
+        try:
+            c = self.http or httpx
+            r = c.post(f"{self.base_url}/chat/completions", json=body,
+                       headers={"Authorization": f"Bearer {self.api_key}"},
+                       timeout=httpx.Timeout(self.timeout_s, connect=3.0))
+        except httpx.HTTPError as exc:
+            raise ModelUnavailable(f"hosted model unreachable: {type(exc).__name__}") from exc
+        if r.status_code != 200:
+            raise ModelUnavailable(f"hosted model HTTP {r.status_code}")
+        try:
+            data = r.json()
+            content = data["choices"][0]["message"]["content"]
+            finish = data["choices"][0].get("finish_reason")
+        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            raise ModelUnavailable("hosted model returned an unexpected body") from exc
+        usage = data.get("usage") or {}
+        timings = {"wallMs": int((time.monotonic() - t0) * 1000), "finishReason": finish,
+                   "promptTokens": usage.get("prompt_tokens"), "completionTokens": usage.get("completion_tokens")}
+        return _extract_json(content), timings
 
 
 def validate_proposals(raw: Any, text: str) -> tuple[list[StyleProposal], int]:

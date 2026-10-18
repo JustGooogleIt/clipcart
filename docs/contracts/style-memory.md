@@ -11,8 +11,8 @@ Style memory is **owner-scoped**, keyed to the browser owner cookie like session
 | Events, memories, correction, removal, profile, owner isolation | **Ready** behind the flag; covered by tests | No |
 | Deterministic inference from saved, rejected and purchased items | **Ready** | No |
 | Search personalization (hide rejected items, soft reorder, reasons) | **Ready** | No |
-| `POST /api/style/notes` proposals | **Ready with the rule-based parser** (precision 1.00, recall 0.86 on the labelled set) | Optional. Gemma adds brands and phrasing variety. |
-| Model-written explanation sentences | Off by default; templates are used | Yes, and **not available**: no local Gemma runtime |
+| `POST /api/style/notes` proposals | **Ready with the rule-based parser** (precision 0.94, recall 0.68 on the 18 labelled statements) | Optional. Hosted Gemma 12B was measured at precision 0.76, recall 0.73 (see below). |
+| Model-written explanation sentences | Off by default; templates are used | Yes. Not run against hosted Gemma in this PR. |
 
 The UI can ship everything above without Gemma. `styleModel.mode` tells it whether model proposals are in use.
 
@@ -78,7 +78,7 @@ The `profile` object is validated against `StyleProfileView` before it's returne
     "rejectedOfferCount": 3,
     "updatedAt": "2026-10-18T…Z"
   },
-  "styleModel": { "mode": "unavailable", "model": "gemma4:e4b" }
+  "styleModel": { "mode": "unavailable", "provider": null, "model": "gemma4:e4b", "hosting": null, "label": null }
 }
 ```
 
@@ -145,32 +145,42 @@ Proposes memory updates from text and **saves nothing**.
 ```json
 {
   "mode": "model",
-  "model": "gemma4:e4b",
+  "model": "gaunernst/gemma-3-12b-it-int4-awq",
+  "hosting": "remote",
+  "provider": "Gemma hosted on Lambda (not local)",
   "proposals": [
     { "kind": "size", "value": { "raw": "M", "system": "alpha" }, "action": "set", "quote": "I'm a medium" },
     { "kind": "color_avoid", "value": "orange", "action": "add", "quote": "I hate orange" },
     { "kind": "material_avoid", "value": "leather", "action": "add", "quote": "I never wear leather" }
   ],
-  "rejectedProposals": 0
+  "rejectedProposals": 0,
+  "note": null,
+  "usage": { "wallMs": 2176, "promptTokens": 357, "completionTokens": 95 }
 }
 ```
 
-`mode` is `model` (Gemma output validated in code) or `rule_based` (model unavailable or invalid). Every proposal's `quote` is checked as an exact substring of the input text. To save proposals, the UI posts each accepted one to `POST /api/style/memories` with `source: "style_note"`.
+`mode` is `model` (Gemma output validated in code) or `rule_based` (model unavailable or invalid). `hosting` is `local` (Ollama), `remote` (hosted endpoint) or `null` when the rule parser answered; the UI must not call a `remote` model "on-device" or "local". `provider` is a display label. `usage` is present only for model answers, and token counts only when the server reports them. Every proposal's `quote` is checked as an exact substring of the input text. To save proposals, the UI posts each accepted one to `POST /api/style/memories` with `source: "style_note"`.
 
 ## Health
 
-`GET /api/health` adds `features.styleMemory` and `providers.styleModel: {mode, configured, calls, failures, lastError, model, provider}`.
+`GET /api/health` adds `features.styleMemory` and `providers.styleModel: {mode, configured, calls, failures, lastError, model, provider, hosting, label}`. `provider` is `ollama`, `openai_compatible`, `none` or `null` (feature off). `hosting` is `local` or `remote`. `mode` turns `live` only after a real call succeeds.
 
 ## Configuration
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `FEATURE_STYLE_MEMORY` | `false` | Turns on every route and personalization |
-| `STYLE_MODEL_PROVIDER` | `ollama` | Set `none` to always use the rule-based parser |
+| `STYLE_MODEL_PROVIDER` | `ollama` | `ollama` (local), `openai_compatible` (hosted, e.g. vLLM), or `none` for the rule-based parser only |
 | `STYLE_MODEL` | `gemma4:e4b` | Ollama tag. Use `gemma4:e2b` if E4B is too slow (see the benchmark below) |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama |
 | `STYLE_MODEL_TIMEOUT_S` | `8` | Per-call read timeout. Connect timeout is 1.5 s. |
 | `STYLE_MODEL_EXPLANATIONS` | `false` | Model-written personalization sentences. Off by default to keep search fast. |
+| `STYLE_REMOTE_BASE_URL` | unset | OpenAI-compatible base URL ending in `/v1`. Hosted provider only. |
+| `STYLE_REMOTE_API_KEY` | unset | Bearer key for that endpoint. Process environment or untracked `.env` only. Without it the provider is `unavailable`. |
+| `STYLE_REMOTE_MODEL` | unset | Served model id, e.g. `gaunernst/gemma-3-12b-it-int4-awq` |
+| `STYLE_REMOTE_LABEL` | `Gemma hosted on Lambda (not local)` | Display label in health and note responses |
+| `STYLE_REMOTE_JSON_MODE` | `prompt` | `prompt` asks for JSON and extracts it; `schema` sends `response_format` json_schema, for servers whose guided decoding works |
+| `STYLE_REMOTE_MAX_TOKENS` | `300` | Output cap per call. The hosted read timeout is at least 20 s. |
 
 When Ollama is down, `/api/style/notes` falls back to the rule-based parser. Measured with nothing listening on the port, that took 11 ms median and 45 ms max. Every other route never calls the model.
 
@@ -184,13 +194,21 @@ When Ollama is down, `/api/style/notes` falls back to the rule-based parser. Mea
 
 ## Model status (2026-10-18)
 
-Ollama is **not installed** on the development machine, so `gemma4:e4b` and `e2b` have not been run or benchmarked. Run `scripts/experiments/style_model_bench.py --models gemma4:e4b gemma4:e2b` once they're pulled. It never pulls models itself.
+Ollama is **not installed** on the development machine, so `gemma4:e4b` and `e2b` have not been run locally. Run `scripts/experiments/style_model_bench.py --models gemma4:e4b gemma4:e2b` once they're pulled. It never pulls models itself.
 
-Baseline for the rule-based fallback on the 10 labelled statements in that script:
+Hosted Gemma 3 12B (AWQ int4 on a Lambda A10, vLLM 0.9.2) was measured on 18 labelled statements. Labels are (kind, value, action), written before any call, and the scores count only output that passed validation. Full setup, per-case output and reproduction commands are in `docs/experiments/hosted-gemma-a10/`.
 
-| Precision | Recall | False positives | Misses |
-| --- | --- | --- | --- |
-| 1.00 | 0.86 | 0 | 2 (brands, which are left to the model by design) |
+| | Rule parser | Hosted Gemma 12B int4 |
+| --- | --- | --- |
+| Precision | 0.94 | 0.76 |
+| Recall | 0.68 | 0.73 |
+| False positives / misses | 1 / 7 | 5 / 6 |
+| Malformed responses | n/a | 0 of 18 |
+| Proposals rejected by validation | n/a | 8 |
+| Median / p95 latency | under 1 ms | 1,017 / 3,910 ms |
+| Tokens (prompt / completion) | | 6,366 / 1,012 |
+
+The model's main error is reading an avoid ("I never wear leather") as a **remove** of that avoid, in 3 cases. Because notes only propose and the UI saves each accepted proposal explicitly, this cannot change memory on its own. The UI should still show `remove` proposals distinctly. Quote validation caught a prompt-echo answer (5 invented proposals) and an ambiguous size. Recommendation: keep the rule parser as the default; revisit hosted Gemma after rewording the action guidance in the prompt and re-running this benchmark.
 
 ## Shared types (codegen plan)
 
@@ -207,13 +225,10 @@ services/api/.venv/bin/python scripts/gen_contracts.py && (cd apps/web && npm ru
 
 ### Hosted Gemma on Lambda (2026-10-18)
 
-The owner authorized reusing the intentgraph Lambda vLLM endpoint for a bounded experiment, up to 20 inference calls. Result: **unavailable**.
+The intentgraph endpoint was unreachable, because its tunnel was down and its host key had changed, so it was not used. The owner then created a temporary Lambda A10 (24 GB) instance for this experiment, which the owner terminates after the run.
 
-| Check | Result |
-| --- | --- |
-| Configuration | All four intentgraph variables are set. The URL is `http://<loopback>:<port>/v1`, which is OpenAI-compatible by convention. Values were never printed or copied. |
-| `GET /v1/models` | Connection error |
-| TCP to the configured address | Refused twice, instantly |
-| Diagnosis | The URL points at a local SSH tunnel to the A100 instance (intentgraph README: "reached over an authenticated tunnel"). No tunnel is running, and no instance address is recorded locally. |
-
-As instructed, the instance was not started, resized or reconfigured, no tunnel was created, and intentgraph was not changed. **No inference calls were made (0 of 20)**, and no Lambda adapter was added, because the protocol and served model could not be confirmed live. If the tunnel is restored, the next step is an `openai_compatible` style-model provider using ClipCart-only variables (`STYLE_REMOTE_BASE_URL`, `STYLE_REMOTE_API_KEY`, `STYLE_REMOTE_MODEL`). It would be reported as "Gemma hosted on Lambda, not local" and marked `live` only after a real call succeeds.
+- **Served:** `gaunernst/gemma-3-12b-it-int4-awq` at revision `3b0c67b98eee8fb90633ef1bfbf3d39f43b9cf9d`. The server was vLLM 0.9.2 with Transformers pinned to 4.53.2, a 4,096-token context, one concurrent request, and an API key, bound to the instance's loopback and reached through a localhost SSH tunnel.
+- **GPU verified:** the vLLM process held 20.7 GB of A10 memory, the server log showed about 43 generated tokens per second, and it counted 18 successful completions for the 18 benchmark calls.
+- **Adapter:** `OpenAICompatibleStyleModel` in `app/style/model.py`, selected with `STYLE_MODEL_PROVIDER=openai_compatible`. Ollama and the rule-based fallback are unchanged, and every validation and purchase guard still applies to its output.
+- **Smoke test:** an isolated ClipCart on its own port used the in-memory database, no `.env`, and environment set only in the process. Health showed `unverified` with hosting `remote` before the call. `POST /api/style/notes` returned 3 grounded proposals in 2.2 s, saved nothing, and health then showed `live`.
+- **Call budget:** 19 of the 20 authorized calls were used, 18 for the benchmark and 1 for the smoke test.

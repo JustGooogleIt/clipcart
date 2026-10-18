@@ -43,7 +43,9 @@ def _flag(request: Request):
 
 
 def _model_info(st) -> dict:
-    return {"mode": st.status["style_model"].mode, "model": st.settings.style_model}
+    from .api import _style_model_info
+
+    return {"mode": st.status["style_model"].mode, **_style_model_info(st.settings)}
 
 
 @router.get("/api/style/profile")
@@ -124,5 +126,8 @@ def post_note(body: NoteIn, request: Request) -> dict:
     owner = current_owner(request)
     limiter.check(owner, "style_note", 30)
     res = propose(body.text, st.style_model(), st.status["style_model"])
-    return {"mode": res.mode, "model": res.model, "proposals": [p.wire() for p in res.proposals],
-            "rejectedProposals": res.rejected, "note": res.note}
+    info = _model_info(st)
+    return {"mode": res.mode, "model": res.model, "hosting": info["hosting"] if res.mode == "model" else None,
+            "provider": info["label"] if res.mode == "model" else "Rule-based parser",
+            "proposals": [p.wire() for p in res.proposals], "rejectedProposals": res.rejected, "note": res.note,
+            "usage": {k: v for k, v in res.timings.items() if k in ("promptTokens", "completionTokens", "wallMs")} or None}
