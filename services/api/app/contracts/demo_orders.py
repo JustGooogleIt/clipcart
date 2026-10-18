@@ -1,4 +1,4 @@
-"""Demo merchant checkout records (SRS §12 DemoMerchantOrder). Payment only; no minting."""
+"""Demo merchant checkout records (SRS §12 DemoMerchantOrder). Receipt minting is optional."""
 
 from __future__ import annotations
 
@@ -53,6 +53,7 @@ class DemoMerchantOrder(Record):
     payment_signature: str | None
     receipt_status: ReceiptStatus
     receipt_asset_id: str | None
+    receipt_mint_signature: str | None = None
     created_at: datetime
     updated_at: datetime
     merchant_label: str = Field(default="ClipCart demo merchant", max_length=120)
