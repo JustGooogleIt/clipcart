@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ago, mediaUrl, money } from "../api";
 import { useMemoryActions } from "../memory";
 import type { ResultItem } from "../types";
+import { SELLER_CLAIMS_TEXT, takeWarning } from "../warnings";
 
 // Only a verified listing is called a match. Everything else, including the ranker's "likely" tier, is a similar option.
 const TIER: Record<string, string> = { verified: "Verified match", likely: "Similar option", similar: "Similar option" };
@@ -9,9 +10,6 @@ const RULE: Record<string, string> = { budget: "Budget", size: "Size", color: "C
 const ruleName = (c: string) => RULE[c] ?? c.charAt(0).toUpperCase() + c.slice(1);
 const STATE_ICON: Record<string, string> = { satisfied: "✓", violated: "✕", unknown: "?" };
 const MODE: Record<string, string> = { live: "Live price", cached: "Cached price", fixture: "Fixture data", catalog: "Demo catalog" };
-
-// The server's warning when a listing's own text claims metal, stones or authenticity (docs/contracts/accessories.md).
-const isSellerClaim = (w: string) => /seller's description/i.test(w);
 
 export default function ResultCard({ item, cropId, accessory = false }: { item: ResultItem; cropId: string | null; accessory?: boolean }) {
   const [showEvidence, setShowEvidence] = useState(false);
@@ -36,7 +34,8 @@ export default function ResultCard({ item, cropId, accessory = false }: { item: 
   const hidden = mem.hiddenEventId(r.id, L.id);
   // Watches and jewelry are never matched from appearance: the server caps them at "similar".
   const tier = accessory && r.identityTier !== "verified" ? "Similar look" : (TIER[r.identityTier] ?? r.identityTier);
-  const claims = r.warnings.filter(isSellerClaim);
+  // Metal, stone or authenticity words in the listing are the seller's; shown on the card, not only under Evidence.
+  const claim = takeWarning(r.warnings, r.warningCodes, "seller_claims_unverified");
   if (hidden) {
     return (
       <article className={`card card-${r.section} card-hidden`} data-result={r.id}>
@@ -105,11 +104,7 @@ export default function ResultCard({ item, cropId, accessory = false }: { item: 
             {personalization.join(" · ")}
           </p>
         )}
-        {claims.map((w) => (
-          <p key={w} className="card-claim">
-            {w}
-          </p>
-        ))}
+        {claim.present && <p className="card-claim">{claim.text ?? SELLER_CLAIMS_TEXT}</p>}
         <p className="card-reason">{r.explanation}</p>
         <div className="card-actions">
           {first && <span className={`dest dest-${viaComparison ? "compare" : "retailer"}`}>{viaComparison ? "Price comparison page" : "Retailer product page"}</span>}
@@ -192,9 +187,9 @@ export default function ResultCard({ item, cropId, accessory = false }: { item: 
                 </li>
               ))}
             </ul>
-            {r.warnings.filter((w) => !isSellerClaim(w)).length > 0 && (
+            {claim.rest.length > 0 && (
               <ul className="warnings">
-                {r.warnings.filter((w) => !isSellerClaim(w)).map((w) => (
+                {claim.rest.map((w) => (
                   <li key={w}>{w}</li>
                 ))}
               </ul>

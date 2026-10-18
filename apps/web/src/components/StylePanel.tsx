@@ -2,14 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { ago, money } from "../api";
 import {
   MemoryError,
-  STYLE_VOCAB,
   memoryApi,
-  type Interpretations,
   noteReader,
   noteResultReader,
   type MemoryKind,
   type MemoryState,
   type StyleEvent,
+  type StyleInterpretations,
   type StyleMemory,
   type StyleModelInfo,
   type StyleNoteResult,
@@ -469,12 +468,9 @@ function StyleNote({ model, memories, onSaved }: { model: StyleModelInfo; memori
   );
 }
 
-const TONE_VOCAB = ["gold-tone", "silver-tone", "rose-gold-tone", "black", "two-tone"] as const;
-
 interface ChipGroup {
   like: "style_like" | "tone_like";
   avoid: "style_avoid" | "tone_avoid";
-  vocab: readonly string[];
   title: string;
   note: string;
   noun: string;
@@ -483,7 +479,6 @@ interface ChipGroup {
 const STYLE_GROUP: ChipGroup = {
   like: "style_like",
   avoid: "style_avoid",
-  vocab: STYLE_VOCAB,
   title: "Style",
   note: "Styles you like or avoid. They reorder results and never change your rules. Tap one to see why.",
   noun: "style",
@@ -492,7 +487,6 @@ const STYLE_GROUP: ChipGroup = {
 const TONE_GROUP: ChipGroup = {
   like: "tone_like",
   avoid: "tone_avoid",
-  vocab: TONE_VOCAB,
   title: "Tone for watches and jewelry",
   note: "How metal-look pieces should look. Used only for watch and jewelry searches; it never says what a piece is made of.",
   noun: "tone",
@@ -502,13 +496,16 @@ const TONE_GROUP: ChipGroup = {
 /** Likes and avoids as chips; each opens to its evidence, confidence and date, with switch and remove. */
 function PrefChips({
   group,
+  vocab,
   memories,
   interpretations,
   onChanged,
 }: {
   group: ChipGroup;
+  /** From GET /api/categories; empty when that call failed, which hides adding but keeps existing chips editable. */
+  vocab: readonly string[];
   memories: StyleMemory[];
-  interpretations: Interpretations | null;
+  interpretations: StyleInterpretations | null;
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState<string | null>(null);
@@ -595,30 +592,34 @@ function PrefChips({
           </div>
         </div>
       )}
-      <form
-        className="mem-edit style-add"
-        onSubmit={(e) => {
-          e.preventDefault();
-        }}
-      >
-        <label className="sr-only" htmlFor={`${group.noun}-add`}>
-          Add a {group.noun}
-        </label>
-        <select id={`${group.noun}-add`} value={add} onChange={(e) => setAdd(e.target.value)} disabled={busy}>
-          <option value="">Add a {group.noun}…</option>
-          {group.vocab.filter((v) => !taken.has(v)).map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <button type="button" className="btn btn-sm" disabled={!add || busy} onClick={() => run(async () => (await memoryApi.state(group.like, add), setAdd("")))}>
-          I like it
-        </button>
-        <button type="button" className="btn btn-quiet btn-sm" disabled={!add || busy} onClick={() => run(async () => (await memoryApi.state(group.avoid, add), setAdd("")))}>
-          Not for me
-        </button>
-      </form>
+      {vocab.length ? (
+        <form
+          className="mem-edit style-add"
+          onSubmit={(e) => {
+            e.preventDefault();
+          }}
+        >
+          <label className="sr-only" htmlFor={`${group.noun}-add`}>
+            Add a {group.noun}
+          </label>
+          <select id={`${group.noun}-add`} value={add} onChange={(e) => setAdd(e.target.value)} disabled={busy}>
+            <option value="">Add a {group.noun}…</option>
+            {vocab.filter((v) => !taken.has(v)).map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="btn btn-sm" disabled={!add || busy} onClick={() => run(async () => (await memoryApi.state(group.like, add), setAdd("")))}>
+            I like it
+          </button>
+          <button type="button" className="btn btn-quiet btn-sm" disabled={!add || busy} onClick={() => run(async () => (await memoryApi.state(group.avoid, add), setAdd("")))}>
+            Not for me
+          </button>
+        </form>
+      ) : (
+        <p className="mem-note">ClipCart couldn't load its {group.noun} list, so you can't add one right now. Any you already have still work.</p>
+      )}
       {group.like === "style_like" && (fromModel || interpretations) && <ModelLine interpretations={interpretations} />}
       {error && (
         <p className="mem-error" role="alert">
@@ -630,7 +631,7 @@ function PrefChips({
 }
 
 /** What reads saves for style suggestions. Names a model only once a real call succeeded. */
-function ModelLine({ interpretations: it }: { interpretations: Interpretations | null }) {
+function ModelLine({ interpretations: it }: { interpretations: StyleInterpretations | null }) {
   if (!it) return null;
   const m = it.styleModel;
   const live = m?.mode === "live";
@@ -662,11 +663,14 @@ export default function StylePanel({
   open,
   onClose,
   memory,
+  vocab,
   onReload,
 }: {
   open: boolean;
   onClose: () => void;
   memory: MemoryState;
+  /** Style tags and tones from GET /api/categories. */
+  vocab: { styleTags: readonly string[]; tones: readonly string[] };
   onReload: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -725,8 +729,8 @@ export default function StylePanel({
         >
           {of("color_like", "color_avoid", "material_like", "material_avoid", "brand_like", "brand_avoid").map(row)}
         </Section>
-        <PrefChips group={STYLE_GROUP} memories={ms} interpretations={memory.interpretations} onChanged={onReload} />
-        <PrefChips group={TONE_GROUP} memories={ms} interpretations={memory.interpretations} onChanged={onReload} />
+        <PrefChips group={STYLE_GROUP} vocab={vocab.styleTags} memories={ms} interpretations={memory.interpretations} onChanged={onReload} />
+        <PrefChips group={TONE_GROUP} vocab={vocab.tones} memories={ms} interpretations={memory.interpretations} onChanged={onReload} />
         <div className="wardrobe">
           <h3 className="wardrobe-title">Wardrobe</h3>
           <Section title="Owned (you said)" note="Items you told ClipCart you own or bought. ClipCart doesn't verify them." empty="Nothing yet. Opening a retailer link doesn't count.">

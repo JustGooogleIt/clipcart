@@ -3,19 +3,18 @@
  * Contract: docs/contracts/agent-research.md, v1 rendering rules plus the v2 section.
  *
  * Honesty rules this component keeps:
- * - The provider is named from health and the job itself. Nothing here is called Grok Bot output; no Grok Bot
- *   provider exists. Fixture jobs say development data; manual imports say "Imported manually".
+ * - The provider is named from health (provider and the mode jobs get) and the job itself. Nothing here is called
+ *   Grok Bot output. Fixture jobs say development data; manual imports say "Imported manually".
  * - Never "verified". A price shows only with priceBasis "agent_observed", with its date and page text.
  * - Offer groups compare only confirmed prices; an offer without one is "Price not confirmed" and never "lowest".
  * - Unavailable variants stay visible, struck through.
  */
 import { useEffect, useMemo, useState } from "react";
-import type { OfferGroup, ResearchJob, ResearchProduct } from "@contracts";
+import type { JobError, OfferGroup, ResearchJob, ResearchProduct } from "@contracts";
 import { api, ApiError, money } from "../api";
 import type { Health } from "../types";
+import { SELLER_CLAIMS_TEXT, takeWarning } from "../warnings";
 import ManualImport from "./ManualImport";
-
-type JobError = { code?: string; message?: string; retryable?: boolean };
 
 const SOURCE: Record<string, string> = {
   catalog: "From SoleScout's store record",
@@ -35,30 +34,42 @@ const ruleName = (c: string) => RULE[c] ?? c.charAt(0).toUpperCase() + c.slice(1
 const day = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "");
 
 /** What research does on this server, from health. Null when the flag is off. */
-export function researchProvider(health: Health | null): { id: string; name: string; about: string } | null {
+export function researchProvider(health: Health | null): { id: string; name: string; about: string; mode: "fixture" | "manual" | "live" | null } | null {
   const r = health?.research;
   if (!health?.features?.agentResearch || !r?.provider) return null;
-  const fixtureCatalog = health.providers.catalog.mode === "fixture";
+  // health.research.mode is the mode jobs get; null means this server doesn't implement the provider.
+  const mode = r.mode;
+  if (mode === null) {
+    return {
+      id: r.provider,
+      name: `${r.provider === "grok_bot" ? "Grok Bot research" : r.provider} (not available)`,
+      about: "This server names a research provider it doesn't run, so research can't start here.",
+      mode,
+    };
+  }
   switch (r.provider) {
     case "fixture":
       return {
         id: "fixture",
         name: "Development fixture",
         about: "Returns labelled development data built from captured SoleScout records. It isn't live research.",
+        mode,
       };
     case "solescout":
       return {
         id: "solescout",
-        name: `SoleScout fallback${fixtureCatalog ? " · fixture catalog" : ""}`,
+        name: `SoleScout fallback${mode === "fixture" ? " · fixture catalog" : ""}`,
         about: `Runs up to 2 SoleScout searches and 3 detail checks, then lists each named store record as an offer${
-          fixtureCatalog ? ", here from the fixture catalog" : ""
+          mode === "fixture" ? ", here from the fixture catalog" : ""
         }. It doesn't cover independent retailers or resale.`,
+        mode,
       };
     case "manual":
       return {
         id: "manual",
         name: "Manual import only",
         about: "Nothing is researched automatically. Start a job, then import offers you found yourself. They're labelled Imported manually.",
+        mode,
       };
     case "grok_bot":
       // The Grok Bot callback is unproven (docs/grok-bot-bridge.md). Results, if any, arrive as agent submissions.
@@ -67,12 +78,14 @@ export function researchProvider(health: Health | null): { id: string; name: str
         name: "Grok Bot research · callback not proven",
         about:
           "Sends this piece to a Grok Bot routine. Offers appear only if the Bot posts them back, which hasn't been proven yet. If nothing arrives, you can import offers by hand.",
+        mode,
       };
     default:
       return {
         id: r.provider,
         name: `${r.provider} (not available)`,
         about: "This server names a research provider ClipCart doesn't know, so research can't run.",
+        mode: null,
       };
   }
 }
@@ -143,7 +156,7 @@ export default function Research({
     }
   };
 
-  const err = (job?.error ?? null) as JobError | null;
+  const err = job?.error ?? null;
   const canImport = !!job && (job.status === "failed" || job.status === "expired" || (job.status === "pending" && job.provider === "manual"));
   const manualResults = job?.resultSource === "manual_import";
 
@@ -356,6 +369,7 @@ function Offer({ p, accessory }: { p: ResearchProduct; accessory: boolean }) {
   const evidence = p.evidence ?? [];
   const variants = p.variants ?? [];
   const isLowest = !!p.offerGroup?.isLowestConfirmed && !!price;
+  const claim = takeWarning(p.warnings, p.warningCodes, "seller_claims_unverified");
   return (
     <article className={`offer ${isLowest ? "offer-lowest" : ""}`} data-offer={p.id}>
       <div className="offer-media">
@@ -388,6 +402,7 @@ function Offer({ p, accessory }: { p: ResearchProduct; accessory: boolean }) {
           {p.sellerKind && p.sellerKind !== "unknown" ? ` · ${SELLER[p.sellerKind]}` : ""}
         </p>
         {exactClaim && <p className="offer-claim">{exactClaim}</p>}
+        {claim.present && <p className="card-claim">{claim.text ?? SELLER_CLAIMS_TEXT}</p>}
         <div className="offer-price">
           {price ? (
             <>
@@ -460,7 +475,7 @@ function Offer({ p, accessory }: { p: ResearchProduct; accessory: boolean }) {
             </dl>
           )}
           <ul className="warnings">
-            {p.warnings.map((w) => (
+            {claim.rest.map((w) => (
               <li key={w}>{w}</li>
             ))}
           </ul>

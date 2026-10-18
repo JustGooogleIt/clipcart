@@ -5,41 +5,11 @@
  * never block the shopping flow. Nothing in the upload → pick → rules → search path waits on this module.
  */
 import { createContext, useContext } from "react";
-import type { StyleEvent, StyleMemory, StyleModelInfo, StyleNoteResult } from "@contracts";
+import type { StyleEvent, StyleInterpretations, StyleMemory, StyleModelInfo, StyleNoteResult } from "@contracts";
 import { key } from "./api";
 
-export type { StyleEvent, StyleItem, StyleMemory, StyleModelInfo, StyleNoteResult, StyleProposal } from "@contracts";
+export type { StyleEvent, StyleInterpretations, StyleItem, StyleMemory, StyleModelInfo, StyleNoteResult, StyleProposal } from "@contracts";
 export type MemoryKind = StyleMemory["kind"];
-
-/**
- * GET /api/style/interpretations (docs/contracts/style-memory.md, "Model interpretations"). Hand-written: the
- * response isn't generated in packages/contracts yet (asked in the PR). Optional: older servers don't have it.
- */
-export interface Interpretations {
-  status: "idle" | "debouncing" | "waiting_for_model";
-  pendingEvents: number;
-  rankingInfluence?: boolean;
-  styleModel?: StyleModelInfo;
-  runs: { id: string; at: string; model: string | null; evidenceEventIds: string[]; applied: string[]; rejected: { kind: string; value: string; reason: string }[] }[];
-}
-
-/** Style vocabulary for style_like / style_avoid (docs/contracts/style-memory.md, v2). Not in packages/contracts. */
-export const STYLE_VOCAB = [
-  "vintage",
-  "minimalist",
-  "streetwear",
-  "workwear",
-  "preppy",
-  "athleisure",
-  "y2k",
-  "outdoor",
-  "techwear",
-  "western",
-  "bohemian",
-  "classic",
-  "grunge",
-  "punk",
-] as const;
 
 export type MemoryState =
   | { state: "loading" }
@@ -48,7 +18,7 @@ export type MemoryState =
       memories: StyleMemory[];
       events: StyleEvent[];
       styleModel: StyleModelInfo;
-      interpretations: Interpretations | null;
+      interpretations: StyleInterpretations | null;
     }
   | { state: "unavailable"; reason: "disabled" | "offline"; message: string };
 
@@ -101,7 +71,7 @@ export async function loadMemory(): Promise<MemoryState> {
       call<{ events: StyleEvent[] }>("GET", "/api/style/events?limit=50"),
     ]);
     // Interpretations are extra detail; their absence never makes the panel unavailable.
-    const interpretations = await call<Interpretations>("GET", "/api/style/interpretations").catch(() => null);
+    const interpretations = await call<StyleInterpretations>("GET", "/api/style/interpretations").catch(() => null);
     return { state: "ready", memories: m.memories ?? [], events: e.events ?? [], styleModel: p.styleModel, interpretations };
   } catch (err) {
     const status = err instanceof MemoryError ? err.status : 0;

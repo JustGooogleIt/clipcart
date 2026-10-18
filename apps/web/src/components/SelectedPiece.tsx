@@ -1,6 +1,7 @@
 import { mediaUrl, timestamp } from "../api";
 import { attrLabel, categoryOf, grouped, isAccessory } from "../categories";
-import type { CategoryInfo, GarmentDoc, GarmentObservation } from "../types";
+import type { CategoryInfo } from "@contracts";
+import type { GarmentDoc, GarmentObservation } from "../types";
 import { cleanLabel, sourceLabel } from "./GarmentTray";
 
 /** Observed attributes for display, keyed by the category's attribute keys, merged across sightings. */

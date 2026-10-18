@@ -455,7 +455,7 @@ export default function App() {
           </button>
           <ModeChips health={health} />
         </header>
-        <StylePanel open={styleOpen} onClose={closeStyle} memory={memory} onReload={() => reloadMemory(true)} />
+        <StylePanel open={styleOpen} onClose={closeStyle} memory={memory} vocab={categories} onReload={() => reloadMemory(true)} />
 
         {view?.media && (
           <ol className="steps" aria-label="Progress">
@@ -634,7 +634,7 @@ export default function App() {
                 }}
               />
               <h2 className="panel-title">Your rules</h2>
-              {s && <Constraints session={s} category={selectedCat} canSearch={!!selected} pieceLabel={pieceLabel} busy={busy} onSubmit={findIt} />}
+              {s && <Constraints session={s} category={selectedCat} tones={categories.tones} canSearch={!!selected} pieceLabel={pieceLabel} busy={busy} onSubmit={findIt} />}
             </aside>
 
             <section className="col-results" aria-label="Results" ref={resultsRef}>

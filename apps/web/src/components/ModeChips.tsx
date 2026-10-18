@@ -39,7 +39,7 @@ export function usesFixtures(health: Health | null) {
   return (
     health.providers.perceptron.mode === "fixture" ||
     health.providers.catalog.mode === "fixture" ||
-    researchProvider(health)?.id === "fixture"
+    researchProvider(health)?.mode === "fixture"
   );
 }
 
@@ -105,8 +105,11 @@ function ModeList({ health: hp }: { health: Health }) {
 function ResearchChip({ health: hp, catalogMode }: { health: Health; catalogMode: string }) {
   const r = researchProvider(hp);
   if (!r) return <Chip name="More offers" mode="unavailable" note="Off" />;
-  // The SoleScout fallback is as live as the catalog it calls; manual import runs nothing.
-  const mode = r.id === "fixture" ? "fixture" : r.id === "solescout" ? catalogMode : r.id === "manual" ? "rule" : "unavailable";
+  // Health reports the mode jobs get; manual import runs nothing, and null means the provider isn't implemented here.
+  // "live" only says jobs aren't fixtures: the SoleScout fallback is as healthy as the catalog it calls, and any other
+  // live provider stays unverified until it has returned results.
+  const mode =
+    r.mode === "manual" ? "rule" : r.mode === "live" ? (r.id === "solescout" ? catalogMode : "unverified") : (r.mode ?? "unavailable");
   return <Chip name="More offers" mode={mode} note={r.name} />;
 }
 

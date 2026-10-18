@@ -1,13 +1,17 @@
 /**
- * Shopping categories from GET /api/categories (docs/contracts/accessories.md). Pickers and size inputs are built
- * from the server's list. If the call fails (an older server, or offline), the garment-only list the server has
- * always accepted is used, so manual crop never offers a category the server would refuse.
+ * Shopping categories, style tags and tones from GET /api/categories (docs/contracts/accessories.md). Pickers, size
+ * inputs and style chips are built from the server's lists. If the call fails (an older server, or offline), the
+ * garment-only list the server has always accepted is used, so manual crop never offers a category the server would
+ * refuse, and the style and tone vocabularies are empty, so no chip is offered that the server might not know.
  */
 import { useEffect, useState } from "react";
+import type { CategoriesResponse, CategoryInfo } from "@contracts";
 import { api } from "./api";
-import type { CategoryInfo } from "./types";
 
-const GARMENT_KEYS = ["color", "pattern", "cut", "details"];
+export type StyleTag = CategoriesResponse["styleTags"][number];
+export type Tone = CategoriesResponse["tones"][number];
+
+const GARMENT_KEYS: CategoryInfo["attributeKeys"] = ["color", "pattern", "cut", "details"];
 export const LEGACY_CATEGORIES: CategoryInfo[] = [
   { id: "jacket", label: "Jacket", family: "apparel", sizeRule: "clothing", attributeKeys: GARMENT_KEYS },
   { id: "top", label: "Top", family: "apparel", sizeRule: "clothing", attributeKeys: GARMENT_KEYS },
@@ -16,20 +20,32 @@ export const LEGACY_CATEGORIES: CategoryInfo[] = [
   { id: "other", label: "Other", family: "other", sizeRule: "none", attributeKeys: ["color", "details"] },
 ];
 
+const FALLBACK = { list: LEGACY_CATEGORIES, styleTags: [] as StyleTag[], tones: [] as Tone[] };
+
 export interface Categories {
   list: CategoryInfo[];
+  styleTags: StyleTag[];
+  tones: Tone[];
   /** "server" when the list came from /api/categories; "fallback" when the call failed. */
   origin: "loading" | "server" | "fallback";
 }
 
 export function useCategories(): Categories {
-  const [c, setC] = useState<Categories>({ list: LEGACY_CATEGORIES, origin: "loading" });
+  const [c, setC] = useState<Categories>({ ...FALLBACK, origin: "loading" });
   useEffect(() => {
     let live = true;
     api
       .categories()
-      .then((r) => live && setC({ list: r.categories?.length ? r.categories : LEGACY_CATEGORIES, origin: r.categories?.length ? "server" : "fallback" }))
-      .catch(() => live && setC({ list: LEGACY_CATEGORIES, origin: "fallback" }));
+      .then(
+        (r) =>
+          live &&
+          setC(
+            r.categories?.length
+              ? { list: r.categories, styleTags: r.styleTags ?? [], tones: r.tones ?? [], origin: "server" }
+              : { ...FALLBACK, origin: "fallback" },
+          ),
+      )
+      .catch(() => live && setC({ ...FALLBACK, origin: "fallback" }));
     return () => {
       live = false;
     };

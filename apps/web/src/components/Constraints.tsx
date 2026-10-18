@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { isAccessory, ringSize } from "../categories";
-import type { CategoryInfo, SessionWire } from "../types";
+import type { CategoryInfo } from "@contracts";
+import { isAccessory, ringSize, type Tone } from "../categories";
+import type { SessionWire } from "../types";
 
 const MATERIALS = ["leather", "suede", "wool", "fur", "polyester"];
 const SIZES = ["XS", "S", "M", "L", "XL"];
-// Suggestions for watches and jewelry: appearance words the server matches, never metal claims.
-const TONES = ["gold-tone", "silver-tone", "rose-gold-tone"];
 const PLURAL: Record<string, string> = { watch: "watches", necklace: "necklaces", bracelet: "bracelets", earrings: "earrings", other: "this piece" };
 
 export interface PrefsDraft {
@@ -62,6 +61,7 @@ const colorList = (colors: string) =>
 export default function Constraints({
   session,
   category,
+  tones,
   canSearch,
   pieceLabel,
   busy,
@@ -70,6 +70,8 @@ export default function Constraints({
   session: SessionWire;
   /** The selected piece's category; decides which size input applies. Null before anything is selected. */
   category: CategoryInfo | null;
+  /** Tone suggestions for watches and jewelry, from GET /api/categories: how a piece looks, never what it's made of. */
+  tones: readonly Tone[];
   canSearch: boolean;
   pieceLabel: string | null;
   busy: boolean;
@@ -144,13 +146,15 @@ export default function Constraints({
         <input id="colors" placeholder={accessory ? "Any tone or color" : "Any color"} value={d.colors} onChange={(e) => setD({ ...d, colors: e.target.value })} />
         {accessory && (
           <>
-            <div className="pills" role="group" aria-label="Tone suggestions">
-              {TONES.map((t) => (
-                <button key={t} type="button" className={`pill ${picked.includes(t) ? "pill-on" : ""}`} aria-pressed={picked.includes(t)} onClick={() => toggleTone(t)}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              ))}
-            </div>
+            {tones.length > 0 && (
+              <div className="pills" role="group" aria-label="Tone suggestions">
+                {tones.map((t) => (
+                  <button key={t} type="button" className={`pill ${picked.includes(t) ? "pill-on" : ""}`} aria-pressed={picked.includes(t)} onClick={() => toggleTone(t)}>
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
             <small className="muted">Tone describes how it looks. ClipCart never judges metal, stones or authenticity.</small>
           </>
         )}
