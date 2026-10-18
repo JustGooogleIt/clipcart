@@ -1,5 +1,7 @@
 # ClipCart
 
+> "I see it, I like it, I want it, I got it"
+
 **Shop what you watch.**
 
 You see a jacket in a video. The comments say "link?" and nobody has an answer. Finding it means screenshots, guessed search terms, and a lot of tabs.
