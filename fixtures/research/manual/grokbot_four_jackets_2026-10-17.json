@@ -1,0 +1,22 @@
+{
+  "label": "MANUAL RESEARCH EVIDENCE - Grok Bot run by a person in the Grok Bot app, reported by Ashwin on 2026-10-17. Not produced by ClipCart, not a ClipCart integration, and not live data.",
+  "provenance": "Ashwin ran Grok Bot manually and reported these four results in chat. Only the facts he reported are recorded. URLs, prices, stock and sizes were not captured, so they are null and must not be shown as observed.",
+  "observedGarment": "Live Perceptron mk1.5 observation, request be94e617...: black bomber, gold side zip pockets, gold centre zip, ribbed collar, cuffs and hem, small clover-shaped chest logo, no readable text.",
+  "shopperContext": {"size": "M", "fitCategory": null, "budget": null},
+  "results": [
+    {"key": "sacred_bones", "title": "Sacred Bones gold-logo bomber", "brand": "Sacred Bones", "retailer": null,
+     "productUrl": null, "price": null, "reportedFacts": ["gold logo", "bomber"]},
+    {"key": "albion_fit", "title": "Albion Fit black bomber (women's)", "brand": "Albion Fit", "retailer": null,
+     "productUrl": null, "price": null, "reportedFacts": ["black", "bomber", "explicitly a women's item"]},
+    {"key": "alpha_ma1", "title": "Alpha Industries MA-1", "brand": "Alpha Industries", "retailer": null,
+     "productUrl": null, "price": null, "reportedFacts": ["MA-1"]},
+    {"key": "karl_lagerfeld", "title": "Karl Lagerfeld jacket", "brand": "Karl Lagerfeld", "retailer": "Farfetch",
+     "productUrl": null, "price": null, "reportedFacts": ["Farfetch listing", "size not verified"]}
+  ],
+  "expectedDecisions": {
+    "sacred_bones": "similar; needs checking (size unknown); no exact-match evidence",
+    "albion_fit": "similar; needs checking; women's item while shopper fit is unspecified",
+    "alpha_ma1": "similar; must pass the jacket category gate; needs checking (size unknown)",
+    "karl_lagerfeld": "similar; needs checking; size M not verified"
+  }
+}
