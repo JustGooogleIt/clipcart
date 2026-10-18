@@ -12,7 +12,7 @@ We keep a local set of **10 live YouTube Shorts** (guys, girls, street interview
 | Path | Role |
 | --- | --- |
 | Manifest | [`fixtures/fit-checks/youtube_shorts.json`](../fixtures/fit-checks/youtube_shorts.json) |
-| Download | `services/api/.venv/bin/python scripts/download_fit_checks.py` → `downloads/fit-checks/` (gitignored) |
+| Media | [`downloads/fit-checks/`](../downloads/fit-checks/) — 10 MP4s committed (~26 MB); refresh with `scripts/download_fit_checks.py` |
 | Product | Upload MP4 **or** `POST /api/sessions/{id}/youtube-analyze` with the Short URL |
 
 ## Clips

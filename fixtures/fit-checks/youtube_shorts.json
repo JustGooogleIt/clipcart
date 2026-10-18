@@ -1,6 +1,6 @@
 {
   "title": "YouTube Shorts fit-check truth set",
-  "notes": "All confirmed live as of 2026-10-17. Mix of guys, girls, and street interviews. Instagram not used (could not verify). Media files are not committed — run scripts/download_fit_checks.py.",
+  "notes": "All confirmed live as of 2026-10-17. Mix of guys, girls, and street interviews. Instagram not used (could not verify). MP4s are committed under downloads/fit-checks/; re-run scripts/download_fit_checks.py to refresh.",
   "outDir": "downloads/fit-checks",
   "clips": [
     {
