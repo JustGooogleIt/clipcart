@@ -204,3 +204,16 @@ The plan is one regeneration commit on `integration`, after the UI lane confirms
 ```bash
 services/api/.venv/bin/python scripts/gen_contracts.py && (cd apps/web && npm run gen:types)
 ```
+
+### Hosted Gemma on Lambda (2026-10-18)
+
+The owner authorized reusing the intentgraph Lambda vLLM endpoint for a bounded experiment, up to 20 inference calls. Result: **unavailable**.
+
+| Check | Result |
+| --- | --- |
+| Configuration | All four intentgraph variables are set. The URL is `http://<loopback>:<port>/v1`, which is OpenAI-compatible by convention. Values were never printed or copied. |
+| `GET /v1/models` | Connection error |
+| TCP to the configured address | Refused twice, instantly |
+| Diagnosis | The URL points at a local SSH tunnel to the A100 instance (intentgraph README: "reached over an authenticated tunnel"). No tunnel is running, and no instance address is recorded locally. |
+
+As instructed, the instance was not started, resized or reconfigured, no tunnel was created, and intentgraph was not changed. **No inference calls were made (0 of 20)**, and no Lambda adapter was added, because the protocol and served model could not be confirmed live. If the tunnel is restored, the next step is an `openai_compatible` style-model provider using ClipCart-only variables (`STYLE_REMOTE_BASE_URL`, `STYLE_REMOTE_API_KEY`, `STYLE_REMOTE_MODEL`). It would be reported as "Gemma hosted on Lambda, not local" and marked `live` only after a real call succeeds.
