@@ -212,3 +212,7 @@ One on-chain transaction cannot mark two orders paid.
 2. Build a Solana Pay transfer using `transferRequest` (native SOL, `splToken: null`, include `reference`).
 3. After wallet approval, call verify with the signature as a hint; poll GET until `paid`, `expired`, or `failed`.
 4. Do not show an NFT as minted in this PR. `receiptStatus: "eligible"` means minting may happen in a later PR.
+
+## Local smoke UI
+
+Stable page (no pre-baked order in the URL): `GET /demo/solana-pay` on the smoke server with `FEATURE_SOLANA=true` in-process only. Create the order in the page; pay params come from the API. Bundle: `services/api/app/demo/static/` (esbuild + real `buffer`).

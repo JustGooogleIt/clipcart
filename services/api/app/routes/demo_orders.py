@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, Request, Response
+from fastapi.responses import FileResponse
 from pydantic import Field
 
 from app.demo.catalog import demo_catalog_item
@@ -19,6 +22,12 @@ from .api import In
 from .deps import current_owner, ensure_owner, limiter, require_mutation_header, state_of
 
 router = APIRouter()
+_STATIC = Path(__file__).resolve().parents[1] / "demo" / "static"
+_PAY_HTML = _STATIC / "phantom_pay.html"
+_ALLOWED_STATIC = {
+    "checkout.bundle.js": "application/javascript; charset=utf-8",
+    "checkout.bundle.js.map": "application/json; charset=utf-8",
+}
 
 
 class CreateDemoOrderIn(In):
@@ -36,6 +45,28 @@ def _require_flag(request: Request):
     if not st.settings.feature_solana:
         raise ApiProblem(404, "feature_disabled", "Solana demo checkout is turned off")
     return st
+
+
+@router.get("/demo/solana-pay")
+def phantom_pay_page(request: Request):
+    """Stable ClipCart-styled Solana demo checkout page. Orders are created in-page."""
+    _require_flag(request)
+    if not _PAY_HTML.is_file():
+        raise ApiProblem(404, "not_found", "Pay page missing")
+    return FileResponse(_PAY_HTML, media_type="text/html; charset=utf-8")
+
+
+@router.get("/demo/solana-pay/{asset}")
+def phantom_pay_asset(asset: str, request: Request):
+    """Browser bundle for the checkout page (esbuild + real buffer package)."""
+    _require_flag(request)
+    media = _ALLOWED_STATIC.get(asset)
+    if not media:
+        raise ApiProblem(404, "not_found", "Asset not found")
+    path = _STATIC / asset
+    if not path.is_file():
+        raise ApiProblem(404, "not_found", "Asset not found")
+    return FileResponse(path, media_type=media)
 
 
 @router.get("/api/demo-catalog")
