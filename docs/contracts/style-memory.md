@@ -299,7 +299,9 @@ There are new memory kinds, `style_like` and `style_avoid`. They're editable lik
 - **Ranking:** **model interpretations don't affect ranking** unless `STYLE_MODEL_RANKING=1`, which is **off by default**. The panel shows them, labelled.
 - **Availability:** with no model configured (the default `STYLE_MODEL_PROVIDER=none`), only deterministic inference runs, and the queue reports `waiting_for_model`.
 
-`GET /api/style/interpretations` returns `{status, pendingEvents, runs: [{id, at, model, evidenceEventIds, applied, rejected: [{kind, value, reason}]}]}`. `POST /api/style/interpretations/run` runs any due work now. It's owner-only and limited to 6 per 10 minutes.
+`GET /api/style/interpretations` returns the generated `StyleInterpretations` type: `{status, pendingEvents, notBefore, runs, rankingInfluence, styleModel}`. Each run is `{id, at, model, evidenceEventIds, status, applied: [{kind, value, confidence, evidenceEventIds}], rejected: [{kind, value, reason}], usage}`. `applied` entries are objects, not strings. Rejected `kind` and `value` are what the model sent, as short strings. `rankingInfluence` is `STYLE_MODEL_RANKING`. `styleModel` is `StyleModelInfo`: name a model only when `mode` is `live`. `POST /api/style/interpretations/run` returns `InterpretationRunResult` (`status` is one of `idle`, `debouncing`, `waiting_for_model`, `already_running`, `duplicate`, `model_unavailable`, `done`). It runs any due work now, is owner-only, and is limited to 6 per 10 minutes.
+
+**Vocabulary:** `GET /api/categories` serves both lists at runtime (`styleTags`, `tones`). Their TypeScript types are `CategoriesResponse["styleTags"][number]` and `CategoriesResponse["tones"][number]`. The backend validates against the same Pydantic enums (`StyleTag` and `Tone` in `app/contracts/style_memory.py`), so the lists can't drift.
 
 ### UI follow-up (Claude app)
 

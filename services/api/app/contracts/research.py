@@ -16,7 +16,7 @@ from typing import Literal
 from pydantic import Field
 
 from .base import Record
-from .shopping import ConstraintCheck, Money, OutboundLink, Preferences
+from .shopping import ConstraintCheck, JobError, Money, OutboundLink, Preferences, WarningCode
 
 # "solescout": catalog-backed fallback (named store records). "manual": waits for a labelled manual import.
 # Bridge providers ("grok_bot", "xai_api") are not implemented: see docs/grok-bot-bridge.md.
@@ -165,6 +165,7 @@ class ResearchProduct(Record):
     variants: list[ResearchVariant] = Field(default_factory=list)
     evidence: list[PageEvidence] = Field(default_factory=list)
     offer_group: OfferGroup | None = None
+    warning_codes: list[WarningCode] = Field(default_factory=list)
 
 
 class ResearchJob(Record):
@@ -181,7 +182,7 @@ class ResearchJob(Record):
     products: list[ResearchProduct] = Field(default_factory=list)
     rejected: list[RejectedItem] = Field(default_factory=list)
     agent_notes: str | None = None
-    error: dict | None = None
+    error: JobError | None = None
     summary: str | None = None
     style_hints: StyleHints | None = None
     result_source: ResultSource = "provider"

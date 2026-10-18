@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import tempfile
+import threading
 from typing import Any
 
 from fastapi import APIRouter, Request, Response
@@ -34,6 +35,7 @@ from app.sessions.service import (
 )
 from app.shopping.refine import apply_patch, parse_refinement
 from app.storage.db import ping
+from app.research.providers import research_mode
 from app.style.labels import remote_style_label, style_model_mode
 
 from .deps import current_owner, ensure_owner, limiter, require_mutation_header, state_of
@@ -113,8 +115,11 @@ def _style_model_info(s) -> dict:
 def categories() -> dict:
     """Category families, size rules and attribute keys (docs/contracts/accessories.md). Static; no auth."""
     from app.categories import public_categories
+    from app.contracts import CategoriesResponse
+    from app.style.tags import STYLE_TAGS
+    from app.style.vocab import TONES
 
-    return {"categories": public_categories()}
+    return CategoriesResponse(categories=public_categories(), style_tags=list(STYLE_TAGS), tones=list(TONES)).wire()
 
 
 @router.get("/api/health")
@@ -149,7 +154,7 @@ def health(request: Request) -> dict:
             "maxDurationS": 90,
         },
         "research": {"provider": s.research_provider if s.feature_agent_research else None,
-                     "mode": ("fixture" if s.research_provider == "fixture" else "live") if s.feature_agent_research else None},
+                     "mode": research_mode(s.research_provider, st) if s.feature_agent_research else None},
     }
 
 
@@ -206,18 +211,25 @@ def create(request: Request, response: Response) -> dict:
     return session_view(st, st.db.sessions.find_one({"_id": s.id}))
 
 
+_resume_lock = threading.Lock()  # resume is one find (and at most one insert), so one lock costs nothing
+
+
 @router.post("/api/sessions/resume")
 def resume(request: Request, response: Response) -> dict:
     """Boot: the owner's most recent committed session, or a new one."""
     require_mutation_header(request)
     owner = ensure_owner(request, response)
     st = state_of(request)
-    doc = st.db.sessions.find_one({"ownerId": owner}, sort=[("createdAt", -1)])
-    if doc:
-        return session_view(st, doc)
-    limiter.check(owner, "session", 30)
-    st.bump("sessions_created")
-    s = create_session(st.db, owner)
+    # Concurrent resumes for one owner (two tabs, or a dev StrictMode double boot) must land on one session, not
+    # create one each. The lock is per process; the API runs as a single process. Cookie-less requests can't be
+    # told apart here: each mints its own owner, and the web client recovers from that (App.tsx adoptCurrentSession).
+    with _resume_lock:
+        doc = st.db.sessions.find_one({"ownerId": owner}, sort=[("createdAt", -1)])
+        if doc:
+            return session_view(st, doc)
+        limiter.check(owner, "session", 30)
+        st.bump("sessions_created")
+        s = create_session(st.db, owner)
     return session_view(st, st.db.sessions.find_one({"_id": s.id}))
 
 

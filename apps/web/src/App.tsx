@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, timestamp, upload } from "./api";
+import { categoryOf, croppable, grouped, isAccessory, useCategories } from "./categories";
 import { loadMemory, memoryApi, MemoryContext, type MemoryActions, type MemoryState } from "./memory";
 import Constraints, { draftFrom, findLabel, patchFrom, type PrefsDraft } from "./components/Constraints";
 import Diagnostics from "./components/Diagnostics";
@@ -8,6 +9,7 @@ import GarmentTray, { cleanLabel, wordSafe } from "./components/GarmentTray";
 import Landing, { LinkInput, linkErrorText } from "./components/Landing";
 import ModeChips from "./components/ModeChips";
 import Refine from "./components/Refine";
+import Research from "./components/Research";
 import Results from "./components/Results";
 import SelectedPiece from "./components/SelectedPiece";
 import StylePanel from "./components/StylePanel";
@@ -32,6 +34,7 @@ const TERMINAL = new Set(["completed", "partial", "no_match", "failed", "cancell
 
 export default function App() {
   const route = useHashRoute();
+  const categories = useCategories();
   const [health, setHealth] = useState<Health | null>(null);
   const [view, setView] = useState<SessionView | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -60,9 +63,29 @@ export default function App() {
 
   const refreshHealth = useCallback(() => api.health().then(setHealth).catch(() => undefined), []);
 
+  // A session this page shows can stop being ours: another tab opened at the same time on a fresh browser minted a
+  // different owner cookie, and the browser kept that one. Resume with the cookie we actually hold and switch to it.
+  // Returns the new view, or null when the session didn't change (a real 404) or the resume failed.
+  const adoptCurrentSession = useCallback(async (staleId: string) => {
+    try {
+      const v = await api.resume();
+      if (v.session.id === staleId) return null;
+      setView(v);
+      setSearch(null);
+      setSearchId(v.session.activeSearchId ?? null);
+      return v;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const fail = useCallback(
     async (e: unknown) => {
       const err = e instanceof ApiError ? e : new ApiError(0, "error", String(e));
+      if (err.status === 404 && err.code === "not_found" && s && (await adoptCurrentSession(s.id))) {
+        setNotice({ kind: "info", text: "ClipCart started in another tab at the same time, so this tab switched to that session. Try again." });
+        return;
+      }
       if (err.status === 409 && s) {
         try {
           setView(await api.session(s.id));
@@ -74,7 +97,7 @@ export default function App() {
         setNotice({ kind: "error", text: `${err.message}${err.requestId ? ` (ref ${err.requestId})` : ""}` });
       }
     },
-    [s],
+    [s, adoptCurrentSession],
   );
 
   // Boot: restore the last committed session or create one.
@@ -109,17 +132,20 @@ export default function App() {
   const closeStyle = useCallback(() => setStyleOpen(false), []);
   const memoryActions = useMemo<MemoryActions>(() => {
     const evs = memory.state === "ready" ? memory.events : [];
-    const savedEventId = (rid: string, lid: string) =>
-      evs.find((e) => e.type === "saved_item" && (e.item?.recommendationId === rid || e.item?.listingId === lid))?.id ?? null;
+    const eventId = (type: "saved_item" | "rejected_item") => (rid: string, lid: string) =>
+      evs.find((e) => e.type === type && (e.item?.recommendationId === rid || e.item?.listingId === lid))?.id ?? null;
+    const toggle = (type: "saved_item" | "rejected_item") => (rid: string, lid: string) => {
+      const id = eventId(type)(rid, lid);
+      (id ? memoryApi.removeEvent(id) : memoryApi.event(type, rid))
+        .then(() => reloadMemory(true))
+        .catch(() => setNotice({ kind: "error", text: "Couldn't update Your style. The memory service may be offline; shopping still works." }));
+    };
     return {
       ready: memory.state === "ready",
-      savedEventId,
-      toggleSave: (rid, lid) => {
-        const id = savedEventId(rid, lid);
-        (id ? memoryApi.removeEvent(id) : memoryApi.event("saved_item", rid))
-          .then(() => reloadMemory(true))
-          .catch(() => setNotice({ kind: "error", text: "Couldn't update Your style. The memory service may be offline; shopping still works." }));
-      },
+      savedEventId: eventId("saved_item"),
+      toggleSave: toggle("saved_item"),
+      hiddenEventId: eventId("rejected_item"),
+      toggleHide: toggle("rejected_item"),
     };
   }, [memory, reloadMemory]);
 
@@ -178,6 +204,8 @@ export default function App() {
     return m;
   }, [view?.garments]);
   const selected = view?.garments.find((g) => g.id === s?.selectedGarmentId) ?? null;
+  const selectedCat = categoryOf(categories.list, selected?.category);
+  const accessory = isAccessory(selectedCat);
 
   if (route.startsWith("#/diagnostics")) {
     return (
@@ -205,7 +233,24 @@ export default function App() {
     setDrawing(null);
     setDraft(null);
     try {
-      setView(await upload(s.id, s.revision, f, setProgress));
+      try {
+        setView(await upload(s.id, s.revision, f, setProgress));
+      } catch (e) {
+        // Session no longer ours (see adoptCurrentSession): retry once into the cookie's session, but only while
+        // that session is still empty, so a clip another tab already added is never replaced without asking.
+        const moved = e instanceof ApiError && e.status === 404 && e.code === "not_found" ? await adoptCurrentSession(s.id) : null;
+        if (!moved) throw e;
+        const replaceText = "ClipCart started in another tab at the same time, so this tab switched to that session. Upload again to replace its clip.";
+        if (moved.media) return setNotice({ kind: "info", text: replaceText });
+        try {
+          setView(await upload(moved.session.id, moved.session.revision, f, setProgress));
+        } catch (e2) {
+          if (!(e2 instanceof ApiError && e2.status === 409)) throw e2;
+          // The other tab's clip landed first: show it, and never replace it without asking.
+          setView(await api.session(moved.session.id).catch(() => moved));
+          setNotice({ kind: "info", text: replaceText });
+        }
+      }
     } catch (e) {
       fail(e);
     } finally {
@@ -378,6 +423,8 @@ export default function App() {
   const searching = !!search && ["queued", "running"].includes(search.job.status);
   const step = !view?.media ? 0 : !selected ? 1 : !searchId ? 2 : 3;
   const youtubeEnabled = !!health?.features?.youtubeDownload;
+  const accessoryDetection = !!health?.features?.accessoryDetection;
+  const hasAccessories = categories.list.some((c) => isAccessory(c));
   const fromYouTube = view?.media?.sourceType === "youtube_download";
   const fromCapture = view?.media?.sourceType === "browser_capture";
   const mediaMeta = view?.media
@@ -408,7 +455,7 @@ export default function App() {
           </button>
           <ModeChips health={health} />
         </header>
-        <StylePanel open={styleOpen} onClose={closeStyle} memory={memory} onReload={() => reloadMemory(true)} />
+        <StylePanel open={styleOpen} onClose={closeStyle} memory={memory} vocab={categories} onReload={() => reloadMemory(true)} />
 
         {view?.media && (
           <ol className="steps" aria-label="Progress">
@@ -461,7 +508,9 @@ export default function App() {
               )}
               {analyzing && (
                 <div className="scene-status" role="status">
-                  <span className="spinner" aria-hidden /> {analysis?.frameIds?.length ? "Looking for jackets, tops, pants and bags…" : "Reading frames…"}
+                  <span className="spinner" aria-hidden /> {analysis?.frameIds?.length
+                    ? `Looking for jackets, tops, pants${accessoryDetection ? ", bags, watches and jewelry" : " and bags"}…`
+                    : "Reading frames…"}
                 </div>
               )}
               {analysis?.message && !analyzing && (
@@ -486,27 +535,35 @@ export default function App() {
                 <div className="draw">
                   {!drawing ? (
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDrawing({ mode: "new" })} disabled={busy}>
-                      <span aria-hidden>⬚</span> Draw a box around a garment
+                      <span aria-hidden>⬚</span> Draw a box around a piece
                     </button>
                   ) : (
                     <div className="draw-panel">
                       <p>
-                        {drawing.mode === "edit" ? "Drag a new box around the garment." : "Drag a box around the garment you want."}{" "}
+                        {drawing.mode === "edit" ? "Drag a new box around the piece." : "Drag a box around the piece you want."}{" "}
                         {!draft && (
                           <button type="button" className="linkish" onClick={() => setDraft([0.02, 0.02, 0.98, 0.98])}>
                             Use the whole frame
                           </button>
                         )}
                       </p>
+                      {drawing.mode === "new" && hasAccessories && !accessoryDetection && (
+                        <p className="muted small">Watches and jewelry aren't detected automatically on this server. Box one here, or use Find.</p>
+                      )}
                       {draft && drawing.mode === "new" && (
                         <div className="draw-fields">
                           <label>
                             Category
                             <select value={manualCat} onChange={(e) => setManualCat(e.target.value)}>
-                              <option value="jacket">Jacket</option>
-                              <option value="top">Top</option>
-                              <option value="pants">Pants</option>
-                              <option value="bag">Bag</option>
+                              {grouped(croppable(categories.list)).map((g) => (
+                                <optgroup key={g.label} label={g.label}>
+                                  {g.items.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              ))}
                             </select>
                           </label>
                           <label>
@@ -558,6 +615,7 @@ export default function App() {
               <SelectedPiece
                 garment={selected}
                 observations={view.observations}
+                categories={categories.list}
                 detectionMode={detectionMode}
                 busy={busy}
                 onRelabel={async (gid, category) => {
@@ -576,7 +634,7 @@ export default function App() {
                 }}
               />
               <h2 className="panel-title">Your rules</h2>
-              {s && <Constraints session={s} canSearch={!!selected} pieceLabel={pieceLabel} busy={busy} onSubmit={findIt} />}
+              {s && <Constraints session={s} category={selectedCat} tones={categories.tones} canSearch={!!selected} pieceLabel={pieceLabel} busy={busy} onSubmit={findIt} />}
             </aside>
 
             <section className="col-results" aria-label="Results" ref={resultsRef}>
@@ -586,12 +644,14 @@ export default function App() {
                     view={search}
                     cropId={selected?.representativeCropId ?? null}
                     garmentLabel={pieceLabel}
+                    accessory={accessory}
                     onRetry={() => s && findIt(draftFrom(s))}
                     onCancel={async () => {
                       if (searchId) await api.cancel(searchId).catch(fail);
                     }}
                   />
                   <Refine disabled={busy || !selected} onSend={refine} reply={reply} />
+                  {s && selected && <Research sessionId={s.id} garmentId={selected.id} health={health} accessory={accessory} />}
                 </>
               ) : (
                 <div className="placeholder">

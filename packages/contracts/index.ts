@@ -60,6 +60,43 @@ export interface ApiError {
   retryable: boolean;
 }
 /**
+ * What GET /api/categories returns. Static; no auth.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "CategoriesResponse".
+ */
+export interface CategoriesResponse {
+  categories: CategoryInfo[];
+  styleTags: (
+    | "vintage"
+    | "minimalist"
+    | "streetwear"
+    | "workwear"
+    | "preppy"
+    | "athleisure"
+    | "y2k"
+    | "outdoor"
+    | "techwear"
+    | "western"
+    | "bohemian"
+    | "classic"
+    | "grunge"
+    | "punk"
+  )[];
+  tones: ("gold-tone" | "silver-tone" | "rose-gold-tone" | "black" | "two-tone")[];
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "CategoryInfo".
+ */
+export interface CategoryInfo {
+  attributeKeys: ("color" | "pattern" | "cut" | "details")[];
+  family: "apparel" | "bag" | "watch" | "jewelry" | "other";
+  id: "jacket" | "top" | "pants" | "bag" | "watch" | "necklace" | "bracelet" | "ring" | "earrings" | "other";
+  label: string;
+  sizeRule: "clothing" | "ring" | "none";
+}
+/**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
  * via the `definition` "ConstraintCheck".
  */
@@ -175,6 +212,79 @@ export interface GarmentObservation {
   timestampMs: number | null;
   userCorrectedFields?: string[];
   visibleText: string[];
+}
+/**
+ * A soft style memory the model proposed and validation accepted.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "InterpretationApplied".
+ */
+export interface InterpretationApplied {
+  confidence: number;
+  evidenceEventIds: string[];
+  kind:
+    | "size"
+    | "fit"
+    | "budget_max"
+    | "color_like"
+    | "color_avoid"
+    | "material_like"
+    | "material_avoid"
+    | "brand_like"
+    | "brand_avoid"
+    | "tone_like"
+    | "tone_avoid"
+    | "ring_size"
+    | "style_like"
+    | "style_avoid";
+  value: string;
+}
+/**
+ * A model proposal validation refused, with the reason. ``kind``/``value`` are what the model sent (truncated).
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "InterpretationRejected".
+ */
+export interface InterpretationRejected {
+  kind?: string | null;
+  reason: string;
+  value?: string | null;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "InterpretationRun".
+ */
+export interface InterpretationRun {
+  applied?: InterpretationApplied[];
+  at: string;
+  evidenceEventIds: string[];
+  id: string;
+  model?: string | null;
+  rejected?: InterpretationRejected[];
+  status: "running" | "done";
+  usage?: StyleNoteUsage | null;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleNoteUsage".
+ */
+export interface StyleNoteUsage {
+  completionTokens?: number | null;
+  promptTokens?: number | null;
+  wallMs?: number | null;
+}
+/**
+ * What POST /api/style/interpretations/run returns.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "InterpretationRunResult".
+ */
+export interface InterpretationRunResult {
+  applied?: InterpretationApplied[];
+  pendingEvents?: number | null;
+  rejected?: InterpretationRejected[];
+  runId?: string | null;
+  status: "idle" | "debouncing" | "waiting_for_model" | "already_running" | "duplicate" | "model_unavailable" | "done";
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -446,6 +556,17 @@ export interface Recommendation {
   rankingVersion: string;
   searchId: string;
   section: "primary" | "needs_checking" | "original_over_budget";
+  warningCodes?: (
+    | "seller_claims_unverified"
+    | "availability_unknown"
+    | "fixture_data"
+    | "price_without_page_text"
+    | "comparison_page"
+    | "observation_stale"
+    | "brand_not_evidenced"
+    | "image_rejected"
+    | "exact_claim_unconfirmed"
+  )[];
   warnings: string[];
 }
 /**
@@ -497,7 +618,7 @@ export interface ResearchGarmentContext {
 export interface ResearchJob {
   agentNotes?: string | null;
   createdAt: string;
-  error?: {} | null;
+  error?: JobError | null;
   expiresAt: string;
   finishedAt?: string | null;
   garment: ResearchGarmentContext;
@@ -547,6 +668,17 @@ export interface ResearchProduct {
   validatedAt: string;
   variants?: ResearchVariant[];
   verification: "url_checked_page_not_fetched";
+  warningCodes?: (
+    | "seller_claims_unverified"
+    | "availability_unknown"
+    | "fixture_data"
+    | "price_without_page_text"
+    | "comparison_page"
+    | "observation_stale"
+    | "brand_not_evidenced"
+    | "image_rejected"
+    | "exact_claim_unconfirmed"
+  )[];
   warnings: string[];
 }
 /**
@@ -1077,6 +1209,39 @@ export interface StyleTagFact {
   tag: string;
 }
 /**
+ * What GET /api/style/interpretations returns.
+ *
+ * rankingInfluence: whether model-proposed memories may change result order (STYLE_MODEL_RANKING).
+ * styleModel: the configured reader; only ``mode: "live"`` means a model actually answered since startup.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleInterpretations".
+ */
+export interface StyleInterpretations {
+  notBefore?: string | null;
+  pendingEvents: number;
+  rankingInfluence: boolean;
+  runs?: InterpretationRun[];
+  status: "idle" | "debouncing" | "waiting_for_model";
+  styleModel: StyleModelInfo;
+}
+/**
+ * Which reader handles style notes. Never claims local processing for a hosted model.
+ *
+ * mode: unavailable (feature or provider off), unverified (configured, no successful call yet),
+ * live (a real call succeeded since startup).
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleModelInfo".
+ */
+export interface StyleModelInfo {
+  hosting?: ("local" | "remote") | null;
+  label?: string | null;
+  mode: "unavailable" | "unverified" | "live";
+  model?: string | null;
+  provider?: ("none" | "ollama" | "openai_compatible") | null;
+}
+/**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
  * via the `definition` "StyleMemory".
  */
@@ -1128,22 +1293,6 @@ export interface StyleMemory {
   value: unknown;
 }
 /**
- * Which reader handles style notes. Never claims local processing for a hosted model.
- *
- * mode: unavailable (feature or provider off), unverified (configured, no successful call yet),
- * live (a real call succeeded since startup).
- *
- * This interface was referenced by `ClipCartContracts`'s JSON-Schema
- * via the `definition` "StyleModelInfo".
- */
-export interface StyleModelInfo {
-  hosting?: ("local" | "remote") | null;
-  label?: string | null;
-  mode: "unavailable" | "unverified" | "live";
-  model?: string | null;
-  provider?: ("none" | "ollama" | "openai_compatible") | null;
-}
-/**
  * What POST /api/style/notes returns. Proposals only; nothing is saved.
  *
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -1182,15 +1331,6 @@ export interface StyleProposal {
     | "style_avoid";
   quote: string;
   value: unknown;
-}
-/**
- * This interface was referenced by `ClipCartContracts`'s JSON-Schema
- * via the `definition` "StyleNoteUsage".
- */
-export interface StyleNoteUsage {
-  completionTokens?: number | null;
-  promptTokens?: number | null;
-  wallMs?: number | null;
 }
 /**
  * What GET /api/style/profile returns: the profile without internal product keys.

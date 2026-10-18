@@ -26,10 +26,12 @@ Read-only, no flag, no auth. The UI should build category pickers and per-catego
   { "id": "jacket", "label": "Jacket", "family": "apparel", "sizeRule": "clothing", "attributeKeys": ["color", "pattern", "cut", "details"] },
   { "id": "ring", "label": "Ring", "family": "jewelry", "sizeRule": "ring", "attributeKeys": ["color", "cut", "details"] },
   { "id": "watch", "label": "Watch", "family": "watch", "sizeRule": "none", "attributeKeys": ["color", "cut", "details"] }
-] }
+],
+  "styleTags": ["vintage", "minimalist", "…", "punk"],
+  "tones": ["gold-tone", "silver-tone", "rose-gold-tone", "black", "two-tone"] }
 ```
 
-`sizeRule` is `clothing`, `ring` or `none`.
+`sizeRule` is `clothing`, `ring` or `none`. The response is the generated `CategoriesResponse` type (`CategoryInfo` rows). `styleTags` and `tones` are the style-memory vocabulary (in TypeScript, `CategoriesResponse["styleTags"][number]` and `CategoriesResponse["tones"][number]`; see `docs/contracts/style-memory.md`), added for #26 so the UI never hard-codes them.
 
 ## Observed attributes (`GarmentObservation.observedAttributes`)
 
@@ -67,7 +69,7 @@ A garment whose attributes were changed this way gets `"appearanceNormalized": [
 ## Results for accessories
 
 - **Identity tier:** a watch or jewelry result is never `verified` or `likely` from appearance. The tier is capped at `similar`, and the card says "Similar look".
-- **Seller claims:** when a listing's title or material text claims precious metal, gemstones or authenticity (for example "14k gold", "diamond", "authentic"), the result gets this warning: *"Metal, stones and authenticity are the seller's description; ClipCart doesn't verify them."* The claim is never repeated as a ClipCart fact.
+- **Seller claims:** when a listing's title or material text claims precious metal, gemstones or authenticity (for example "14k gold", "diamond", "authentic"), the result gets this warning: *"Metal, stones and authenticity are the seller's description; ClipCart doesn't verify them."* The claim is never repeated as a ClipCart fact. Match on the stable code `seller_claims_unverified` in `recommendation.warningCodes` (or `warningCodes` on a research product), never on the text. Research products for an accessory get the same code from their title.
 - **Category matching:**
   - Watch straps and bands are not watches.
   - "Key ring", "ring light" and "O-ring" are not rings.
@@ -90,6 +92,20 @@ There are new memory kinds:
 `StyleProfileView` gains `tonesLike`, `tonesAvoid` and `ringSize`. Tone preferences nudge ranking **only for watch and jewelry searches**. A jacket with gold buttons is never boosted by a gold-tone jewelry preference.
 
 The clothing `size` memory never applies to accessories.
+
+## Fixtures for UI review (no injected data)
+
+All of these come from the real fixture providers, on `PERCEPTION_PROVIDER=fixture` and `CATALOG_PROVIDER=fixture`:
+
+- **Accessory detection** (`FEATURE_ACCESSORY_DETECTION=1`): `tests/perception/fixtures/perceptron_dev_fixture.json` adds a labelled `wristwatch` box on every frame. Its attributes come back as `color: ["silver-tone"]`, `cut: ["round case"]`, `details: ["metal bracelet", "white dial"]` and `visibleText: ["FIELD 38"]`. With the flag off, the box is dropped.
+- **Accessory and style results:** the fixture catalog also loads `fixtures/catalog/ui_review_catalog.json`. These are synthetic listings, labelled "NOT REAL PRODUCTS", with `example.com` URLs and the warning "Synthetic UI test listing".
+  - Watches: a "14K … Diamond … Authentic, Swiss Made" watch (`seller_claims_unverified`), a plain field watch, and a watch band that is excluded.
+  - Rings: a sterling signet ring in US 7 (with claims) and a gold-tone stacking ring in US 6.
+  - A necklace and earrings.
+  - Three black jackets whose titles state a style (two "vintage", one "chore coat" for workwear). Saving both vintage jackets infers `style_like: vintage` with two evidence excerpts.
+- **Accessory research offers:** use `RESEARCH_PROVIDER=manual` and the labelled manual import. SoleScout research only turns SoleScout store records into offers, so the synthetic listings never appear there.
+
+Tests: `tests/api/test_ui_review_fixtures.py`.
 
 ## Health
 

@@ -1,0 +1,334 @@
+{
+  "version": "2026-10-18.1",
+  "label": "fixture",
+  "fixture_label": "SYNTHETIC UI REVIEW FIXTURE - hand-written listings, not sourced from any store or provider. NOT REAL PRODUCTS.",
+  "note": "Covers paths the sourced demo catalog can't: watch and jewelry results (seller claims, strap decoys, US ring sizes) and jackets whose titles state a style, so saves produce inferred style chips with evidence. URLs use the reserved example.com domain.",
+  "evidence": [],
+  "listings": [
+    {
+      "id": "syn_watch_claims",
+      "title": "14K White Gold Diamond Accent Watch, Silver Tone - Authentic, Swiss Made",
+      "category": "watch",
+      "colorText": "silver-tone white gold",
+      "materialText": "seller says 14k gold, diamond accents",
+      "price": {
+        "amountMinor": 89000,
+        "currency": "USD"
+      },
+      "offerKey": "clipcart_fixture:syn-watch-claims",
+      "provider": "clipcart_fixture",
+      "providerListingId": "syn-watch-claims",
+      "productId": "syn-watch-claims",
+      "variantId": null,
+      "retailer": "Synthetic test store",
+      "canonicalUrl": "https://www.example.com/clipcart-fixture/syn-watch-claims",
+      "imageUrls": [],
+      "brand": null,
+      "shippingMinor": null,
+      "condition": "new",
+      "availability": "in_stock",
+      "checkedAt": "2026-10-18T09:00:00Z",
+      "evidenceIds": [],
+      "mode": "fixture",
+      "destinationKind": "retailer_offer",
+      "warnings": [
+        "Synthetic UI test listing: not a real product or store."
+      ],
+      "size": null
+    },
+    {
+      "id": "syn_watch_plain",
+      "title": "Silver-tone Round Field Watch with Metal Bracelet",
+      "category": "watch",
+      "colorText": "silver-tone silver",
+      "materialText": "stainless steel case",
+      "price": {
+        "amountMinor": 18000,
+        "currency": "USD"
+      },
+      "offerKey": "clipcart_fixture:syn-watch-plain",
+      "provider": "clipcart_fixture",
+      "providerListingId": "syn-watch-plain",
+      "productId": "syn-watch-plain",
+      "variantId": null,
+      "retailer": "Synthetic test store",
+      "canonicalUrl": "https://www.example.com/clipcart-fixture/syn-watch-plain",
+      "imageUrls": [],
+      "brand": null,
+      "shippingMinor": null,
+      "condition": "new",
+      "availability": "in_stock",
+      "checkedAt": "2026-10-18T09:00:00Z",
+      "evidenceIds": [],
+      "mode": "fixture",
+      "destinationKind": "retailer_offer",
+      "warnings": [
+        "Synthetic UI test listing: not a real product or store."
+      ],
+      "size": null
+    },
+    {
+      "id": "syn_watch_band_decoy",
+      "title": "Silver-tone Metal Watch Band 20mm Round Links",
+      "category": "watch",
+      "colorText": "silver-tone silver",
+      "price": {
+        "amountMinor": 2500,
+        "currency": "USD"
+      },
+      "offerKey": "clipcart_fixture:syn-watch-band-decoy",
+      "provider": "clipcart_fixture",
+      "providerListingId": "syn-watch-band-decoy",
+      "productId": "syn-watch-band-decoy",
+      "variantId": null,
+      "retailer": "Synthetic test store",
+      "canonicalUrl": "https://www.example.com/clipcart-fixture/syn-watch-band-decoy",
+      "imageUrls": [],
+      "brand": null,
+      "shippingMinor": null,
+      "condition": "new",
+      "availability": "in_stock",
+      "checkedAt": "2026-10-18T09:00:00Z",
+      "evidenceIds": [],
+      "mode": "fixture",
+      "destinationKind": "retailer_offer",
+      "warnings": [
+        "Synthetic UI test listing: not a real product or store."
+      ],
+      "size": null,
+      "materialText": null
+    },
+    {
+      "id": "syn_ring_claims",
+      "title": "Sterling Silver 925 Signet Ring",
+      "category": "ring",
+      "colorText": "silver-tone silver",
+      "size": {
+        "raw": "7",
+        "system": "us"
+      },
+      "price": {
+        "amountMinor": 6500,
+        "currency": "USD"
+      },
+      "offerKey": "clipcart_fixture:syn-ring-claims",
+      "provider": "clipcart_fixture",
+      "providerListingId": "syn-ring-claims",
+      "productId": "syn-ring-claims",
+      "variantId": "7",
+      "retailer": "Synthetic test store",
+      "canonicalUrl": "https://www.example.com/clipcart-fixture/syn-ring-claims",
+      "imageUrls": [],
+      "brand": null,
+      "shippingMinor": null,
+      "condition": "new",
+      "availability": "in_stock",
+      "checkedAt": "2026-10-18T09:00:00Z",
+      "evidenceIds": [],
+      "mode": "fixture",
+      "destinationKind": "retailer_offer",
+      "warnings": [
+        "Synthetic UI test listing: not a real product or store."
+      ],
+      "materialText": null
+    },
+    {
+      "id": "syn_ring_plain",
+      "title": "Gold-tone Stacking Ring",
+      "category": "ring",
+      "colorText": "gold-tone gold",
+      "size": {
+        "raw": "6",
+        "system": "us"
+      },
+      "price": {
+        "amountMinor": 2400,
+        "currency": "USD"
+      },
+      "offerKey": "clipcart_fixture:syn-ring-plain",
+      "provider": "clipcart_fixture",
+      "providerListingId": "syn-ring-plain",
+      "productId": "syn-ring-plain",
+      "variantId": "6",
+      "retailer": "Synthetic test store",
+      "canonicalUrl": "https://www.example.com/clipcart-fixture/syn-ring-plain",
+      "imageUrls": [],
+      "brand": null,
+      "shippingMinor": null,
+      "condition": "new",
+      "availability": "in_stock",
+      "checkedAt": "2026-10-18T09:00:00Z",
+      "evidenceIds": [],
+      "mode": "fixture",
+      "destinationKind": "retailer_offer",
+      "warnings": [
+        "Synthetic UI test listing: not a real product or store."
+      ],
+      "materialText": null
+    },
+    {
+      "id": "syn_necklace",
+      "title": "Gold-tone Chain Necklace with Round Pendant",
+      "category": "necklace",
+      "colorText": "gold-tone gold",
+      "price": {
+        "amountMinor": 4200,
+        "currency": "USD"
+      },
+      "offerKey": "clipcart_fixture:syn-necklace",
+      "provider": "clipcart_fixture",
+      "providerListingId": "syn-necklace",
+      "productId": "syn-necklace",
+      "variantId": null,
+      "retailer": "Synthetic test store",
+      "canonicalUrl": "https://www.example.com/clipcart-fixture/syn-necklace",
+      "imageUrls": [],
+      "brand": null,
+      "shippingMinor": null,
+      "condition": "new",
+      "availability": "in_stock",
+      "checkedAt": "2026-10-18T09:00:00Z",
+      "evidenceIds": [],
+      "mode": "fixture",
+      "destinationKind": "retailer_offer",
+      "warnings": [
+        "Synthetic UI test listing: not a real product or store."
+      ],
+      "size": null,
+      "materialText": null
+    },
+    {
+      "id": "syn_earrings",
+      "title": "Silver-tone Small Hoop Earrings",
+      "category": "earrings",
+      "colorText": "silver-tone silver",
+      "price": {
+        "amountMinor": 3000,
+        "currency": "USD"
+      },
+      "offerKey": "clipcart_fixture:syn-earrings",
+      "provider": "clipcart_fixture",
+      "providerListingId": "syn-earrings",
+      "productId": "syn-earrings",
+      "variantId": null,
+      "retailer": "Synthetic test store",
+      "canonicalUrl": "https://www.example.com/clipcart-fixture/syn-earrings",
+      "imageUrls": [],
+      "brand": null,
+      "shippingMinor": null,
+      "condition": "new",
+      "availability": "in_stock",
+      "checkedAt": "2026-10-18T09:00:00Z",
+      "evidenceIds": [],
+      "mode": "fixture",
+      "destinationKind": "retailer_offer",
+      "warnings": [
+        "Synthetic UI test listing: not a real product or store."
+      ],
+      "size": null,
+      "materialText": null
+    },
+    {
+      "id": "syn_jacket_vintage_denim",
+      "title": "Vintage 90s Black Denim Trucker Jacket",
+      "category": "jacket",
+      "colorText": "Black",
+      "materialText": "cotton denim",
+      "size": {
+        "raw": "M",
+        "system": "alpha"
+      },
+      "price": {
+        "amountMinor": 9500,
+        "currency": "USD"
+      },
+      "offerKey": "clipcart_fixture:syn-jacket-vintage-denim",
+      "provider": "clipcart_fixture",
+      "providerListingId": "syn-jacket-vintage-denim",
+      "productId": "syn-jacket-vintage-denim",
+      "variantId": "M",
+      "retailer": "Synthetic test store",
+      "canonicalUrl": "https://www.example.com/clipcart-fixture/syn-jacket-vintage-denim",
+      "imageUrls": [],
+      "brand": null,
+      "shippingMinor": null,
+      "condition": "new",
+      "availability": "in_stock",
+      "checkedAt": "2026-10-18T09:00:00Z",
+      "evidenceIds": [],
+      "mode": "fixture",
+      "destinationKind": "retailer_offer",
+      "warnings": [
+        "Synthetic UI test listing: not a real product or store."
+      ]
+    },
+    {
+      "id": "syn_jacket_vintage_bomber",
+      "title": "Black Bomber Jacket, Vintage Wash Nylon",
+      "category": "jacket",
+      "colorText": "Black",
+      "materialText": "nylon",
+      "size": {
+        "raw": "M",
+        "system": "alpha"
+      },
+      "price": {
+        "amountMinor": 11000,
+        "currency": "USD"
+      },
+      "offerKey": "clipcart_fixture:syn-jacket-vintage-bomber",
+      "provider": "clipcart_fixture",
+      "providerListingId": "syn-jacket-vintage-bomber",
+      "productId": "syn-jacket-vintage-bomber",
+      "variantId": "M",
+      "retailer": "Synthetic test store",
+      "canonicalUrl": "https://www.example.com/clipcart-fixture/syn-jacket-vintage-bomber",
+      "imageUrls": [],
+      "brand": null,
+      "shippingMinor": null,
+      "condition": "new",
+      "availability": "in_stock",
+      "checkedAt": "2026-10-18T09:00:00Z",
+      "evidenceIds": [],
+      "mode": "fixture",
+      "destinationKind": "retailer_offer",
+      "warnings": [
+        "Synthetic UI test listing: not a real product or store."
+      ]
+    },
+    {
+      "id": "syn_jacket_workwear",
+      "title": "Black Duck Canvas Chore Coat Jacket",
+      "category": "jacket",
+      "colorText": "Black",
+      "materialText": "cotton duck canvas",
+      "size": {
+        "raw": "M",
+        "system": "alpha"
+      },
+      "price": {
+        "amountMinor": 8800,
+        "currency": "USD"
+      },
+      "offerKey": "clipcart_fixture:syn-jacket-workwear",
+      "provider": "clipcart_fixture",
+      "providerListingId": "syn-jacket-workwear",
+      "productId": "syn-jacket-workwear",
+      "variantId": "M",
+      "retailer": "Synthetic test store",
+      "canonicalUrl": "https://www.example.com/clipcart-fixture/syn-jacket-workwear",
+      "imageUrls": [],
+      "brand": null,
+      "shippingMinor": null,
+      "condition": "new",
+      "availability": "in_stock",
+      "checkedAt": "2026-10-18T09:00:00Z",
+      "evidenceIds": [],
+      "mode": "fixture",
+      "destinationKind": "retailer_offer",
+      "warnings": [
+        "Synthetic UI test listing: not a real product or store."
+      ]
+    }
+  ]
+}

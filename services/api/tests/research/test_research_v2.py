@@ -93,6 +93,58 @@ def test_manual_mode_labels_and_old_observations_warn():
     assert p.warnings[0].startswith("Imported manually") and any("may have changed" in w for w in p.warnings)
 
 
+# ---------------------------------------------------------------- sections for unpriced offers (contract: "Sections")
+PRICED = {"observedPrice": {"amountMinor": 9000, "currency": "USD"}, "priceExcerpt": "$90.00", "identifiers": {"gtin": "0012345678905"}}
+NO_EXCERPT = {"observedPrice": {"amountMinor": 5000, "currency": "USD"}, "identifiers": {"gtin": "0012345678905"}}
+
+
+@pytest.mark.parametrize("budget", [None, 10000])
+def test_unpriced_offers_are_never_recommended_or_lowest_with_or_without_a_budget(budget):
+    raw = [
+        sub(retailer="Priced", productUrl="https://a-store.com/x", **PRICED),
+        sub(retailer="NoExcerpt", productUrl="https://b-store.com/x", **NO_EXCERPT),  # price given, page text missing
+        sub(retailer="NoPrice", productUrl="https://c-store.com/x", identifiers={"gtin": "0012345678905"}),
+        sub(retailer="SoleScout", productUrl="https://solescout.ai/product/abc",  # comparison page: never a seller price
+            observedPrice={"amountMinor": 4000, "currency": "USD"}, priceExcerpt="from $40"),
+    ]
+    ps, _, _ = run(raw, Preferences(max_item_price_minor=budget))
+    by = {p.retailer: p for p in ps}
+    assert by["Priced"].section == "primary" and by["Priced"].offer_group.is_lowest_confirmed
+    for name in ("NoExcerpt", "NoPrice", "SoleScout"):
+        p = by[name]
+        assert p.price is None and p.price_basis == "unknown" and p.section == "needs_checking", name
+        assert not (p.offer_group and p.offer_group.is_lowest_confirmed), name
+        unknown = {c.constraint for c in p.constraint_checks if c.state == "unknown"}
+        assert unknown == ({"budget"} if budget else {"price"}), (name, unknown)
+        assert not any(c.constraint == "budget" and c.state == "satisfied" for c in p.constraint_checks), name
+    assert by["Priced"].offer_group.lowest_confirmed_price.amount_minor == 9000
+    assert by["Priced"].offer_group.uncertain_price_count == 2  # NoExcerpt and NoPrice share the GTIN
+
+
+def test_research_warnings_carry_stable_codes():
+    old = (NOW - timedelta(days=3)).isoformat()
+    raw = [
+        sub(retailer="A", productUrl="https://a-store.com/x", observedAt=old, brand="Alpha", imageUrl="http://img-store.com/a.jpg",
+            matchType="exact", **NO_EXCERPT),
+        sub(retailer="SoleScout", productUrl="https://solescout.ai/product/abc"),
+    ]
+    ps, _, _ = run(raw, mode="fixture")
+    by = {p.retailer: p for p in ps}
+    assert by["A"].warning_codes == ["observation_stale", "price_without_page_text", "fixture_data", "brand_not_evidenced",
+                                     "image_rejected", "exact_claim_unconfirmed"]
+    assert by["A"].warnings[1:] and len(by["A"].warnings) == len(by["A"].warning_codes) + 1  # the first names the source
+    assert by["SoleScout"].warning_codes == ["comparison_page", "fixture_data"]
+
+
+def test_accessory_research_flags_seller_claims_by_code():
+    raw = [sub(title="14K Gold Diamond Watch", productUrl="https://w-store.com/1"), sub(title="Steel field watch", productUrl="https://w-store.com/2")]
+    ps, _, _ = verify_submission(raw, job_id="rsj_t", prefs=Preferences(), job_created_at=NOW - timedelta(minutes=1),
+                                 url_checker=nodns, category="watch", mode="live")
+    by = {p.title: p for p in ps}
+    assert "seller_claims_unverified" in by["14K Gold Diamond Watch"].warning_codes
+    assert "seller_claims_unverified" not in by["Steel field watch"].warning_codes
+
+
 # ---------------------------------------------------------------- API
 @pytest.fixture
 def research(app_factory, monkeypatch):

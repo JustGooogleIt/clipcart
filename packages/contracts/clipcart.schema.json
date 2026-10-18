@@ -215,6 +215,122 @@
       "title": "ApiError",
       "type": "object"
     },
+    "CategoriesResponse": {
+      "additionalProperties": false,
+      "description": "What GET /api/categories returns. Static; no auth.",
+      "properties": {
+        "categories": {
+          "items": {
+            "$ref": "#/$defs/CategoryInfo"
+          },
+          "type": "array"
+        },
+        "styleTags": {
+          "items": {
+            "enum": [
+              "vintage",
+              "minimalist",
+              "streetwear",
+              "workwear",
+              "preppy",
+              "athleisure",
+              "y2k",
+              "outdoor",
+              "techwear",
+              "western",
+              "bohemian",
+              "classic",
+              "grunge",
+              "punk"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tones": {
+          "items": {
+            "enum": [
+              "gold-tone",
+              "silver-tone",
+              "rose-gold-tone",
+              "black",
+              "two-tone"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "categories",
+        "styleTags",
+        "tones"
+      ],
+      "title": "CategoriesResponse",
+      "type": "object"
+    },
+    "CategoryInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "attributeKeys": {
+          "items": {
+            "enum": [
+              "color",
+              "pattern",
+              "cut",
+              "details"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "family": {
+          "enum": [
+            "apparel",
+            "bag",
+            "watch",
+            "jewelry",
+            "other"
+          ],
+          "type": "string"
+        },
+        "id": {
+          "enum": [
+            "jacket",
+            "top",
+            "pants",
+            "bag",
+            "watch",
+            "necklace",
+            "bracelet",
+            "ring",
+            "earrings",
+            "other"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "sizeRule": {
+          "enum": [
+            "clothing",
+            "ring",
+            "none"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "family",
+        "sizeRule",
+        "attributeKeys"
+      ],
+      "title": "CategoryInfo",
+      "type": "object"
+    },
     "ConstraintCheck": {
       "additionalProperties": false,
       "properties": {
@@ -653,6 +769,211 @@
         "editedByUser"
       ],
       "title": "GarmentObservation",
+      "type": "object"
+    },
+    "InterpretationApplied": {
+      "additionalProperties": false,
+      "description": "A soft style memory the model proposed and validation accepted.",
+      "properties": {
+        "confidence": {
+          "type": "number"
+        },
+        "evidenceEventIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "size",
+            "fit",
+            "budget_max",
+            "color_like",
+            "color_avoid",
+            "material_like",
+            "material_avoid",
+            "brand_like",
+            "brand_avoid",
+            "tone_like",
+            "tone_avoid",
+            "ring_size",
+            "style_like",
+            "style_avoid"
+          ],
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "confidence",
+        "evidenceEventIds"
+      ],
+      "title": "InterpretationApplied",
+      "type": "object"
+    },
+    "InterpretationRejected": {
+      "additionalProperties": false,
+      "description": "A model proposal validation refused, with the reason. ``kind``/``value`` are what the model sent (truncated).",
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reason": {
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "InterpretationRejected",
+      "type": "object"
+    },
+    "InterpretationRun": {
+      "additionalProperties": false,
+      "properties": {
+        "applied": {
+          "items": {
+            "$ref": "#/$defs/InterpretationApplied"
+          },
+          "type": "array"
+        },
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "evidenceEventIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rejected": {
+          "items": {
+            "$ref": "#/$defs/InterpretationRejected"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "running",
+            "done"
+          ],
+          "type": "string"
+        },
+        "usage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StyleNoteUsage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "at",
+        "evidenceEventIds",
+        "status"
+      ],
+      "title": "InterpretationRun",
+      "type": "object"
+    },
+    "InterpretationRunResult": {
+      "additionalProperties": false,
+      "description": "What POST /api/style/interpretations/run returns.",
+      "properties": {
+        "applied": {
+          "items": {
+            "$ref": "#/$defs/InterpretationApplied"
+          },
+          "type": "array"
+        },
+        "pendingEvents": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rejected": {
+          "items": {
+            "$ref": "#/$defs/InterpretationRejected"
+          },
+          "type": "array"
+        },
+        "runId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "idle",
+            "debouncing",
+            "waiting_for_model",
+            "already_running",
+            "duplicate",
+            "model_unavailable",
+            "done"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "InterpretationRunResult",
       "type": "object"
     },
     "JobError": {
@@ -1633,6 +1954,23 @@
           ],
           "type": "string"
         },
+        "warningCodes": {
+          "items": {
+            "enum": [
+              "seller_claims_unverified",
+              "availability_unknown",
+              "fixture_data",
+              "price_without_page_text",
+              "comparison_page",
+              "observation_stale",
+              "brand_not_evidenced",
+              "image_rejected",
+              "exact_claim_unconfirmed"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
         "warnings": {
           "items": {
             "type": "string"
@@ -1855,7 +2193,7 @@
         "error": {
           "anyOf": [
             {
-              "type": "object"
+              "$ref": "#/$defs/JobError"
             },
             {
               "type": "null"
@@ -2184,6 +2522,23 @@
         "verification": {
           "const": "url_checked_page_not_fetched",
           "type": "string"
+        },
+        "warningCodes": {
+          "items": {
+            "enum": [
+              "seller_claims_unverified",
+              "availability_unknown",
+              "fixture_data",
+              "price_without_page_text",
+              "comparison_page",
+              "observation_stale",
+              "brand_not_evidenced",
+              "image_rejected",
+              "exact_claim_unconfirmed"
+            ],
+            "type": "string"
+          },
+          "type": "array"
         },
         "warnings": {
           "items": {
@@ -2744,6 +3099,55 @@
         }
       },
       "title": "StyleHints",
+      "type": "object"
+    },
+    "StyleInterpretations": {
+      "additionalProperties": false,
+      "description": "What GET /api/style/interpretations returns.\n\nrankingInfluence: whether model-proposed memories may change result order (STYLE_MODEL_RANKING).\nstyleModel: the configured reader; only ``mode: \"live\"`` means a model actually answered since startup.",
+      "properties": {
+        "notBefore": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pendingEvents": {
+          "type": "integer"
+        },
+        "rankingInfluence": {
+          "type": "boolean"
+        },
+        "runs": {
+          "items": {
+            "$ref": "#/$defs/InterpretationRun"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "idle",
+            "debouncing",
+            "waiting_for_model"
+          ],
+          "type": "string"
+        },
+        "styleModel": {
+          "$ref": "#/$defs/StyleModelInfo"
+        }
+      },
+      "required": [
+        "status",
+        "pendingEvents",
+        "rankingInfluence",
+        "styleModel"
+      ],
+      "title": "StyleInterpretations",
       "type": "object"
     },
     "StyleItem": {

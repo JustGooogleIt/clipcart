@@ -1,3 +1,4 @@
+import type { CategoriesResponse, ResearchJob, SubmittedProduct } from "@contracts";
 import type { Health, SearchView, SessionView } from "./types";
 
 export class ApiError extends Error {
@@ -36,11 +37,20 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 export const key = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
+// One boot request at a time per page. A fresh browser has no owner cookie yet, and every cookie-less resume mints a
+// new owner: two in flight (React StrictMode runs the boot effect twice in dev) could leave the page on one owner's
+// session while the cookie names the other, and the upload then 404s.
+let resuming: Promise<SessionView> | null = null;
+const resumeOnce = () =>
+  (resuming ??= req<SessionView>("POST", "/api/sessions/resume", {}).finally(() => {
+    resuming = null;
+  }));
+
 export const api = {
   health: () => req<Health>("GET", "/api/health"),
   diagnostics: () => req<Record<string, unknown>>("GET", "/api/diagnostics"),
   latest: () => req<SessionView>("GET", "/api/sessions/latest"),
-  resume: () => req<SessionView>("POST", "/api/sessions/resume", {}),
+  resume: resumeOnce,
   createSession: () => req<SessionView>("POST", "/api/sessions"),
   session: (id: string) => req<SessionView>("GET", `/api/sessions/${id}`),
   patch: (id: string, body: Record<string, unknown>) => req<SessionView>("PATCH", `/api/sessions/${id}`, body),
@@ -78,6 +88,12 @@ export const api = {
         warnings?: string[];
       }
     >("POST", `/api/sessions/${id}/youtube-analyze`, { youtubeUrl, expectedRevision }),
+  categories: () => req<CategoriesResponse>("GET", "/api/categories"),
+  // Research jobs (FEATURE_AGENT_RESEARCH). Contract: docs/contracts/agent-research.md, v2.
+  startResearch: (id: string) => req<{ job: ResearchJob }>("POST", `/api/sessions/${id}/research-jobs`, { idempotencyKey: key() }),
+  research: (jobId: string) => req<{ job: ResearchJob }>("GET", `/api/research-jobs/${jobId}`),
+  importResearch: (jobId: string, products: SubmittedProduct[], notes: string | null) =>
+    req<{ job: ResearchJob }>("POST", `/api/research-jobs/${jobId}/import`, { products, notes }),
 };
 
 export function upload(
