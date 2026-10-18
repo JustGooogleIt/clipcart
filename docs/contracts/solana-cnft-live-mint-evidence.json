@@ -1,0 +1,30 @@
+{
+  "verifiedAt": "2026-10-18T15:09:00Z",
+  "rpc": "https://api.devnet.solana.com",
+  "genesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "genesisOk": true,
+  "payment": {
+    "signature": "3KjLMeXJUjidmxgbsvqWZQVCfHeBAupHnTk8rdc2EkNjr12A7iCCRXsgkbYqyjLVsioAPmsoDGPtA2Psz51HkbJh",
+    "confirmationStatus": "finalized",
+    "err": null
+  },
+  "mint": {
+    "signature": "Hfs1KdaiKLstxgXrbw7xzuiAL5CREUVFpw92pGQLdJCM6xjgiAnTadqH2WNaSwFFJKTRgvsNLwjmEDJmvim8KbD",
+    "confirmationStatus": "finalized",
+    "err": null
+  },
+  "tree": {
+    "address": "HaWhPiE6wEBENDnjWZh3KH3vS8R34cpmvui25itZ6aRD",
+    "exists": true,
+    "lamports": 9550400
+  },
+  "das": {
+    "assetId": "HEtzjRrzUzYrSo2AaQJJsb5UXAXRXb8phLBchW7KUEhq",
+    "owner": "8W3Rgm2MFFkA3SP1TcUuvVaHMAPhJshZ4rdgJw2QSwjo",
+    "ownerMatchesBuyer": true,
+    "compressed": true,
+    "tree": "HaWhPiE6wEBENDnjWZh3KH3vS8R34cpmvui25itZ6aRD",
+    "leafId": 0,
+    "provider": "SOLANA_DAS_RPC_URL (local; value omitted)"
+  }
+}

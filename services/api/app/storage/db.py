@@ -33,12 +33,20 @@ COLLECTIONS = (
     "research_jobs",
     "demo_orders",
     "payment_signatures",
+    "receipt_mint_attempts",
 )
 
 
 def connect(settings: Settings) -> Any:
     if settings.mongodb_uri:
-        client = pymongo.MongoClient(settings.mongodb_uri, serverSelectionTimeoutMS=8000, appname="clipcart")
+        kwargs: dict[str, Any] = {"serverSelectionTimeoutMS": 8000, "appname": "clipcart"}
+        try:
+            import certifi
+
+            kwargs["tlsCAFile"] = certifi.where()
+        except ImportError:
+            pass
+        client = pymongo.MongoClient(settings.mongodb_uri, **kwargs)
     else:
         import mongomock
 
@@ -46,6 +54,16 @@ def connect(settings: Settings) -> Any:
     db = client[settings.mongodb_db]
     ensure_indexes(db)
     return db
+
+
+def _drop_index_if_present(db: Any, collection: str, name: str) -> None:
+    coll = db[collection]
+    try:
+        info = coll.index_information()
+    except Exception:  # noqa: BLE001
+        return
+    if name in info:
+        coll.drop_index(name)
 
 
 def ensure_indexes(db: Any) -> None:
@@ -71,9 +89,25 @@ def ensure_indexes(db: Any) -> None:
     db.referrals.create_index([("sessionId", ASCENDING), ("occurredAt", DESCENDING)])
     db.demo_orders.create_index([("ownerId", ASCENDING), ("createdAt", DESCENDING)])
     db.demo_orders.create_index([("paymentReference", ASCENDING)], unique=True)
-    # Sparse so unpaid orders (null signature) do not collide; claims also go through payment_signatures.
-    db.demo_orders.create_index([("paymentSignature", ASCENDING)], unique=True, sparse=True)
+    # Paid signatures only. Sparse unique still indexes BSON null, so a second unpaid
+    # order (paymentSignature: null) fails on real MongoDB with E11000.
+    _drop_index_if_present(db, "demo_orders", "paymentSignature_1")
+    db.demo_orders.create_index(
+        [("paymentSignature", ASCENDING)],
+        unique=True,
+        name="paymentSignature_paid_unique",
+        partialFilterExpression={"paymentSignature": {"$type": "string"}},
+    )
     db.payment_signatures.create_index([("orderId", ASCENDING)])
+    # One mint attempt record per demo order (atomic claim for cNFT receipts).
+    db.receipt_mint_attempts.create_index([("orderId", ASCENDING)], unique=True)
+    _drop_index_if_present(db, "receipt_mint_attempts", "mintSignature_1")
+    db.receipt_mint_attempts.create_index(
+        [("mintSignature", ASCENDING)],
+        unique=True,
+        name="mintSignature_present_unique",
+        partialFilterExpression={"mintSignature": {"$type": "string"}},
+    )
 
 
 def ping(db: Any) -> bool:

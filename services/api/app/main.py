@@ -14,6 +14,7 @@ from app.jobs.search import recover_on_startup
 from app.media.errors import MediaError
 from app.routes.api import router
 from app.routes.demo_orders import router as demo_orders_router
+from app.routes.demo_receipts import router as demo_receipts_router
 from app.routes.research import router as research_router
 from app.routes.style import router as style_router
 from app.sessions.service import ApiProblem
@@ -70,6 +71,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(style_router)
     app.include_router(research_router)
     app.include_router(demo_orders_router)
+    app.include_router(demo_receipts_router)
 
     dist = settings.web_dist
     if dist.is_dir():
