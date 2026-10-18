@@ -31,7 +31,9 @@ export default function Walkthrough({
   const [playing, setPlaying] = useState(false);
   const [failed, setFailed] = useState(false);
   const timers = useRef<number[]>([]);
-  const ran = useRef(false);
+  // The auto demo re-runs if it was interrupted (e.g. scrolled away mid-demo) until it finishes once
+  // or the visitor takes control with any of the controls.
+  const demo = useRef<"idle" | "running" | "done">("idle");
   // Every playback action takes a token; leaving the viewport, unmounting or a newer action
   // invalidates older tokens, so a step still waiting on metadata or a seek can never resume playback.
   const epoch = useRef(0);
@@ -102,21 +104,42 @@ export default function Walkthrough({
     if (!alive.current || !inViewRef.current) v.pause();
   };
 
+  const takeOver = () => {
+    demo.current = "done";
+  };
+
   const go = async (n: number, manual = true) => {
-    if (manual) clear();
-    if (n === 0) return play(false);
+    if (manual) {
+      takeOver();
+      clear();
+    }
+    if (n === 0) {
+      await play(false);
+      return false;
+    }
     const token = begin();
-    if (await seekPause(token)) setStep(n);
+    const ok = await seekPause(token);
+    if (ok) setStep(n);
+    return ok;
   };
 
   const runDemo = () => {
     clear();
     if (failed) return;
-    if (reduced) return void go(2, false);
+    demo.current = "running";
+    if (reduced) {
+      void go(2, false).then((ok) => {
+        if (ok) demo.current = "done";
+      });
+      return;
+    }
     void play(true);
     later(2800, () => go(1, false));
     later(3700, () => go(2, false));
-    later(5500, () => setStep(3));
+    later(5500, () => {
+      setStep(3);
+      demo.current = "done";
+    });
   };
   demoRef.current = runDemo;
 
@@ -127,10 +150,7 @@ export default function Walkthrough({
       vref.current?.pause();
       return;
     }
-    if (!ran.current) {
-      ran.current = true;
-      runDemo();
-    }
+    if (demo.current !== "done") runDemo();
   }, [inView]);
 
   useEffect(() => {
@@ -233,6 +253,7 @@ export default function Walkthrough({
                   className={`rv-gbox ${selected ? "rv-gbox-on" : ""}`}
                   style={box}
                   onClick={() => {
+                    takeOver();
                     cancel();
                     setStep(3);
                   }}
@@ -259,6 +280,7 @@ export default function Walkthrough({
               className="rv-play"
               disabled={failed}
               onClick={() => {
+                takeOver();
                 if (playing) {
                   cancel();
                   vref.current?.pause();
@@ -294,6 +316,7 @@ export default function Walkthrough({
                 value={Math.min(time, duration || 1)}
                 disabled={failed}
                 onChange={(e) => {
+                  takeOver();
                   cancel();
                   const v = vref.current;
                   if (!v) return;
