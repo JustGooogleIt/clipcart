@@ -71,19 +71,15 @@ export function researchProvider(health: Health | null): { id: string; name: str
         about: "Nothing is researched automatically. Start a job, then import offers you found yourself. They're labelled Imported manually.",
         mode,
       };
-    case "grok_bot": {
+    case "grok_bot":
       // Results arrive as agent submissions and are validated like any agent's claims (docs/grok-bot-bridge.md).
-      // "operational" means a grok_bot job completed through the authenticated callback; until then it isn't proven here.
-      const proven = health.research?.status === "operational";
       return {
         id: "grok_bot",
-        name: proven ? "Grok Bot research agent" : "Grok Bot research · configured, not yet verified here",
-        about: `Sends this piece's description to a Grok Bot routine, which browses stores and posts offers back. ClipCart checks every link and keeps only prices shown with the page's own text; nothing the Bot says is treated as verified.${
-          proven ? "" : " Offers appear only if the Bot posts them back, which this server hasn't seen yet."
-        } If nothing arrives, you can import offers by hand.`,
+        name: health.research?.status === "operational" ? "Grok Bot research agent" : "Grok Bot research · not yet verified here",
+        about:
+          "Sends this piece to a Grok Bot routine, which browses stores and posts offers back. ClipCart checks every link and keeps only prices shown with the page's own text; nothing the Bot says is treated as verified. If nothing arrives, you can import offers by hand.",
         mode,
       };
-    }
     default:
       return {
         id: r.provider,

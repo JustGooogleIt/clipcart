@@ -43,9 +43,15 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
     throw new ApiError(0, "network", "Can't reach the ClipCart server. Check that it's running.", true);
   }
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: { code?: string; message?: string; retryable?: boolean; order?: DemoOrder } | null = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    // A proxy's HTML error page (502, 504) is worth retrying; nothing in it is an answer.
+    throw new ApiError(res.status, "bad_response", "The ClipCart server sent an unexpected reply.", !res.ok ? res.status >= 500 : true);
+  }
   if (!res.ok) throw new VerifyError(res.status, data?.code ?? "error", data?.message ?? res.statusText, !!data?.retryable, data?.order);
-  return data as T;
+  return data as unknown as T;
 }
 
 export const demoApi = {
@@ -120,7 +126,10 @@ export async function payWithPhantom(p: Phantom, order: DemoOrder, transfer: Dem
   return typeof sent === "string" ? sent : sent.signature;
 }
 
-export const rejected = (e: unknown) => /user rejected|rejected the request|cancel/i.test(String((e as Error)?.message ?? e));
+export const rejected = (e: unknown) =>
+  (e as { code?: number })?.code === 4001 || /user rejected|rejected the request|cancel/i.test(String((e as Error)?.message ?? e));
+// A wallet on mainnet or testnet can't find the devnet blockhash, so the send fails before anything moves.
+export const wrongNetwork = (e: unknown) => /blockhash not found|blockhash.*(invalid|expired)/i.test(String((e as Error)?.message ?? e));
 
 // ---------------------------------------------------------------- last order
 
@@ -136,6 +145,23 @@ export const rememberOrder = (id: string | null) => {
 export const lastOrder = () => {
   try {
     return localStorage.getItem(LAST);
+  } catch {
+    return null;
+  }
+};
+
+// The signature Phantom returned, kept per order so a reload still shows it until the server credits the payment.
+const SIG = (orderId: string) => `clipcart.demoSig.${orderId}`;
+export const rememberSignature = (orderId: string, sig: string) => {
+  try {
+    localStorage.setItem(SIG(orderId), sig);
+  } catch {
+    /* private mode */
+  }
+};
+export const sentSignature = (orderId: string) => {
+  try {
+    return localStorage.getItem(SIG(orderId));
   } catch {
     return null;
   }

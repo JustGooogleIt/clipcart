@@ -21,9 +21,12 @@ import {
   phantom,
   rejected,
   rememberOrder,
+  rememberSignature,
+  sentSignature,
   short,
   sol,
   VerifyError,
+  wrongNetwork,
   type DemoCatalogItem,
   type DemoReceipt,
   type OrderView,
@@ -68,11 +71,16 @@ const INDEXING_TEXT: Record<DemoReceipt["indexingStatus"], string> = {
   unavailable: "Indexer not reachable from this server, so the asset hasn't been looked up.",
 };
 
+/** Verify polling: back off so a slow confirmation stays under the server's 30 verifies per 10 minutes. */
+const BACKOFF = [2500, 5000, 10000, 20000, 30000];
+const MIN_LEFT_MS = 60_000; // don't open Phantom with less than this left: the transfer might land after expiry
+
 const MINT_ERRORS: Record<string, string> = {
   feature_disabled: "Receipt minting is turned off on this server.",
   receipt_ineligible: "This order isn't eligible for a receipt yet.",
   cnft_not_configured: "Receipt minting isn't set up on this server.",
   cnft_durable_required: "Receipt minting needs durable storage, which this server doesn't have.",
+  receipt_mint_in_progress: "The mint is still in progress. Check the receipt again in a moment.",
   not_found: "This order isn't available to this browser, so no receipt was minted.",
 };
 
@@ -128,7 +136,10 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
   const [error, setError] = useState<string | null>(null);
   const [mintError, setMintError] = useState<string | null>(null);
   const alive = useRef(true);
-  useEffect(() => () => void (alive.current = false), []);
+  useEffect(() => {
+    alive.current = true; // StrictMode remounts: set again after the dev-only unmount
+    return () => void (alive.current = false);
+  }, []);
 
   const order = view?.order ?? null;
   const transfer = view?.transferRequest ?? null;
@@ -146,7 +157,10 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
     if (!id) return;
     demoApi
       .order(id)
-      .then((v) => setView(v))
+      .then((v) => {
+        setView(v);
+        setSignature(sentSignature(v.order.id));
+      })
       .catch((e) => {
         // Another owner's order or an old id: the server says not_found, and this page shows nothing for it.
         if (e instanceof ApiError && e.status === 404) {
@@ -176,7 +190,8 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
       .catch(() => {});
   }, [wallet, order?.status]);
 
-  // While a receipt is minting or being reconciled, re-read the order (GET never starts a mint).
+  // While a receipt is minting or being reconciled, re-read the order. GET never mints or reconciles: only
+  // "Check receipt" (a repeat POST …/receipt/mint, which the server treats as idempotent) moves a stuck attempt on.
   const receiptBusy = receipt?.status === "minting" || receipt?.status === "needs_reconciliation" || order?.receiptStatus === "minting";
   useEffect(() => {
     if (!order || !receiptBusy) return;
@@ -236,41 +251,53 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
     }
   };
 
-  // Ask the server to verify. The signature and wallet are hints; retryable answers are polled until the order closes.
-  const verify = useCallback(async (orderId: string, expiresAt: string, hints: { paymentSignature?: string; buyerWallet?: string }) => {
-    setStep("verifying");
-    const until = Date.parse(expiresAt) + 120_000; // a transfer that landed in time can confirm a little later
-    for (;;) {
-      try {
-        const v = await demoApi.verify(orderId, hints);
-        if (!alive.current) return;
-        setView(v);
-        if (v.order.status !== "awaiting_payment" && v.order.status !== "created" && v.order.status !== "verifying") break;
-      } catch (e) {
-        if (!alive.current) return;
-        const order = e instanceof VerifyError ? e.order : undefined;
-        if (order) setView((v) => (v ? { ...v, order: { ...v.order, ...order } } : v));
-        const retry = e instanceof ApiError && e.retryable && Date.now() < until;
-        if (!retry) {
-          setError(
-            e instanceof ApiError && e.code === "signature_reused"
-              ? "That payment is already claimed by another order."
-              : e instanceof ApiError && e.code === "payment_mismatch"
-                ? "The transaction didn't match this order's amount and recipient, so it isn't paid."
-                : e instanceof ApiError && e.retryable
-                  ? "ClipCart couldn't confirm the payment yet. Check again in a moment; don't pay a second time."
-                  : errText(e, "Couldn't verify the payment."),
-          );
-          break;
+  // Ask the server to verify. The signature and wallet are hints; retryable answers are polled, with backoff, until the
+  // order closes. A call straight after Phantom keeps "Submitted" on screen until the server's first answer.
+  const verify = useCallback(
+    async (orderId: string, expiresAt: string, hints: { paymentSignature?: string; buyerWallet?: string }, first: Step = "verifying") => {
+      setStep(first);
+      const until = Date.parse(expiresAt) + 120_000; // a transfer that landed in time can confirm a little later
+      for (let attempt = 0; ; attempt++) {
+        let wait = BACKOFF[Math.min(attempt, BACKOFF.length - 1)];
+        try {
+          const v = await demoApi.verify(orderId, hints);
+          if (!alive.current) return;
+          setView(v);
+          if (v.order.status !== "awaiting_payment" && v.order.status !== "created" && v.order.status !== "verifying") break;
+        } catch (e) {
+          if (!alive.current) return;
+          const order = e instanceof VerifyError ? e.order : undefined;
+          if (order) setView((v) => (v ? { ...v, order: { ...v.order, ...order } } : v));
+          const limited = e instanceof ApiError && e.code === "rate_limited";
+          if (limited) wait = 60_000;
+          const retry = e instanceof ApiError && (e.retryable || limited) && Date.now() < until;
+          if (!retry) {
+            setError(
+              e instanceof ApiError && e.code === "signature_reused"
+                ? "That payment is already claimed by another order."
+                : e instanceof ApiError && e.code === "payment_mismatch"
+                  ? "The transaction didn't match this order's amount and recipient, so it isn't paid."
+                  : e instanceof ApiError && (e.retryable || limited)
+                    ? "ClipCart couldn't confirm the payment yet. Check again in a moment; don't pay a second time."
+                    : errText(e, "Couldn't verify the payment."),
+            );
+            break;
+          }
         }
+        setStep("verifying");
+        await new Promise((r) => setTimeout(r, wait));
       }
-      await new Promise((r) => setTimeout(r, 2500));
-    }
-    if (alive.current) setStep(null);
-  }, []);
+      if (alive.current) setStep(null);
+    },
+    [],
+  );
 
   const pay = async () => {
-    if (!provider || !order || !transfer || !wallet) return;
+    if (!provider || !order || !transfer || !wallet || orderProblem) return;
+    if (Date.parse(order.expiresAt) - Date.now() < MIN_LEFT_MS) {
+      setError("Less than a minute is left on this order, so the payment might land after it expires. Start a new demo order instead.");
+      return;
+    }
     setError(null);
     setStep("awaiting_approval");
     let sig: string;
@@ -278,12 +305,18 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
       sig = await payWithPhantom(provider, order, transfer);
     } catch (e) {
       setStep(null);
-      setError(rejected(e) ? "Approval cancelled in Phantom. Nothing was sent." : errText(e, "Phantom couldn't send the transaction."));
+      setError(
+        rejected(e)
+          ? "Approval cancelled in Phantom. Nothing was sent."
+          : wrongNetwork(e)
+            ? "Phantom is on another network. Switch Phantom to Devnet and try again. Nothing was sent."
+            : errText(e, "Phantom couldn't send the transaction."),
+      );
       return;
     }
     setSignature(sig);
-    setStep("submitted");
-    await verify(order.id, order.expiresAt, { paymentSignature: sig, buyerWallet: wallet });
+    rememberSignature(order.id, sig);
+    await verify(order.id, order.expiresAt, { paymentSignature: sig, buyerWallet: wallet }, "submitted");
   };
 
   const checkAgain = async () => {
@@ -294,8 +327,11 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
     setBusy(null);
   };
 
+  // One mint request at a time: a second POST while one is open could start a second attempt.
+  const minting = useRef(false);
   const mint = async () => {
-    if (!order) return;
+    if (!order || minting.current) return;
+    minting.current = true;
     setBusy("mint");
     setMintError(null);
     try {
@@ -304,6 +340,7 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
       setMintError(e instanceof ApiError ? (MINT_ERRORS[e.code] ?? errText(e, "Couldn't mint the receipt.")) : errText(e, "Couldn't mint the receipt."));
       demoApi.order(order.id).then((v) => alive.current && setView(v)).catch(() => {});
     } finally {
+      minting.current = false;
       setBusy(null);
     }
   };
@@ -322,8 +359,14 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
   const inFlight = phase === "awaiting_approval" || phase === "submitted" || phase === "verifying";
   const stepIndex = phase ? STEPS.findIndex((s) => s.id === phase) : -1;
   const price = order ? sol(order.amountAtomic) : (item?.amountDisplay ?? "");
-  const paySig = order?.paymentSignature ?? signature;
   const receiptStatus = receipt?.status ?? order?.receiptStatus ?? null;
+  // Resumed orders are checked too: only a devnet order at the demo item's server price can be paid here.
+  const orderProblem =
+    !!order && (order.network !== "devnet" || (!!item && order.amountAtomic !== item.amountAtomic))
+      ? "This order doesn't match the devnet demo item, so it can't be paid here."
+      : null;
+  // A sent transaction the server hasn't credited: the person must keep the signature and not pay again.
+  const stranded = !!signature && !!order && order.status !== "paid" && (phase === "expired" || phase === "failed" || expiredHere);
 
   return (
     <div className="co">
@@ -411,7 +454,15 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
                 {phase === "awaiting_approval" && <p className="muted">Check the Phantom window. It should show {price} to the ClipCart demo merchant on devnet.</p>}
                 {phase === "submitted" && <p className="muted">Phantom returned a signature. ClipCart will now check devnet for it.</p>}
                 {phase === "verifying" && <p className="muted">Checking amount, recipient, reference and time window on devnet. Don't pay again.</p>}
-                {(phase === "expired" || expiredHere) && <p className="muted">This order can't be paid any more. Create a new one to try again.</p>}
+                {stranded ? (
+                  <p className="banner banner-error co-error" role="alert">
+                    Your transaction was sent but ClipCart couldn't credit it to this order. Don't pay again. Keep this signature:
+                    <span className="co-mono co-sig">{signature}</span>
+                  </p>
+                ) : (
+                  (phase === "expired" || expiredHere) && <p className="muted">This order can't be paid any more. Create a new one to try again.</p>
+                )}
+                {orderProblem && <p className="banner banner-error co-error">{orderProblem}</p>}
 
                 <dl className="co-fields">
                   <Field label="Order" value={order.id} />
@@ -419,20 +470,28 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
                   <Field label="Recipient" value={order.recipientWallet} href={explorerAddress(order.recipientWallet)} />
                   <Field label="Reference" value={order.paymentReference} />
                   {order.buyerWallet && <Field label="Paid from" value={order.buyerWallet} href={explorerAddress(order.buyerWallet)} />}
-                  {paySig && <Field label="Payment tx" value={paySig} href={order.explorerPaymentUrl ?? explorerTx(paySig)} />}
+                  {/* Linked only once the server verified it; a signature Phantom returned stays plain text until then. */}
+                  {order.paymentSignature ? (
+                    <Field label="Payment tx" value={order.paymentSignature} href={order.explorerPaymentUrl ?? null} />
+                  ) : (
+                    signature && <Field label="Sent tx · not verified" value={signature} />
+                  )}
                 </dl>
 
-                {open && !inFlight && (
-                  <button type="button" className="btn btn-primary co-cta" onClick={pay} disabled={!wallet || !transfer}>
-                    {wallet ? `Approve ${price} in Phantom` : "Connect Phantom to pay"}
-                  </button>
+                {open && !inFlight && !signature && (
+                  <>
+                    <button type="button" className="btn btn-primary co-cta" onClick={pay} disabled={!wallet || !transfer || !!orderProblem}>
+                      {wallet ? `Approve ${price} in Phantom` : "Connect Phantom to pay"}
+                    </button>
+                    <p className="co-hint">Set Phantom to Devnet first. A wallet on another network can't send this.</p>
+                  </>
                 )}
-                {phase === "ready" && !inFlight && (signature || error) && (
+                {(phase === "ready" || stranded) && !inFlight && (signature || error) && (
                   <button type="button" className="btn co-cta-2" onClick={checkAgain} disabled={busy === "check"}>
                     Check payment again
                   </button>
                 )}
-                {(phase === "expired" || phase === "failed" || expiredHere || phase === "paid") && (
+                {(phase === "expired" || phase === "failed" || expiredHere || phase === "paid") && !stranded && (
                   <button type="button" className="btn co-cta-2" onClick={startOver}>
                     Start a new demo order
                   </button>
@@ -451,7 +510,7 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
                 {busy === "mint"
                   ? "Minting the compressed receipt on devnet."
                   : receiptStatus === "eligible" && !receiptsEnabled
-                    ? "Payment verified. Receipt minting is turned off on this server."
+                    ? "Payment verified. Receipts are off on this server."
                     : receiptStatus && RECEIPT_TEXT[receiptStatus]}
               </p>
               {receipt?.status === "confirmed" && <p className="muted">{INDEXING_TEXT[receipt.indexingStatus]}</p>}
@@ -460,11 +519,13 @@ export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }:
                 <Field label="Asset ID" value={receipt?.assetId ?? order.receiptAssetId} href={receipt?.assetId ? explorerAddress(receipt.assetId) : null} />
                 <Field label="Mint tx" value={receipt?.mintSignature ?? null} href={receipt?.explorerMintUrl ?? (receipt?.mintSignature ? explorerTx(receipt.mintSignature) : null)} />
                 {receipt?.merkleTree && <Field label="Tree" value={receipt.merkleTree} href={explorerAddress(receipt.merkleTree)} />}
-                {receipt?.buyerWallet && <Field label="Owner" value={receipt.buyerWallet} href={explorerAddress(receipt.buyerWallet)} />}
+                {receipt?.buyerWallet && (
+                  <Field label={receipt.status === "confirmed" ? "Owner" : "Buyer wallet"} value={receipt.buyerWallet} href={explorerAddress(receipt.buyerWallet)} />
+                )}
               </dl>
-              {receiptsEnabled && receiptStatus === "eligible" && !receipt && (
+              {receiptsEnabled && (receiptStatus === "eligible" || receiptStatus === "minting" || receiptStatus === "needs_reconciliation") && (
                 <button type="button" className="btn co-cta-2" onClick={mint} disabled={busy === "mint"}>
-                  {busy === "mint" ? "Minting…" : "Mint demo receipt"}
+                  {busy === "mint" ? "Working…" : receiptStatus === "eligible" ? "Mint demo receipt" : "Check receipt"}
                 </button>
               )}
               {mintError && <p className="banner banner-error co-error">{mintError}</p>}
