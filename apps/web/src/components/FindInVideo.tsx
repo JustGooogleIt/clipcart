@@ -1,5 +1,13 @@
 import { useState } from "react";
 
+/** What Find reports back: what it found, where, and the full description it searches with. */
+export interface FindReply {
+  tone: "found" | "error";
+  headline: string;
+  where?: string | null;
+  description?: string | null;
+}
+
 export default function FindInVideo({
   disabled,
   busy,
@@ -9,7 +17,7 @@ export default function FindInVideo({
   disabled?: boolean;
   busy?: boolean;
   onFind: (text: string) => Promise<void>;
-  reply?: string | null;
+  reply?: FindReply | null;
 }) {
   const [text, setText] = useState("");
   return (
@@ -39,9 +47,17 @@ export default function FindInVideo({
         </button>
       </div>
       {reply && (
-        <p className="find-reply" role="status">
-          {reply}
-        </p>
+        <div className={`find-reply find-reply-${reply.tone}`} role={reply.tone === "error" ? "alert" : "status"}>
+          <p className="find-reply-head">
+            {reply.headline}
+            {reply.where && <span className="find-reply-where"> · {reply.where}</span>}
+          </p>
+          {reply.description && (
+            <p className="find-reply-desc">
+              <span>Searching with</span> {reply.description}
+            </p>
+          )}
+        </div>
       )}
     </form>
   );

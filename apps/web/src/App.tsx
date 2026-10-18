@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, timestamp, upload } from "./api";
 import Constraints, { draftFrom, findLabel, patchFrom, type PrefsDraft } from "./components/Constraints";
 import Diagnostics from "./components/Diagnostics";
-import FindInVideo from "./components/FindInVideo";
-import GarmentTray, { cleanLabel } from "./components/GarmentTray";
+import FindInVideo, { type FindReply } from "./components/FindInVideo";
+import GarmentTray, { cleanLabel, wordSafe } from "./components/GarmentTray";
 import Landing, { LinkInput, linkErrorText } from "./components/Landing";
 import ModeChips from "./components/ModeChips";
 import Refine from "./components/Refine";
@@ -11,7 +11,7 @@ import Results from "./components/Results";
 import SelectedPiece from "./components/SelectedPiece";
 import Upload from "./components/Upload";
 import Viewer from "./components/Viewer";
-import type { GarmentDoc, Health, SearchView, SessionView } from "./types";
+import type { GarmentDoc, GarmentObservation, Health, SearchView, SessionView } from "./types";
 
 type Box = [number, number, number, number];
 type Drawing = { mode: "new" } | { mode: "edit"; garmentId: string };
@@ -44,7 +44,7 @@ export default function App() {
   const [searchId, setSearchId] = useState<string | null>(null);
   const [search, setSearch] = useState<SearchView | null>(null);
   const [reply, setReply] = useState<string | null>(null);
-  const [findReply, setFindReply] = useState<string | null>(null);
+  const [findReply, setFindReply] = useState<FindReply | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const seqRef = useRef(0);
   const resultsRef = useRef<HTMLElement>(null);
@@ -200,11 +200,30 @@ export default function App() {
     }
   };
 
+  // Show a frame where the garment is visible: keep the current frame if it already is, else jump to its first sighting.
+  const frameFor = (v: SessionView, gid: string | null | undefined, current: string | null): GarmentObservation | null => {
+    const g = v.garments.find((x) => x.id === gid);
+    if (!g) return null;
+    const seen = v.observations.filter((o) => g.observationIds.includes(o.id));
+    return seen.find((o) => o.frameAssetId === current) ?? seen[0] ?? null;
+  };
+
+  const showStage = () =>
+    requestAnimationFrame(() =>
+      document.querySelector(".scene .stage")?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "nearest",
+      }),
+    );
+
   const selectGarment = async (gid: string) => {
     if (!s || gid === s.selectedGarmentId) return;
     setBusy(true);
     try {
-      setView(await api.patch(s.id, { expectedRevision: s.revision, selectedGarmentId: gid, idempotencyKey: crypto.randomUUID() }));
+      const v = await api.patch(s.id, { expectedRevision: s.revision, selectedGarmentId: gid, idempotencyKey: crypto.randomUUID() });
+      setView(v);
+      const seen = frameFor(v, gid, frameId);
+      if (seen) setFrameId(seen.frameAssetId);
       setSearchId(null);
       setSearch(null);
     } catch (e) {
@@ -279,19 +298,38 @@ export default function App() {
     if (!s) return;
     setBusy(true);
     setFindReply(null);
+    setNotice(null);
     try {
-      setNotice({ kind: "info", text: "Searching the video for that…" });
       const r = await api.findInMedia(s.id, text, s.revision);
       setView(r);
-      setFindReply(r.reply);
-      if (r.find?.searchDescription) {
-        setNotice({ kind: "info", text: `Using full description: ${r.find.searchDescription}` });
-      } else {
-        setNotice(null);
+      const gid = r.find?.garmentId ?? r.session.selectedGarmentId;
+      const g = r.garments.find((x) => x.id === gid);
+      // Jump to the frame the found garment was located on, where its box is drawn.
+      const seen = frameFor(r, gid, null);
+      if (seen) {
+        setDrawing(null);
+        setDraft(null);
+        setFrameId(seen.frameAssetId);
+        showStage();
       }
+      const at = isVideo ? timestamp(r.analysis?.frames?.find((f) => f.assetId === seen?.frameAssetId)?.timestampMs) : null;
+      // Built from the structured response: the server's reply text quotes a label it caps at 80 characters.
+      setFindReply(
+        g
+          ? {
+              tone: "found",
+              headline: `Found: ${cleanLabel(g.label)}`,
+              where: seen ? (at ? `shown at ${at}` : "boxed on the frame") : null,
+              description: r.find?.searchDescription ?? g.userDescription ?? null,
+            }
+          : { tone: "found", headline: wordSafe(r.reply, 160) },
+      );
       if (r.searchId) setSearchId(r.searchId);
     } catch (e) {
-      fail(e);
+      const err = e instanceof ApiError ? e : new ApiError(0, "error", String(e));
+      // Not found, too vague, or no detector: answer next to the Find box, where the person is looking.
+      if (err.status === 409) fail(err);
+      else setFindReply({ tone: "error", headline: err.message });
     } finally {
       setBusy(false);
     }
@@ -299,7 +337,8 @@ export default function App() {
 
   const analyzing = analysis && ["queued", "running"].includes(analysis.status);
   const detectionMode = analysis?.detectionMode ?? "unavailable";
-  const pieceLabel = selected ? cleanLabel(selected.label) : null;
+  // Find-made labels can be a whole sentence; buttons and headings get a word-safe short form.
+  const pieceLabel = selected ? wordSafe(cleanLabel(selected.label), 40) : null;
   const searching = !!search && ["queued", "running"].includes(search.job.status);
   const step = !view?.media ? 0 : !selected ? 1 : !searchId ? 2 : 3;
   const youtubeEnabled = !!health?.features?.youtubeDownload;

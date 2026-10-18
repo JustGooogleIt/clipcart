@@ -291,7 +291,13 @@ input[aria-invalid="true"] { border-color: var(--bad); }
 .find-in-video input { background: var(--stage); color: var(--stage-ink); border-color: var(--stage-line); }
 .find-row { display: flex; gap: 8px; }
 .find-row input { flex: 1; min-width: 0; }
-.find-reply { margin: 0; color: var(--stage-ink-2); font-size: 14px; }
+.find-reply { display: grid; gap: 6px; border-top: 1px solid var(--stage-line); padding-top: 10px; font-size: 14px; line-height: 1.45; overflow-wrap: break-word; }
+.find-reply p { margin: 0; }
+.find-reply-head { color: var(--stage-ink); font-weight: 600; }
+.find-reply-where { color: var(--stage-ink-2); font-weight: 400; }
+.find-reply-desc { color: var(--stage-ink-2); }
+.find-reply-desc span { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+.find-reply-error .find-reply-head { color: #ffb4a8; font-weight: 500; }
 
 /* Phone action dock */
 .dock { display: none; }

@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { mediaUrl, timestamp } from "../api";
 import type { FrameRef, GarmentDoc, GarmentObservation } from "../types";
-import { cleanLabel } from "./GarmentTray";
+import { cleanLabel, wordSafe } from "./GarmentTray";
 
 type Box = [number, number, number, number];
 
@@ -32,7 +32,16 @@ export default function Viewer({
 }) {
   const frame = frames.find((f) => f.assetId === frameId) ?? frames[0];
   const area = useRef<HTMLDivElement>(null);
+  const strip = useRef<HTMLOListElement>(null);
   const [start, setStart] = useState<[number, number] | null>(null);
+  // Keep the shown frame's thumbnail visible in the strip, e.g. after Find jumps to a late frame.
+  useEffect(() => {
+    const el = strip.current;
+    const on = el?.querySelector<HTMLElement>(".thumb-on");
+    if (!el || !on) return;
+    const left = on.getBoundingClientRect().left - el.getBoundingClientRect().left + el.scrollLeft;
+    if (left < el.scrollLeft || left + on.offsetWidth > el.scrollLeft + el.clientWidth) el.scrollLeft = left - (el.clientWidth - on.offsetWidth) / 2;
+  }, [frame?.assetId]);
   if (!frame) return null;
   const onThis = observations.filter((o) => o.frameAssetId === frame.assetId);
   const spotlight = !drawing && onThis.some((o) => garmentOf[o.id]?.id === selectedGarmentId);
@@ -86,9 +95,9 @@ export default function Viewer({
                 aria-label={`Select ${g?.label ?? o.category}`}
                 aria-pressed={!!sel}
               >
-                <span className="box-label">
+                <span className="box-label" title={cleanLabel(g?.label ?? o.category)}>
                   {sel && <span aria-hidden>● </span>}
-                  {cleanLabel(g?.label ?? o.category)}
+                  {wordSafe(cleanLabel(g?.label ?? o.category), 36)}
                 </span>
               </button>
             );
@@ -107,7 +116,7 @@ export default function Viewer({
         )}
       </div>
       {frames.length > 1 && (
-        <ol className="strip" aria-label="Sampled frames">
+        <ol className="strip" ref={strip} aria-label="Sampled frames">
           {frames.map((f) => {
             const hasSel = observations.some((o) => o.frameAssetId === f.assetId && garmentOf[o.id]?.id === selectedGarmentId);
             return (
