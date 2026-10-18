@@ -1,0 +1,67 @@
+{
+  "title": "YouTube Shorts fit-check truth set",
+  "notes": "All confirmed live as of 2026-10-17. Mix of guys, girls, and street interviews. Instagram not used (could not verify). Media files are not committed — run scripts/download_fit_checks.py.",
+  "outDir": "downloads/fit-checks",
+  "clips": [
+    {
+      "id": "fc01",
+      "label": "Rich Paul street fit",
+      "url": "https://www.youtube.com/shorts/zf6CmntK3BY",
+      "videoId": "zf6CmntK3BY"
+    },
+    {
+      "id": "fc02",
+      "label": "NYC street interviews",
+      "url": "https://www.youtube.com/shorts/fGZB8iLJJ7E",
+      "videoId": "fGZB8iLJJ7E"
+    },
+    {
+      "id": "fc03",
+      "label": "Rate the fit 1-10",
+      "url": "https://www.youtube.com/shorts/g5mXVuj-eEI",
+      "videoId": "g5mXVuj-eEI"
+    },
+    {
+      "id": "fc04",
+      "label": "Streetwear, Mexico City",
+      "url": "https://www.youtube.com/shorts/GArRdb6qAZ8",
+      "videoId": "GArRdb6qAZ8"
+    },
+    {
+      "id": "fc05",
+      "label": "Menswear outfit check",
+      "url": "https://www.youtube.com/shorts/BiF8fA2kMgE",
+      "videoId": "BiF8fA2kMgE"
+    },
+    {
+      "id": "fc06",
+      "label": "Polo fit check",
+      "url": "https://www.youtube.com/shorts/yJ4vevoYXHU",
+      "videoId": "yJ4vevoYXHU"
+    },
+    {
+      "id": "fc07",
+      "label": "Pullover fit, woman",
+      "url": "https://www.youtube.com/shorts/7aSXFmRYGSk",
+      "videoId": "7aSXFmRYGSk"
+    },
+    {
+      "id": "fc08",
+      "label": "OOTD, woman",
+      "url": "https://www.youtube.com/shorts/dAKca9yKo_U",
+      "videoId": "dAKca9yKo_U"
+    },
+    {
+      "id": "fc09",
+      "label": "Casual fit check, woman",
+      "url": "https://www.youtube.com/shorts/k12-rM2V_pE",
+      "videoId": "k12-rM2V_pE"
+    },
+    {
+      "id": "fc10",
+      "label": "Kurta and jeans, woman",
+      "url": "https://www.youtube.com/shorts/KGEXdHOOfWU",
+      "videoId": "KGEXdHOOfWU"
+    }
+  ]
+}

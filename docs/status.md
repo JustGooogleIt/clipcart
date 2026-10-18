@@ -1,6 +1,6 @@
 # ClipCart status
 
-Updated 2026-10-17. YouTube product ingest lands on `feat/youtube-product` (based on `integration`).
+Updated 2026-10-17. YouTube URL ingest is **feature-flagged** (`FEATURE_YOUTUBE_DOWNLOAD`, allowlisted IDs). Fit-check story: [`docs/fit-checks.md`](fit-checks.md).
 
 ## Working flow (verified locally in headless Chrome and with offline tests)
 
@@ -56,7 +56,8 @@ See `git log integration`. Tests: `services/api/.venv/bin/python -m pytest servi
 
 1. Fill `PERCEPTRON_API_KEY` (and optionally `XAI_API_KEY`, `MONGODB_URI`) in the root `.env`, then run `services/api/.venv/bin/python scripts/live_checks.py --image <garment photo>`.
 2. Set the Atlas URI and confirm reload after a server restart.
-3. Build the truth set (AT19) on real clips once Perceptron is live.
+3. Fit-check Shorts truth set: see [`docs/fit-checks.md`](fit-checks.md) (10/10 live Perceptron hits on downloadable Shorts).
+4. Build the truth set (AT19) on real clips once Perceptron is live.
 
 ## Demo pass, 2026-10-17 (branch `fix/demo-pass`)
 

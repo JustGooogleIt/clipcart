@@ -46,3 +46,20 @@ class FixtureBackend:
             model=self.model,
             usage=None,
         )
+
+    def describe_object(self, crop_bytes: bytes, query: str) -> AttributeResponse:
+        attrs = self._attributes.get("object") or self._attributes.get("other") or {
+            "what": query,
+            "color": ["green"],
+            "pattern": [],
+            "form": ["potted"],
+            "details": ["broad leaves", "ceramic pot"],
+            "search_description": query,
+            "visible_text": [],
+        }
+        return AttributeResponse(
+            attributes=attrs,
+            request_id="fixture-object-attributes",
+            model=self.model,
+            usage=None,
+        )

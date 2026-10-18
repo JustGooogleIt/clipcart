@@ -14,21 +14,64 @@ ATTRIBUTE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "color": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
-        "pattern": {"type": "array", "items": {"type": "string"}, "maxItems": 3},
-        "cut": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
-        "details": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
+        "color": {"type": "array", "items": {"type": "string"}, "maxItems": 5},
+        "pattern": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
+        "cut": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
+        "details": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
         "visible_text": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
     },
     "required": ["color", "pattern", "cut", "details", "visible_text"],
 }
 
 ATTRIBUTE_PROMPT = (
-    "Describe only what is directly visible on this {category}. Return JSON with: "
-    "color (main visible colors), pattern (e.g. solid, striped, plaid), cut (silhouette, length, "
-    "collar, closure), details (pockets, hardware, trims, logos as seen), visible_text (exact text or "
-    "logo lettering you can read, else empty). Do not guess brand, material or fabric composition, "
-    "size, price or the wearer's identity. Use empty arrays when unsure."
+    "Describe only what is directly visible on this {category}. Be specific and thorough — "
+    "shopping search needs many visual descriptors. Return JSON with: "
+    "color (main hue names like blue, black, olive, indigo, off-white — not fabric names), "
+    "pattern (solid, striped, plaid, check, floral, graphic, color-block, distressed, faded, "
+    "washed, etc.), "
+    "cut (garment type and silhouette as seen: trucker, bomber, biker, oversized, slim, "
+    "cropped, boxy, longline; plus collar, lapel, hood, closure type like button/zip/snap), "
+    "details (every distinctive visible cue: fabric appearance such as denim weave, leather "
+    "sheen, knit, fleece, corduroy, quilted, nylon sheen; wash/finish; pocket style; "
+    "hardware color; stitching; rivets; patches; embroidery; logos as shapes; distressing; "
+    "cuffs; hem; lining peek; graphic motifs), "
+    "visible_text (exact readable lettering only, else empty). "
+    "Prefer short concrete phrases (2-4 words each). Do not guess fiber %, brand identity, "
+    "size, price or the wearer's identity. Use empty arrays only when truly unsure."
+)
+
+# Open-vocabulary finds (plants, art, objects, …) — never collapse to a short noun.
+OBJECT_ATTRIBUTE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "what": {"type": "string", "maxLength": 120},
+        "color": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
+        "pattern": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
+        "form": {"type": "array", "items": {"type": "string"}, "maxItems": 8},
+        "details": {"type": "array", "items": {"type": "string"}, "maxItems": 14},
+        "search_description": {"type": "string", "maxLength": 400},
+        "visible_text": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
+    },
+    "required": ["what", "color", "pattern", "form", "details", "search_description", "visible_text"],
+}
+
+OBJECT_ATTRIBUTE_PROMPT = (
+    "You are writing a shopping-search description for the object in this crop. "
+    "The shopper asked for: {query}. "
+    "Describe ONLY what is visible. Be extremely specific — short nouns like "
+    "'green plant' or 'painting' are useless for search. Return JSON with: "
+    "what (precise noun phrase, e.g. 'tall monstera deliciosa in speckled ceramic pot'), "
+    "color (distinct hues and finishes), "
+    "pattern (markings, motifs, grain, brushwork style), "
+    "form (shape, relative size, material appearance, container/frame, orientation), "
+    "details (every distinctive cue: leaf shape, vein pattern, glaze, frame molding, "
+    "medium, wear, hardware, text fragments as shapes), "
+    "search_description (ONE dense 15–40 word catalog query that a shopper would paste — "
+    "include type, colors, materials/look, distinctive traits; do NOT simplify), "
+    "visible_text (exact readable lettering only, else empty). "
+    "Do not guess brand, price, species scientific name unless lettering shows it, "
+    "or anything outside the crop."
 )
 
 
@@ -65,6 +108,8 @@ class PerceptronBackend(Protocol):
     def detect(self, image_bytes: bytes, classes: list[str], *, max_outputs: int) -> DetectResponse: ...
 
     def describe(self, crop_bytes: bytes, category: str) -> AttributeResponse: ...
+
+    def describe_object(self, crop_bytes: bytes, query: str) -> AttributeResponse: ...
 
 
 class SdkBackend:
@@ -106,12 +151,30 @@ class SdkBackend:
         )
 
     def describe(self, crop_bytes: bytes, category: str) -> AttributeResponse:
+        return self._describe_json(
+            crop_bytes,
+            ATTRIBUTE_PROMPT.format(category=category),
+            ATTRIBUTE_SCHEMA,
+            "garment_attributes",
+        )
+
+    def describe_object(self, crop_bytes: bytes, query: str) -> AttributeResponse:
+        return self._describe_json(
+            crop_bytes,
+            OBJECT_ATTRIBUTE_PROMPT.format(query=query[:200]),
+            OBJECT_ATTRIBUTE_SCHEMA,
+            "object_attributes",
+        )
+
+    def _describe_json(
+        self, crop_bytes: bytes, prompt: str, schema: dict[str, Any], name: str
+    ) -> AttributeResponse:
         p = self._p
         res = p.question(
             p.image(crop_bytes),
-            ATTRIBUTE_PROMPT.format(category=category),
+            prompt,
             expects="text",
-            response_format=p.json_schema_format(ATTRIBUTE_SCHEMA, name="garment_attributes"),
+            response_format=p.json_schema_format(schema, name=name),
             model=self.model,
         )
         try:

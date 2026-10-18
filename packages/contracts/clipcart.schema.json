@@ -539,6 +539,7 @@
           "enum": [
             "jacket",
             "top",
+            "pants",
             "bag",
             "other"
           ],
@@ -1003,7 +1004,8 @@
         "sourceType": {
           "enum": [
             "upload_image",
-            "upload_video"
+            "upload_video",
+            "youtube_download"
           ],
           "type": "string"
         },

@@ -3,6 +3,7 @@ import { api, ApiError, upload } from "./api";
 import Constraints, { draftFrom, patchFrom, type PrefsDraft } from "./components/Constraints";
 import Diagnostics from "./components/Diagnostics";
 import GarmentTray from "./components/GarmentTray";
+import FindInVideo from "./components/FindInVideo";
 import ModeChips from "./components/ModeChips";
 import Refine from "./components/Refine";
 import Results from "./components/Results";
@@ -263,6 +264,28 @@ export default function App() {
     }
   };
 
+  const findInVideo = async (text: string) => {
+    if (!s) return;
+    setBusy(true);
+    setReply(null);
+    try {
+      setNotice({ kind: "info", text: "Searching the video for that…" });
+      const r = await api.findInMedia(s.id, text, s.revision);
+      setView(r);
+      setReply(r.reply);
+      if (r.find?.searchDescription) {
+        setNotice({ kind: "info", text: `Using full description: ${r.find.searchDescription}` });
+      } else {
+        setNotice(null);
+      }
+      if (r.searchId) setSearchId(r.searchId);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const analyzing = analysis && ["queued", "running"].includes(analysis.status);
 
   return (
@@ -270,7 +293,9 @@ export default function App() {
       <header className="top">
         <div>
           <h1 className="wordmark">ClipCart</h1>
-          <p className="tagline">Send us a look. We find the original, search alternatives, and bring back options that fit your budget.</p>
+          <p className="tagline">
+            Drop a fit check, photo, or YouTube Short. We find the clothes, then search real listings that match your budget.
+          </p>
         </div>
         <ModeChips health={health} />
       </header>
@@ -291,16 +316,21 @@ export default function App() {
 
       {!view?.media ? (
         <main className="empty">
-          <Upload busy={busy || !s} progress={progress} onFile={onFile} onYoutube={onYoutube} />
+          <Upload
+            busy={busy || !s}
+            progress={progress}
+            onFile={onFile}
+            onYoutube={health?.features?.youtubeDownload ? onYoutube : undefined}
+          />
           <ol className="how">
             <li>
-              <strong>Pick the piece.</strong> Jackets, tops and bags.
+              <strong>Send a look.</strong> Photo, short clip, or YouTube URL — we scan for jackets, tops, pants and bags.
             </li>
             <li>
-              <strong>Set your rules.</strong> Budget, size, materials to avoid.
+              <strong>Pick the piece</strong> in the tray (or draw a box if we missed it).
             </li>
             <li>
-              <strong>Get sourced options.</strong> Every price links to where it came from.
+              <strong>Set your rules</strong> — budget, size, materials to avoid — then shop sourced options.
             </li>
           </ol>
         </main>
@@ -309,11 +339,18 @@ export default function App() {
           <section className="col-look" aria-label="Your look">
             <div className="section-head">
               <h2>1 · Pick the garment</h2>
-              <Upload busy={busy} progress={progress} onFile={onFile} onYoutube={onYoutube} compact />
+              <Upload
+                busy={busy}
+                progress={progress}
+                onFile={onFile}
+                onYoutube={health?.features?.youtubeDownload ? onYoutube : undefined}
+                compact
+              />
             </div>
             {analyzing && (
               <div className="banner" role="status">
-                <span className="spinner" aria-hidden /> {analysis?.frameIds?.length ? "Looking for jackets, tops and bags…" : "Reading frames…"}
+                <span className="spinner" aria-hidden />{" "}
+                {analysis?.frameIds?.length ? "Looking for jackets, tops, pants and bags…" : "Scanning the best frames…"}
               </div>
             )}
             {analysis?.message && !analyzing && (
@@ -357,6 +394,7 @@ export default function App() {
                           <select value={manualCat} onChange={(e) => setManualCat(e.target.value)}>
                             <option value="jacket">Jacket</option>
                             <option value="top">Top</option>
+                            <option value="pants">Pants</option>
                             <option value="bag">Bag</option>
                           </select>
                         </label>
@@ -407,6 +445,9 @@ export default function App() {
               busy={busy}
               detectionMode={analysis?.detectionMode ?? "unavailable"}
             />
+            {frames.length > 0 && !analyzing && (
+              <FindInVideo disabled={busy} busy={busy} onFind={findInVideo} reply={reply} />
+            )}
           </section>
 
           <section className="col-rules" aria-label="Your constraints">

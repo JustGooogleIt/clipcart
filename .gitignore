@@ -21,3 +21,7 @@ experiments/youtube-capture/artifacts/*-overlay.jpg
 experiments/youtube-capture/cache/
 # Product YouTube TTL cache (under media root when using default local store)
 .data/youtube-cache/
+# Local truth-set media (manifest stays in fixtures/fit-checks/)
+downloads/**
+!downloads/fit-checks/
+!downloads/fit-checks/README.md

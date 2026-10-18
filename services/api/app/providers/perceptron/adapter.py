@@ -11,7 +11,9 @@ Policy:
   and counted, never clamped into a plausible-looking crop.
 * Optional attribute calls on the largest crops, capped by
   ``max_attribute_calls``. Only visible attributes are kept: brand,
-  material, size and identity fields are never requested or stored.
+  fiber composition, size and identity fields are never requested or
+  stored. Fabric *appearance* words (denim weave, leather sheen) may
+  appear in details for shopping search.
 * Transient failures retry once with jitter if the deadline allows.
   Authentication failures stop the whole analysis and are not retried.
 * An empty detection list is a valid ``ok`` result, distinct from failure.
@@ -50,12 +52,14 @@ PROVIDER = "perceptron"
 CATEGORY_PROMPTS: dict[str, str] = {
     "jacket": "jacket or coat",
     "top": "top or shirt or sweater",
+    "pants": "pants or jeans or trousers",
     "bag": "bag or handbag or backpack",
 }
 
 _LABEL_KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
     ("jacket", ("jacket", "coat", "blazer", "parka", "windbreaker", "bomber", "puffer", "vest", "gilet")),
     ("bag", ("bag", "handbag", "backpack", "purse", "tote", "clutch", "satchel", "crossbody")),
+    ("pants", ("pants", "jeans", "trousers", "chinos", "shorts", "leggings", "skirt")),
     (
         "top",
         ("top", "shirt", "t-shirt", "tee", "blouse", "sweater", "hoodie", "sweatshirt", "cardigan", "polo", "tank"),
@@ -221,7 +225,7 @@ class PerceptronPerceptionProvider:
         ctx = request_context
         cats = [c for c in categories if c in CATEGORY_PROMPTS or c == "other"]
         if not cats:
-            raise ValueError("at least one of jacket/top/bag must be requested")
+            raise ValueError("at least one of jacket/top/pants/bag must be requested")
         classes = [CATEGORY_PROMPTS[c] for c in cats if c in CATEGORY_PROMPTS]
         # Drop repeated frame IDs so a frame is never paid for twice.
         frames = list({f.asset_id: f for f in frame_refs}.values())[: self.max_frames]
@@ -384,7 +388,8 @@ class PerceptronPerceptionProvider:
                 )
                 continue
             assert isinstance(res, AttributeResponse)
-            attrs = {k: _clean_list(res.attributes.get(k), 6) for k in _ALLOWED_ATTRIBUTE_KEYS}
+            limits = {"color": 5, "pattern": 4, "cut": 6, "details": 10}
+            attrs = {k: _clean_list(res.attributes.get(k), limits.get(k, 6)) for k in _ALLOWED_ATTRIBUTE_KEYS}
             attrs = {k: v for k, v in attrs.items() if v}
             text = _clean_list(res.attributes.get("visible_text"), 6)
             updated[o.id] = o.model_copy(
@@ -397,6 +402,222 @@ class PerceptronPerceptionProvider:
                 }
             )
         return [updated.get(o.id, o) for o in observations]
+
+    def find_open_vocab(
+        self,
+        frame_refs: Sequence[FrameRef],
+        query: str,
+        request_context: RequestContext,
+    ) -> AnalysisResult:
+        """Open-vocabulary find: detect ``query`` on frames, describe the best crop richly."""
+        from app.jobs.find_query import detect_classes_for_query
+
+        ctx = request_context
+        q = " ".join((query or "").split())
+        if len(q) < 2:
+            raise ValueError("query must be non-empty")
+        classes = detect_classes_for_query(q) or [q]
+        frames = list({f.asset_id: f for f in frame_refs}.values())[: self.max_frames]
+        issues: list[ProviderIssue] = []
+        metas: list[ProviderRequestMeta] = []
+        abort = Event()
+        frame_bytes = {f.asset_id: self.media.store.read_bytes(f.asset_id, ctx.owner_id) for f in frames}
+
+        def detect_job(frame: FrameRef, class_list: list[str]):
+            def call():
+                return self.backend.detect(
+                    frame_bytes[frame.asset_id], class_list, max_outputs=self.max_outputs_per_frame
+                )
+
+            res, err, m = self._call_with_policy(
+                call, ctx, abort, {"frame_asset_id": frame.asset_id, "crop_asset_id": None, "purpose": "detect"}
+            )
+            return _FrameOutcome(frame, res, err, m)
+
+        def collect(class_list: list[str]) -> tuple[list[GarmentObservation], int, int]:
+            outcomes = self._run_bounded(
+                [(f.asset_id, (lambda f=f: detect_job(f, class_list))) for f in frames], ctx
+            )
+            cands: list[GarmentObservation] = []
+            dropped_n = 0
+            ok_n = 0
+            for frame in frames:
+                out = outcomes.get(frame.asset_id)
+                if out is None:
+                    code = "cancelled" if ctx.cancelled else "timeout"
+                    issues.append(
+                        ProviderIssue(
+                            code=code,
+                            message="frame not analyzed before the deadline" if code == "timeout" else "analysis cancelled",
+                            retryable=code == "timeout",
+                            frame_asset_id=frame.asset_id,
+                        )
+                    )
+                    continue
+                metas.extend(out.metas)
+                if out.error is not None:
+                    issues.append(
+                        ProviderIssue(
+                            code=out.error.code,
+                            message=out.error.message,
+                            retryable=out.error.retryable,
+                            frame_asset_id=frame.asset_id,
+                            provider_request_id=out.error.request_id,
+                        )
+                    )
+                    continue
+                resp = out.response
+                ok_n += 1
+                for det in resp.detections or []:
+                    try:
+                        box = perceptron_box_to_box01(det.x1, det.y1, det.x2, det.y2)
+                    except InvalidBoxError:
+                        dropped_n += 1
+                        continue
+                    x0, y0, x1, y1 = box
+                    area = max(0.0, x1 - x0) * max(0.0, y1 - y0)
+                    # Reject dust specs and near-full-frame "detections" (usually wrong).
+                    if area < 0.004 or area > 0.88:
+                        dropped_n += 1
+                        continue
+                    try:
+                        crop = self.media.crop(frame.asset_id, box, ctx.owner_id)
+                    except InvalidBoxError:
+                        dropped_n += 1
+                        continue
+                    # Dedup near-identical boxes within this pass.
+                    if any(iou(k.box01, box) > 0.85 and k.frame_asset_id == frame.asset_id for k in cands):
+                        dropped_n += 1
+                        continue
+                    cands.append(
+                        GarmentObservation(
+                            id=_obs_id(frame.asset_id, box, det.label or q, resp.request_id),
+                            media_id=frame.media_id,
+                            frame_asset_id=frame.asset_id,
+                            timestamp_ms=frame.timestamp_ms,
+                            box01=box,
+                            crop_asset_id=crop.crop_asset_id,
+                            category="other",
+                            person_track_id=None,
+                            observed_attributes={},
+                            visible_text=[],
+                            provider_request_id=resp.request_id,
+                            model_id=resp.model or self.model_id,
+                            edited_by_user=False,
+                            raw_label=det.label or q,
+                            model_generated_fields=["box01", "category"],
+                        )
+                    )
+            return cands, dropped_n, ok_n
+
+        candidates, dropped, ok_frames = collect(classes)
+        # Recall pass only when the shortest class wasn't already tried (avoids a 2× bill).
+        shortest = classes[-1]
+        if not candidates and len(classes) > 1 and shortest != classes[0] and ctx.remaining() > 12:
+            # Only re-hit frames if the first pass used a long multi-class list that may have
+            # diluted open-vocab attention — try the shortest class alone once.
+            more, d2, ok2 = collect([shortest])
+            candidates, dropped, ok_frames = more, dropped + d2, max(ok_frames, ok2)
+
+        if not candidates:
+            return AnalysisResult(
+                status="failed" if frames and ok_frames == 0 else "ok",
+                mode=self.mode,
+                observations=[],
+                requests=metas,
+                issues=issues,
+                dropped_detections=dropped,
+            )
+
+        # Prefer mid-size sharp crops (full-frame and tiny boxes already filtered).
+        def score(o: GarmentObservation) -> float:
+            x0, y0, x1, y1 = o.box01
+            area = max(0.0, x1 - x0) * max(0.0, y1 - y0)
+            # Sweet spot ~4–45% of the frame for product-like objects.
+            size_score = 1.0 - abs(area - 0.18) / 0.18
+            try:
+                c = self.media.get_crop(o.crop_asset_id, ctx.owner_id)
+                sharp = c.sharpness
+            except Exception:  # noqa: BLE001
+                sharp = 0.0
+            return size_score * 5 + min(sharp / 200.0, 3.0) + area
+
+        best = max(candidates, key=score)
+        crop_bytes = self.media.store.read_bytes(best.crop_asset_id, ctx.owner_id)
+
+        def attr_call():
+            return self.backend.describe_object(crop_bytes, q)
+
+        res, err, attr_metas = self._call_with_policy(
+            attr_call,
+            ctx,
+            abort,
+            {"frame_asset_id": best.frame_asset_id, "crop_asset_id": best.crop_asset_id, "purpose": "attributes"},
+        )
+        metas.extend(attr_metas)
+        attrs: dict[str, list[str]] = {}
+        visible: list[str] = []
+        what = q
+        search_desc = q
+        if err is None and isinstance(res, AttributeResponse):
+            raw = res.attributes if isinstance(res.attributes, dict) else {}
+            what = str(raw.get("what") or q).strip()[:120] or q
+            search_desc = str(raw.get("search_description") or what).strip()[:400] or what
+            color = _clean_list(raw.get("color"), 6)
+            pattern = _clean_list(raw.get("pattern"), 4)
+            # Map form → cut so existing shopping profile aggregation picks it up.
+            form = _clean_list(raw.get("form"), 8)
+            details = _clean_list(raw.get("details"), 12)
+            if color:
+                attrs["color"] = color
+            if pattern:
+                attrs["pattern"] = pattern
+            if form:
+                attrs["cut"] = form
+            # Put the dense catalog line first in details — never discard it.
+            detail_list = [search_desc] if search_desc else []
+            detail_list.extend(d for d in details if d != search_desc)
+            if detail_list:
+                attrs["details"] = detail_list[:12]
+            visible = _clean_list(raw.get("visible_text"), 6)
+            best = best.model_copy(
+                update={
+                    "observed_attributes": attrs,
+                    "visible_text": visible,
+                    "raw_label": what,
+                    "model_generated_fields": list(
+                        dict.fromkeys(
+                            best.model_generated_fields
+                            + list(attrs)
+                            + (["visible_text"] if visible else [])
+                            + ["search_description"]
+                        )
+                    ),
+                    "provider_request_id": res.request_id or best.provider_request_id,
+                }
+            )
+        elif err is not None:
+            issues.append(
+                ProviderIssue(
+                    code=err.code,
+                    message=f"object describe unavailable: {err.message}",
+                    retryable=err.retryable,
+                    frame_asset_id=best.frame_asset_id,
+                    provider_request_id=err.request_id,
+                )
+            )
+            best = best.model_copy(
+                update={"raw_label": what, "observed_attributes": {"details": [search_desc]}}
+            )
+
+        return AnalysisResult(
+            status="ok" if ok_frames == len(frames) else "partial",
+            mode=self.mode,
+            observations=[best],
+            requests=metas,
+            issues=issues,
+            dropped_detections=dropped,
+        )
 
 
 # --------------------------------------------------------------- user edits

@@ -1,7 +1,8 @@
 """Temporary YouTube download cache (yt-dlp). Bounded duration/height/TTL.
 
-Ported from experiments/youtube-capture for the product ingest path.
-Cache lives under the media store root; never commit bytes.
+Product path: permitted video IDs only (enforced in the route). Cache lives under
+the media store root; never commit bytes. No browser cookie harvesting — blocked
+videos fail with an honest upload-fallback message.
 """
 
 from __future__ import annotations
@@ -22,6 +23,18 @@ TTL_S = int(os.getenv("YOUTUBE_CACHE_TTL_S", "3600"))
 DOWNLOAD_TIMEOUT_S = int(os.getenv("YOUTUBE_CACHE_DOWNLOAD_TIMEOUT_S", "180"))
 
 _VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,20}$")
+
+_BLOCKED_HINTS = (
+    "not a bot",
+    "sign in",
+    "page needs to be reloaded",
+    "confirm you're not a bot",
+    "http error 403",
+    "http error 429",
+    "private video",
+    "members-only",
+    "age-restricted",
+)
 
 
 class YoutubeCacheError(Exception):
@@ -53,6 +66,13 @@ def parse_video_id(raw: str) -> str:
     host = (u.hostname or "").lower()
     if host not in {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.youtu.be"}:
         raise YoutubeCacheError("invalid_url", "only youtube.com / youtu.be URLs are allowed")
+    # Reject credentialed / weird ports early (malformed ports raise ValueError).
+    try:
+        if u.username or u.password or (u.port not in (None, 80, 443)):
+            raise YoutubeCacheError("invalid_url", "paste the plain YouTube link")
+    except ValueError as exc:
+        raise YoutubeCacheError("invalid_url", "could not parse URL") from exc
+
     vid: str | None = None
     if "youtu.be" in host:
         vid = u.path.strip("/").split("/")[0] or None
@@ -137,8 +157,11 @@ def get_cached(cache_dir: Path, video_id: str) -> CachedVideo | None:
 
 
 def _yt_dlp_cmd(youtube_url: str, out_tmpl: str) -> list[str]:
-    """One plain yt-dlp invocation. No browser cookies, cookie files or player-client
-    overrides: blocked videos fail honestly instead of being worked around."""
+    """Single yt-dlp invocation: ignore user config, no cookie jars.
+
+    Uses the Android player client (fixed) so public Shorts usually succeed without
+    harvesting browser sessions. Env cookie / client overrides are intentionally ignored.
+    """
     fmt = (
         f"bv*[height<={MAX_HEIGHT}][ext=mp4]+ba[ext=m4a]/"
         f"b[height<={MAX_HEIGHT}][ext=mp4]/"
@@ -150,7 +173,9 @@ def _yt_dlp_cmd(youtube_url: str, out_tmpl: str) -> list[str]:
         "yt_dlp",
         "--no-playlist",
         "--no-warnings",
-        "--ignore-config",  # never pick up a user-level yt-dlp config (cookies, proxies)
+        "--ignore-config",
+        "--extractor-args",
+        "youtube:player_client=android",
         "-f",
         fmt,
         "--merge-output-format",
@@ -166,26 +191,13 @@ def _yt_dlp_cmd(youtube_url: str, out_tmpl: str) -> list[str]:
     ]
 
 
-_BLOCKED_HINTS = (
-    "not a bot",
-    "sign in",
-    "page needs to be reloaded",
-    "confirm you're not a bot",
-    "http error 403",
-    "http error 429",
-    "private video",
-    "members-only",
-    "age-restricted",
-)
-
-
 def _is_blocked(err: str) -> bool:
     low = err.lower()
     return any(n in low for n in _BLOCKED_HINTS)
 
 
 def download_youtube(cache_dir: Path, youtube_url: str) -> CachedVideo:
-    """Download (or reuse cache) a short bounded clip for analysis ingest. Single attempt."""
+    """Download (or reuse cache) a short bounded clip. One attempt."""
     cache_dir.mkdir(parents=True, exist_ok=True)
     video_id = parse_video_id(youtube_url)
     hit = get_cached(cache_dir, video_id)
@@ -209,7 +221,10 @@ def download_youtube(cache_dir: Path, youtube_url: str) -> CachedVideo:
                 "youtube_blocked",
                 "YouTube didn't allow this download. Upload the clip from your device instead.",
             )
-        raise YoutubeCacheError("download_failed", "The YouTube download failed. Upload the clip from your device instead.")
+        raise YoutubeCacheError(
+            "download_failed",
+            "The YouTube download failed. Upload the clip from your device instead.",
+        )
 
     media = _find_media(cache_dir, video_id)
     if media is None:

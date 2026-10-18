@@ -13,6 +13,7 @@ from .media import (
     ProviderIssue,
     ProviderRequestMeta,
 )
+from .research import ResearchJob, ResearchProduct, ResearchSubmission, SubmittedProduct
 from .shopping import (
     AgentEvent,
     AnalysisJob,
@@ -40,5 +41,5 @@ __all__ = [
     "AgentEvent", "AnalysisJob", "AnalysisResult", "ApiError", "ConstraintCheck", "CropRef", "Evidence", "EvidenceClaim",
     "FrameRef", "FrameTransform", "Garment", "GarmentObservation", "JobError", "Listing", "MediaAsset", "Money",
     "OutboundLink", "PreferencePatch", "Preferences", "ProviderIssue", "ProviderRequestMeta", "Recommendation", "Record",
-    "ReferralEvent", "SearchBudget", "SearchJob", "ShoppingSession", "SizePref", "SizeStock", "StoreOffer",
+    "ReferralEvent", "ResearchJob", "ResearchProduct", "ResearchSubmission", "SubmittedProduct", "SearchBudget", "SearchJob", "ShoppingSession", "SizePref", "SizeStock", "StoreOffer",
 ]

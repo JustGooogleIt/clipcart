@@ -44,12 +44,14 @@ def build_profile(state: AppState, garment_doc: dict) -> GarmentProfile:
     for w in words(g.user_description):
         if w in _COLOR_WORDS and w not in [c.lower() for c in agg["color"]]:
             agg["color"].insert(0, w)  # the shopper's own words win over model attributes
+    # Open-vocab finds need the full descriptive line, not a truncated attribute bag.
+    detail_limit = 10 if cat == "other" else 4
     return GarmentProfile(
         category=cat,
-        colors=agg["color"][:3],
-        pattern=agg["pattern"][:2],
-        cut=agg["cut"][:3],
-        details=agg["details"][:4],
+        colors=agg["color"][:4],
+        pattern=agg["pattern"][:3],
+        cut=agg["cut"][:5],
+        details=agg["details"][:detail_limit],
         visible_text=text[:4],
         description=g.user_description,
         label=g.label,
