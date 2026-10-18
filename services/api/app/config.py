@@ -65,6 +65,11 @@ class Settings:
     feature_photon: bool
     feature_voice: bool
     feature_solana: bool
+    solana_network: str
+    solana_rpc_url: str
+    solana_demo_merchant_wallet: str
+    solana_demo_amount_lamports: int
+    solana_demo_order_ttl_s: int
     cookie_secure: bool
     search_deadline_s: float
     analysis_deadline_s: float
@@ -142,6 +147,11 @@ def load_settings() -> Settings:
         feature_photon=_flag("FEATURE_PHOTON"),
         feature_voice=_flag("FEATURE_VOICE"),
         feature_solana=_flag("FEATURE_SOLANA"),
+        solana_network=(os.getenv("SOLANA_NETWORK") or "devnet").strip().lower(),
+        solana_rpc_url=(os.getenv("SOLANA_RPC_URL") or "https://api.devnet.solana.com").rstrip("/"),
+        solana_demo_merchant_wallet=(os.getenv("SOLANA_DEMO_MERCHANT_WALLET") or "").strip(),
+        solana_demo_amount_lamports=int(os.getenv("SOLANA_DEMO_AMOUNT_LAMPORTS", "10000000")),
+        solana_demo_order_ttl_s=int(os.getenv("SOLANA_DEMO_ORDER_TTL_S", "900")),
         cookie_secure=_flag("COOKIE_SECURE"),
         search_deadline_s=float(os.getenv("SEARCH_DEADLINE_S", "60")),
         analysis_deadline_s=float(os.getenv("ANALYSIS_DEADLINE_S", "60")),

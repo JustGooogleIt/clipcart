@@ -13,6 +13,7 @@ from .media import (
     ProviderIssue,
     ProviderRequestMeta,
 )
+from .demo_orders import DemoCatalogItem, DemoMerchantOrder
 from .research import ResearchJob, ResearchProduct, ResearchSubmission, SubmittedProduct
 from .style_memory import (
     StyleEvent,
@@ -48,7 +49,8 @@ from .shopping import (
 )
 
 __all__ = [
-    "AgentEvent", "AnalysisJob", "AnalysisResult", "ApiError", "ConstraintCheck", "CropRef", "Evidence", "EvidenceClaim",
+    "AgentEvent", "AnalysisJob", "AnalysisResult", "ApiError", "ConstraintCheck", "CropRef", "DemoCatalogItem",
+    "DemoMerchantOrder", "Evidence", "EvidenceClaim",
     "FrameRef", "FrameTransform", "Garment", "GarmentObservation", "JobError", "Listing", "MediaAsset", "Money",
     "OutboundLink", "PreferencePatch", "Preferences", "ProviderIssue", "ProviderRequestMeta", "Recommendation", "Record",
     "ReferralEvent", "StyleEvent", "StyleMemory", "StyleModelInfo", "StyleNoteResult", "StyleNoteUsage", "StyleProfile", "StyleProfileView", "StyleProposal", "ResearchJob", "ResearchProduct", "ResearchSubmission", "SubmittedProduct", "SearchBudget", "SearchJob", "ShoppingSession", "SizePref", "SizeStock", "StoreOffer",

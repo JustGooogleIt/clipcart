@@ -44,11 +44,14 @@ See `git log integration`. Tests: `services/api/.venv/bin/python -m pytest servi
 
 ## Deferred behind flags (off)
 
-`FEATURE_PHOTON`, `FEATURE_VOICE` and `FEATURE_SOLANA` are all false. Those features are not built.
+`FEATURE_PHOTON`, `FEATURE_VOICE` and `FEATURE_SOLANA` default false in `.env.example`.
+
+Solana demo checkout (payment verification only; no Bubblegum mint) is on `feat/solana-demo-checkout`. Contract: `docs/contracts/solana-demo-checkout.md`. Keep `FEATURE_SOLANA=false` until a live devnet payment is verified. Live smoke is blocked until `SOLANA_DEMO_MERCHANT_WALLET` is set in local `.env` and a separate buyer wallet is funded; unit tests use RPC fixtures only.
 
 ## Active owners
 
 - Claude: integration, UI, API, contracts, workers, verification, redirects.
+- Cursor: Solana demo order/payment verification lane (`feat/solana-demo-checkout`).
 - Perception lane: `app/media`, `app/providers/perceptron`, and their tests. Follow-ups are listed in the PR #2 review comment.
 - Teammate: catalog adapter. The adapter fix is described in `docs/decisions.md`.
 

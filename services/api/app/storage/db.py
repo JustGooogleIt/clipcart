@@ -29,6 +29,8 @@ COLLECTIONS = (
     "style_events",
     "style_memories",
     "research_jobs",
+    "demo_orders",
+    "payment_signatures",
 )
 
 
@@ -64,6 +66,11 @@ def ensure_indexes(db: Any) -> None:
     db.style_events.create_index([("ownerId", ASCENDING), ("type", ASCENDING)])
     db.style_memories.create_index([("ownerId", ASCENDING), ("status", ASCENDING), ("kind", ASCENDING)])
     db.referrals.create_index([("sessionId", ASCENDING), ("occurredAt", DESCENDING)])
+    db.demo_orders.create_index([("ownerId", ASCENDING), ("createdAt", DESCENDING)])
+    db.demo_orders.create_index([("paymentReference", ASCENDING)], unique=True)
+    # Sparse so unpaid orders (null signature) do not collide; claims also go through payment_signatures.
+    db.demo_orders.create_index([("paymentSignature", ASCENDING)], unique=True, sparse=True)
+    db.payment_signatures.create_index([("orderId", ASCENDING)])
 
 
 def ping(db: Any) -> bool:
