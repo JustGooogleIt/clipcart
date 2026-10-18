@@ -1,8 +1,22 @@
 import { mediaUrl, timestamp } from "../api";
 import type { GarmentDoc, GarmentObservation } from "../types";
 
+// The API caps stored labels at 80 characters, which can end mid-word.
+const LABEL_CAP = 80;
+
+/** Shorten at a word boundary with an ellipsis instead of cutting a word in half. */
+export function wordSafe(text: string, max: number) {
+  const t = text.trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max + 1);
+  const at = cut.search(/\s\S*$/);
+  return `${(at > max * 0.5 ? cut.slice(0, at) : t.slice(0, max)).replace(/[\s,;:.\-–—]+$/, "")}…`;
+}
+
 export function cleanLabel(label: string) {
-  const t = label.replace(" (your selection)", "").replace(" (edited)", "");
+  const raw = label.replace(" (your selection)", "").replace(" (edited)", "");
+  // A label at the cap was probably cut by the API; drop the partial last word.
+  const t = raw.length >= LABEL_CAP ? wordSafe(raw, LABEL_CAP - 2) : raw.trim();
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
