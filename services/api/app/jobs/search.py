@@ -76,7 +76,14 @@ def create_search(state: AppState, session_doc: dict, garment_doc: dict, prefs: 
         catalog_mode=state.status["catalog"].mode,
         created_at=now(),
     )
-    state.db.search_jobs.insert_one({"_id": job.id, "attempt": 0, "leaseOwner": None, "leaseExpiresAt": None, **job.wire()})
+    extra = {}
+    if s.feature_style_memory:
+        # Compact profile snapshot for this job only; never the event history.
+        from app.style.service import build_profile
+
+        extra["styleSnapshot"] = build_profile(state.db, session_doc["ownerId"]).wire()
+    state.db.search_jobs.insert_one({"_id": job.id, "attempt": 0, "leaseOwner": None, "leaseExpiresAt": None,
+                                     **job.wire(), **extra})
     return job
 
 
@@ -161,6 +168,20 @@ def _run(state: AppState, job: SearchJob, emit: _Emitter) -> None:
     s = state.settings
     factory = (lambda: GrokClient(model=s.xai_model, base_url=s.xai_base_url)) if s.xai_key_present else None
 
+    style, explain_fn = None, None
+    snap = (state.db.search_jobs.find_one({"_id": job.id}, {"styleSnapshot": 1}) or {}).get("styleSnapshot")
+    if snap:
+        from app.contracts import StyleProfile
+
+        style = StyleProfile.model_validate(snap)
+        model = state.style_model() if s.style_model_explanations else None
+        if model is not None:
+            from app.style.model import explain
+
+            def explain_fn(reasons: list[str]) -> str | None:
+                text, mode = explain(reasons, model, state.status["style_model"])
+                return text if mode == "model" else None
+
     outcome = run_search(
         search_id=job.id,
         garment_id=job.garment_id,
@@ -173,6 +194,8 @@ def _run(state: AppState, job: SearchJob, emit: _Emitter) -> None:
         grok_status=state.status["grok"],
         grok_client_factory=factory,
         is_current=lambda: _is_current(state, job.id, job.session_id),
+        style=style,
+        explain_fn=explain_fn,
     )
     budget_doc = budget.wire()
     if outcome.status == "superseded" or not _is_current(state, job.id, job.session_id):

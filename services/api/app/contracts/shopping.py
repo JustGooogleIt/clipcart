@@ -181,6 +181,8 @@ class Recommendation(Record):
     ranking_version: str
     found_by: list[Literal["exact", "alternatives"]]
     links: list[OutboundLink]
+    # Style-memory reasons this result was reordered (FEATURE_STYLE_MEMORY); empty when off.
+    personalization: list[str] = Field(default_factory=list)
 
 
 class SearchBudget(Mutable):

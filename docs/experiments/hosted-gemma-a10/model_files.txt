@@ -1,0 +1,4 @@
+added_tokens.json chat_template.json config.json generation_config.json model-00001-of-00002.safetensors model-00002-of-00002.safetensors model.safetensors.index.json preprocessor_config.json processor_config.json special_tokens_map.json tokenizer.json tokenizer.model tokenizer_config.json 
+8.5G	.
+11590a9f31d6b7c2c072446b5c1ec53c29bc0626a323bf6bd23da373fbe851ce *model-00001-of
+527c47483ed676e9d10f3dcb3280f77b16951b02e057596ba06496ead00c3b3f *model-00002-of

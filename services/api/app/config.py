@@ -50,6 +50,18 @@ class Settings:
     research_resolve_dns: bool
     feature_youtube_download: bool
     youtube_allowed_video_ids: frozenset[str]
+    feature_style_memory: bool
+    style_model_provider: str  # ollama | none
+    style_model: str
+    ollama_base_url: str
+    style_model_timeout_s: float
+    style_model_explanations: bool
+    style_remote_base_url: str | None
+    style_remote_api_key: str | None
+    style_remote_model: str | None
+    style_remote_label: str | None
+    style_remote_json_mode: str
+    style_remote_max_tokens: int
     feature_photon: bool
     feature_voice: bool
     feature_solana: bool
@@ -115,6 +127,18 @@ def load_settings() -> Settings:
         youtube_allowed_video_ids=frozenset(
             v.strip() for v in (os.getenv("YOUTUBE_ALLOWED_VIDEO_IDS") or "").split(",") if v.strip()
         ),
+        feature_style_memory=_flag("FEATURE_STYLE_MEMORY"),
+        style_model_provider=(os.getenv("STYLE_MODEL_PROVIDER") or "none").lower(),  # rule parser by default (see benchmark)
+        style_model=os.getenv("STYLE_MODEL", "gemma4:e4b"),
+        ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/"),
+        style_model_timeout_s=float(os.getenv("STYLE_MODEL_TIMEOUT_S", "8")),
+        style_model_explanations=_flag("STYLE_MODEL_EXPLANATIONS"),
+        style_remote_base_url=(os.getenv("STYLE_REMOTE_BASE_URL") or "").rstrip("/") or None,
+        style_remote_api_key=os.getenv("STYLE_REMOTE_API_KEY") or None,
+        style_remote_model=os.getenv("STYLE_REMOTE_MODEL") or None,
+        style_remote_label=os.getenv("STYLE_REMOTE_LABEL") or None,  # default is derived from the model id
+        style_remote_json_mode=(os.getenv("STYLE_REMOTE_JSON_MODE") or "prompt").lower(),
+        style_remote_max_tokens=int(os.getenv("STYLE_REMOTE_MAX_TOKENS", "300")),
         feature_photon=_flag("FEATURE_PHOTON"),
         feature_voice=_flag("FEATURE_VOICE"),
         feature_solana=_flag("FEATURE_SOLANA"),
