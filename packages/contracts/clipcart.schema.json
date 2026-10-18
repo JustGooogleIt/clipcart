@@ -1050,6 +1050,39 @@
       "title": "MediaAsset",
       "type": "object"
     },
+    "MemoryEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "excerpt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "eventId",
+        "type",
+        "at"
+      ],
+      "title": "MemoryEvidence",
+      "type": "object"
+    },
     "Money": {
       "additionalProperties": false,
       "properties": {
@@ -1473,6 +1506,17 @@
     "ProfileEntry": {
       "additionalProperties": false,
       "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "evidenceCount": {
           "anyOf": [
             {
@@ -1493,6 +1537,17 @@
             "inferred"
           ],
           "type": "string"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "value": {}
       },
@@ -2716,6 +2771,17 @@
           ],
           "default": null
         },
+        "condition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "domain": {
           "anyOf": [
             {
@@ -2771,6 +2837,12 @@
           ],
           "default": null
         },
+        "styleFacts": {
+          "items": {
+            "$ref": "#/$defs/StyleTagFact"
+          },
+          "type": "array"
+        },
         "title": {
           "type": "string"
         }
@@ -2784,9 +2856,27 @@
     "StyleMemory": {
       "additionalProperties": false,
       "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "createdAt": {
           "format": "date-time",
           "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/MemoryEvidence"
+          },
+          "maxItems": 5,
+          "type": "array"
         },
         "evidenceCount": {
           "default": 1,
@@ -2808,9 +2898,23 @@
             "brand_avoid",
             "tone_like",
             "tone_avoid",
-            "ring_size"
+            "ring_size",
+            "style_like",
+            "style_avoid"
           ],
           "type": "string"
+        },
+        "lastEvidenceAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "origin": {
           "enum": [
@@ -2838,7 +2942,8 @@
             "chat_refinement",
             "saved_items",
             "rejected_items",
-            "purchases"
+            "purchases",
+            "model_interpretation"
           ],
           "type": "string"
         },
@@ -3168,6 +3273,20 @@
           ],
           "default": null
         },
+        "stylesAvoid": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "stylesLike": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
         "tonesAvoid": {
           "items": {
             "$ref": "#/$defs/ProfileEntry"
@@ -3222,7 +3341,9 @@
             "brand_avoid",
             "tone_like",
             "tone_avoid",
-            "ring_size"
+            "ring_size",
+            "style_like",
+            "style_avoid"
           ],
           "type": "string"
         },
@@ -3238,6 +3359,32 @@
         "quote"
       ],
       "title": "StyleProposal",
+      "type": "object"
+    },
+    "StyleTagFact": {
+      "additionalProperties": false,
+      "description": "A style tag the listing's own text states, with the words that state it.",
+      "properties": {
+        "excerpt": {
+          "type": "string"
+        },
+        "field": {
+          "enum": [
+            "title",
+            "material"
+          ],
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tag",
+        "field",
+        "excerpt"
+      ],
+      "title": "StyleTagFact",
       "type": "object"
     },
     "SubmittedPrice": {

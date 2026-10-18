@@ -1,0 +1,33 @@
+{
+  "$comment": "Synthetic evidence for a bounded model test of style interpretations (app/style/interpret.py). Labels are [kind, value] the validated output should contain; written before any model run. Each case is one model call. Use: style_interpret_bench.py --max-calls N.",
+  "cases": [
+    {"id": "two-vintage-saves", "events": [
+      {"type": "saved_item", "title": "Vintage 90s Levi's Trucker Jacket", "brand": "Levis"},
+      {"type": "saved_item", "title": "Retro Washed Denim Jacket", "brand": "Wrangler"}],
+     "expect": [["style_like", "vintage"]]},
+    {"id": "negated-vintage", "events": [
+      {"type": "saved_item", "title": "Non-vintage reproduction denim jacket", "brand": "Acme"}],
+     "expect": []},
+    {"id": "rejected-workwear-is-avoid-only", "events": [
+      {"type": "rejected_item", "title": "Carhartt Duck Canvas Chore Coat", "brand": "Carhartt"},
+      {"type": "rejected_item", "title": "Dickies Carpenter Utility Jacket", "brand": "Dickies"}],
+     "expect": [["style_avoid", "workwear"]]},
+    {"id": "purchase-brand", "events": [
+      {"type": "user_confirmed_purchase", "title": "Arc'teryx Beta Technical Shell Jacket", "brand": "Arc'teryx"}],
+     "expect": [["brand_like", "Arc'teryx"], ["style_like", "outdoor"]]},
+    {"id": "save-is-not-ownership", "events": [
+      {"type": "saved_item", "title": "Minimalist black wool overcoat", "brand": "COS"}],
+     "expect": [["style_like", "minimalist"]]},
+    {"id": "mixed-like-and-reject", "events": [
+      {"type": "saved_item", "title": "Y2K rhinestone baby tee", "brand": "Juicy"},
+      {"type": "rejected_item", "title": "Western cowboy fringe jacket", "brand": "Wrangler"}],
+     "expect": [["style_like", "y2k"], ["style_avoid", "western"]]},
+    {"id": "gold-tone-jewelry", "events": [
+      {"type": "saved_item", "title": "Gold-tone hoop earrings", "brand": null},
+      {"type": "saved_item", "title": "Gold tone chain necklace", "brand": null}],
+     "expect": [["tone_like", "gold-tone"]]},
+    {"id": "no-size-or-budget", "events": [
+      {"type": "saved_item", "title": "Streetwear oversized hoodie size XL $80", "brand": "Stussy"}],
+     "expect": [["style_like", "streetwear"]]}
+  ]
+}

@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.categories import is_accessory
 from app.contracts import Listing, StyleProfile
 
+from .tags import extract
 from .vocab import colors_in
 
 W_STATED_LIKE, W_INFERRED_LIKE = 2.0, 1.0
@@ -53,6 +54,17 @@ def style_score(listing: Listing, profile: StyleProfile | None, category: str | 
             score += W_STATED_AVOID if e.origin == "stated" else W_INFERRED_AVOID
             reasons.append(f"Ranked lower: you said you avoid {e.value}" if e.origin == "stated"
                            else f"Ranked lower: a color you often reject ({e.value})")
+    tags = {t for t, _ in extract(f"{listing.title} {listing.material_text or ''}")}
+    for e in profile.styles_like:
+        if e.value in tags:
+            score += W_STATED_LIKE if e.origin == "stated" else W_INFERRED_LIKE
+            reasons.append(f"You said you like {e.value} style" if e.origin == "stated"
+                           else f"Matches a style from items you saved or bought ({e.value})")
+    for e in profile.styles_avoid:
+        if e.value in tags:
+            score += W_STATED_AVOID if e.origin == "stated" else W_INFERRED_AVOID
+            reasons.append(f"Ranked lower: you said you avoid {e.value} style" if e.origin == "stated"
+                           else f"Ranked lower: a style you often hide ({e.value})")
     if category and is_accessory(category):
         tones = _listing_tones(listing)
         for e in profile.tones_like:

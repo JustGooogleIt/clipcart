@@ -307,3 +307,13 @@ There are new memory kinds, `style_like` and `style_avoid`. They're editable lik
 2. **Evidence:** for inferred memories, show confidence (High ≥ 0.7, Medium ≥ 0.45, otherwise Low) and the evidence excerpts with dates.
 3. **Model label:** label `source: "model_interpretation"` as "Suggested by the style model from your saves", and say it doesn't affect ranking while `STYLE_MODEL_RANKING` is off.
 4. **Wardrobe groups:** separate "Owned (you said)", "Owned (verified)", "Saved (interest)", "Hidden" and "Opened links (not purchases)".
+
+### Bounded model test (not run; Lambda not restarted)
+
+The Gemma endpoint is offline. The provider integration is ready (`STYLE_MODEL_PROVIDER=openai_compatible` or `ollama`). A bounded test needs:
+
+1. **Endpoint:** an **OpenAI-compatible `/v1/chat/completions` endpoint** serving Gemma, for example the vLLM `gaunernst/gemma-3-12b-it-int4-awq` setup in `docs/experiments/hosted-gemma-a10/`, reached through a localhost tunnel.
+2. **Environment:** only in the shell, set `STYLE_REMOTE_BASE_URL`, `STYLE_REMOTE_API_KEY` and `STYLE_REMOTE_MODEL`.
+3. **Run:** `services/api/.venv/bin/python scripts/experiments/style_interpret_bench.py --max-calls 8`. That's one call per case in `scripts/experiments/style_interpret_cases.json`, at most 400 output tokens each. Every proposal goes through production validation. The run reports validated precision and recall, refusals by reason, latency and tokens.
+
+Ranking stays off (`STYLE_MODEL_RANKING` unset) until that run and the action-interpretation regression set (`scripts/experiments/style_regression_cases.json`) look acceptable.

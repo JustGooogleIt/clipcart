@@ -281,6 +281,16 @@ export interface MediaAsset {
   width: number;
 }
 /**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "MemoryEvidence".
+ */
+export interface MemoryEvidence {
+  at: string;
+  eventId: string;
+  excerpt?: string | null;
+  type: string;
+}
+/**
  * Offers ClipCart treats as the same product, for price comparison.
  *
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -410,9 +420,11 @@ export interface ProductIdentifiers {
  * via the `definition` "ProfileEntry".
  */
 export interface ProfileEntry {
+  confidence?: number | null;
   evidenceCount?: number | null;
   memoryId: string;
   origin: "stated" | "inferred";
+  source?: string | null;
   value: unknown;
 }
 /**
@@ -1044,19 +1056,43 @@ export interface StyleEvent {
 export interface StyleItem {
   brand?: string | null;
   category?: string | null;
+  condition?: string | null;
   domain?: string | null;
   listingId?: string | null;
   offerKey?: string | null;
   productKey?: string | null;
   recommendationId?: string | null;
+  styleFacts?: StyleTagFact[];
   title: string;
+}
+/**
+ * A style tag the listing's own text states, with the words that state it.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleTagFact".
+ */
+export interface StyleTagFact {
+  excerpt: string;
+  field: "title" | "material";
+  tag: string;
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
  * via the `definition` "StyleMemory".
  */
 export interface StyleMemory {
+  confidence?: number | null;
   createdAt: string;
+  /**
+   * @maxItems 5
+   */
+  evidence?:
+    | []
+    | [MemoryEvidence]
+    | [MemoryEvidence, MemoryEvidence]
+    | [MemoryEvidence, MemoryEvidence, MemoryEvidence]
+    | [MemoryEvidence, MemoryEvidence, MemoryEvidence, MemoryEvidence]
+    | [MemoryEvidence, MemoryEvidence, MemoryEvidence, MemoryEvidence, MemoryEvidence];
   evidenceCount?: number;
   id: string;
   kind:
@@ -1071,7 +1107,10 @@ export interface StyleMemory {
     | "brand_avoid"
     | "tone_like"
     | "tone_avoid"
-    | "ring_size";
+    | "ring_size"
+    | "style_like"
+    | "style_avoid";
+  lastEvidenceAt?: string | null;
   origin: "stated" | "inferred";
   overriddenBy?: string | null;
   source:
@@ -1081,7 +1120,8 @@ export interface StyleMemory {
     | "chat_refinement"
     | "saved_items"
     | "rejected_items"
-    | "purchases";
+    | "purchases"
+    | "model_interpretation";
   sourceEventIds?: string[];
   status: "active" | "overridden" | "removed";
   updatedAt: string;
@@ -1137,7 +1177,9 @@ export interface StyleProposal {
     | "brand_avoid"
     | "tone_like"
     | "tone_avoid"
-    | "ring_size";
+    | "ring_size"
+    | "style_like"
+    | "style_avoid";
   quote: string;
   value: unknown;
 }
@@ -1232,6 +1274,26 @@ export interface StyleProfileView {
   rejectedOfferCount?: number;
   ringSize?: ProfileEntry | null;
   size?: ProfileEntry | null;
+  /**
+   * @maxItems 5
+   */
+  stylesAvoid?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  /**
+   * @maxItems 5
+   */
+  stylesLike?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
   /**
    * @maxItems 5
    */

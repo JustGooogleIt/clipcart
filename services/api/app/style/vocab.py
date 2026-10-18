@@ -14,6 +14,7 @@ PAIRS = {
     "material_like": "material_avoid", "material_avoid": "material_like",
     "brand_like": "brand_avoid", "brand_avoid": "brand_like",
     "tone_like": "tone_avoid", "tone_avoid": "tone_like",
+    "style_like": "style_avoid", "style_avoid": "style_like",
 }
 TONES = ("gold-tone", "silver-tone", "rose-gold-tone", "black", "two-tone")
 _TONE_ALIASES = {"gold": "gold-tone", "gold tone": "gold-tone", "golden": "gold-tone", "silver": "silver-tone",
@@ -60,6 +61,13 @@ def normalize(kind: str, value: Any) -> Any:
             raise InvalidMemory("size must be 1-12 characters")
         label, system = norm_size(raw)
         return {"raw": label, "system": system if system in ("alpha", "numeric") else None}
+    if kind in ("style_like", "style_avoid"):
+        from .tags import STYLE_TAGS, normalize_tag
+
+        v = normalize_tag(value)
+        if not v:
+            raise InvalidMemory(f"unknown style {value!r}; use one of {', '.join(STYLE_TAGS)}")
+        return v
     if kind in ("tone_like", "tone_avoid"):
         v = " ".join(str(value or "").lower().replace("-", " ").split())
         v = _TONE_ALIASES.get(v, v.replace(" ", "-"))
