@@ -1,10 +1,20 @@
 import { mediaUrl, timestamp } from "../api";
-import type { GarmentDoc, GarmentObservation } from "../types";
+import { attrLabel, categoryOf, grouped, isAccessory } from "../categories";
+import type { CategoryInfo, GarmentDoc, GarmentObservation } from "../types";
 import { cleanLabel, sourceLabel } from "./GarmentTray";
+
+/** Observed attributes for display, keyed by the category's attribute keys, merged across sightings. */
+function attributes(obs: GarmentObservation[], cat: CategoryInfo | null) {
+  const keys = cat?.attributeKeys ?? ["color", "pattern", "cut", "details"];
+  return keys
+    .map((k) => ({ key: k, values: [...new Set(obs.flatMap((o) => o.observedAttributes?.[k] ?? []))].slice(0, 4) }))
+    .filter((a) => a.values.length);
+}
 
 export default function SelectedPiece({
   garment,
   observations,
+  categories,
   detectionMode,
   busy,
   onRelabel,
@@ -12,6 +22,7 @@ export default function SelectedPiece({
 }: {
   garment: GarmentDoc | null;
   observations: GarmentObservation[];
+  categories: CategoryInfo[];
   detectionMode: string;
   busy: boolean;
   onRelabel: (id: string, category: string) => void;
@@ -25,7 +36,7 @@ export default function SelectedPiece({
         </span>
         <div>
           <p className="piece-kicker">Nothing selected yet</p>
-          <p className="piece-hint">Tap a box on the scene, or draw one around the piece you want. Only that piece is searched.</p>
+          <p className="piece-hint">Tap a box on the scene, or draw one around the piece you want, including a watch or jewelry. Only that piece is searched.</p>
         </div>
       </div>
     );
@@ -33,8 +44,15 @@ export default function SelectedPiece({
   const obs = observations.filter((o) => garment.observationIds.includes(o.id));
   const byUser = obs.some((o) => o.editedByUser);
   const first = obs[0];
-  const attrs = first ? Object.values(first.observedAttributes ?? {}).flat().slice(0, 5) : [];
   const ts = first ? timestamp(first.timestampMs) : null;
+  const cat = categoryOf(categories, garment.category);
+  const attrs = attributes(obs, cat);
+  const seenText = [...new Set(obs.flatMap((o) => o.visibleText ?? []))].slice(0, 4);
+  const normalized = obs.some((o) => o.observedAttributes?.appearanceNormalized?.includes("true"));
+  const accessory = isAccessory(cat);
+  // A category the list doesn't know (e.g. an older server's list) still shows as the current value.
+  const options = grouped(categories);
+  const known = categories.some((c) => c.id === garment.category);
   return (
     <div className="piece">
       <img className="piece-img" src={mediaUrl(garment.representativeCropId)} alt={`Crop of ${cleanLabel(garment.label)}`} />
@@ -46,22 +64,51 @@ export default function SelectedPiece({
           {ts && <span>at {ts}</span>}
         </p>
         {attrs.length > 0 && (
-          <ul className="attrs" aria-label="Observed attributes">
+          <dl className="attr-list" aria-label="Observed attributes">
             {attrs.map((a) => (
-              <li key={a}>{a}</li>
+              <div key={a.key}>
+                <dt>{attrLabel(cat, a.key)}</dt>
+                <dd>
+                  <ul className="attrs">
+                    {a.values.map((v) => (
+                      <li key={v}>{v}</li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
             ))}
-          </ul>
+          </dl>
+        )}
+        {seenText.length > 0 && (
+          <p className="seen-text">
+            <span className="seen-text-label">Text seen on the item</span>
+            {seenText.map((t) => (
+              <q key={t}>{t}</q>
+            ))}
+            <small>Lettering as it appears. Not a brand or authenticity claim.</small>
+          </p>
+        )}
+        {accessory && (
+          <p className="piece-note">
+            Described by appearance only{normalized ? "; metal and stone words were reworded to tone and look" : ""}. ClipCart never judges
+            metal, stones, brand or authenticity from a picture.
+          </p>
         )}
         {garment.userDescription && <p className="piece-desc">“{garment.userDescription}”</p>}
         <div className="piece-tools">
           <label>
             <span className="sr-only">Category</span>
             <select value={garment.category} onChange={(e) => onRelabel(garment.id, e.target.value)} disabled={busy}>
-              <option value="jacket">Jacket</option>
-              <option value="top">Top</option>
-              <option value="pants">Pants</option>
-              <option value="bag">Bag</option>
-              <option value="other">Other / object</option>
+              {!known && <option value={garment.category}>{garment.category}</option>}
+              {options.map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.items.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.id === "other" ? "Other / object" : c.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </label>
           <button type="button" className="btn btn-quiet btn-sm" onClick={() => onRedraw(garment)} disabled={busy}>

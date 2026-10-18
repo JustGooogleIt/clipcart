@@ -73,6 +73,23 @@ export interface Health {
     agentResearch?: boolean;
     youtubeDownload?: boolean;
     styleMemory?: boolean;
+    accessoryDetection?: boolean;
   };
   youtube?: { enabled: boolean; allowedVideoCount: number; maxDurationS: number };
+  /** Both null when FEATURE_AGENT_RESEARCH is off (docs/contracts/agent-research.md). */
+  research?: { provider: string | null; mode: string | null };
+}
+
+export type Category = GarmentObservation["category"];
+
+/**
+ * One row of GET /api/categories (docs/contracts/accessories.md). Hand-written: the response shape is documented
+ * but not generated in packages/contracts yet (asked in the PR).
+ */
+export interface CategoryInfo {
+  id: Category;
+  label: string;
+  family: "apparel" | "bag" | "watch" | "jewelry" | "other";
+  sizeRule: "clothing" | "ring" | "none";
+  attributeKeys: string[];
 }

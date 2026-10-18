@@ -10,7 +10,10 @@ const ruleName = (c: string) => RULE[c] ?? c.charAt(0).toUpperCase() + c.slice(1
 const STATE_ICON: Record<string, string> = { satisfied: "✓", violated: "✕", unknown: "?" };
 const MODE: Record<string, string> = { live: "Live price", cached: "Cached price", fixture: "Fixture data", catalog: "Demo catalog" };
 
-export default function ResultCard({ item, cropId }: { item: ResultItem; cropId: string | null }) {
+// The server's warning when a listing's own text claims metal, stones or authenticity (docs/contracts/accessories.md).
+const isSellerClaim = (w: string) => /seller's description/i.test(w);
+
+export default function ResultCard({ item, cropId, accessory = false }: { item: ResultItem; cropId: string | null; accessory?: boolean }) {
   const [showEvidence, setShowEvidence] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
   const mem = useMemoryActions();
@@ -30,6 +33,22 @@ export default function ResultCard({ item, cropId }: { item: ResultItem; cropId:
   // Style memory's reasons when it reordered this result; empty when it had no effect.
   const personalization = r.personalization ?? [];
   const saved = mem.savedEventId(r.id, L.id);
+  const hidden = mem.hiddenEventId(r.id, L.id);
+  // Watches and jewelry are never matched from appearance: the server caps them at "similar".
+  const tier = accessory && r.identityTier !== "verified" ? "Similar look" : (TIER[r.identityTier] ?? r.identityTier);
+  const claims = r.warnings.filter(isSellerClaim);
+  if (hidden) {
+    return (
+      <article className={`card card-${r.section} card-hidden`} data-result={r.id}>
+        <p>
+          <strong>Hidden:</strong> {L.title}. ClipCart won't show this offer in your results again.
+        </p>
+        <button type="button" className="linkish" onClick={() => mem.toggleHide(r.id, L.id)}>
+          Undo
+        </button>
+      </article>
+    );
+  }
   return (
     <article className={`card card-${r.section}`} data-result={r.id}>
       <div className="card-media">
@@ -38,7 +57,7 @@ export default function ResultCard({ item, cropId }: { item: ResultItem; cropId:
         ) : (
           <div className="card-noimg">{L.imageUrls[0] ? "Product image didn't load" : "No product image"}</div>
         )}
-        <span className={`tier tier-${r.identityTier}`}>{TIER[r.identityTier] ?? r.identityTier}</span>
+        <span className={`tier tier-${r.identityTier}`}>{tier}</span>
         <span className={`mode mode-${L.mode}`}>{MODE[L.mode] ?? L.mode}</span>
       </div>
       <div className="card-body">
@@ -86,6 +105,11 @@ export default function ResultCard({ item, cropId }: { item: ResultItem; cropId:
             {personalization.join(" · ")}
           </p>
         )}
+        {claims.map((w) => (
+          <p key={w} className="card-claim">
+            {w}
+          </p>
+        ))}
         <p className="card-reason">{r.explanation}</p>
         <div className="card-actions">
           {first && <span className={`dest dest-${viaComparison ? "compare" : "retailer"}`}>{viaComparison ? "Price comparison page" : "Retailer product page"}</span>}
@@ -96,9 +120,16 @@ export default function ResultCard({ item, cropId }: { item: ResultItem; cropId:
             </a>
           )}
           {mem.ready && (
-            <button type="button" className={`btn btn-sm btn-save ${saved ? "btn-saved" : ""}`} aria-pressed={!!saved} onClick={() => mem.toggleSave(r.id, L.id)}>
-              {saved ? "Saved ✓" : "Save"}
-            </button>
+            <div className="card-mem">
+              <button type="button" className={`btn btn-sm btn-save ${saved ? "btn-saved" : ""}`} aria-pressed={!!saved} onClick={() => mem.toggleSave(r.id, L.id)}>
+                {saved ? "Saved ✓" : "Save"}
+              </button>
+              {!saved && (
+                <button type="button" className="btn btn-sm btn-quiet btn-hide" onClick={() => mem.toggleHide(r.id, L.id)} title="Hide this offer from your results">
+                  Not for me
+                </button>
+              )}
+            </div>
           )}
           {rest.map((lk) => (
             <a key={lk.token} className="alt-link" href={`/go/${lk.token}`} target="_blank" rel="noopener noreferrer">
@@ -122,7 +153,7 @@ export default function ResultCard({ item, cropId }: { item: ResultItem; cropId:
               <figure>
                 <img src={mediaUrl(cropId)} alt="Your selected garment" />
                 {L.imageUrls[0] && !imgFailed && <img src={L.imageUrls[0]} alt="" referrerPolicy="no-referrer" />}
-                <figcaption>Your piece next to this listing. {TIER[r.identityTier]}, not a confirmed identical item unless verified.</figcaption>
+                <figcaption>Your piece next to this listing. {tier}, not a confirmed identical item unless verified.</figcaption>
               </figure>
             )}
             <dl>
@@ -161,9 +192,9 @@ export default function ResultCard({ item, cropId }: { item: ResultItem; cropId:
                 </li>
               ))}
             </ul>
-            {r.warnings.length > 0 && (
+            {r.warnings.filter((w) => !isSellerClaim(w)).length > 0 && (
               <ul className="warnings">
-                {r.warnings.map((w) => (
+                {r.warnings.filter((w) => !isSellerClaim(w)).map((w) => (
                   <li key={w}>{w}</li>
                 ))}
               </ul>

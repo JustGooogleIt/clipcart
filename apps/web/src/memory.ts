@@ -11,9 +11,45 @@ import { key } from "./api";
 export type { StyleEvent, StyleItem, StyleMemory, StyleModelInfo, StyleNoteResult, StyleProposal } from "@contracts";
 export type MemoryKind = StyleMemory["kind"];
 
+/**
+ * GET /api/style/interpretations (docs/contracts/style-memory.md, "Model interpretations"). Hand-written: the
+ * response isn't generated in packages/contracts yet (asked in the PR). Optional: older servers don't have it.
+ */
+export interface Interpretations {
+  status: "idle" | "debouncing" | "waiting_for_model";
+  pendingEvents: number;
+  rankingInfluence?: boolean;
+  styleModel?: StyleModelInfo;
+  runs: { id: string; at: string; model: string | null; evidenceEventIds: string[]; applied: string[]; rejected: { kind: string; value: string; reason: string }[] }[];
+}
+
+/** Style vocabulary for style_like / style_avoid (docs/contracts/style-memory.md, v2). Not in packages/contracts. */
+export const STYLE_VOCAB = [
+  "vintage",
+  "minimalist",
+  "streetwear",
+  "workwear",
+  "preppy",
+  "athleisure",
+  "y2k",
+  "outdoor",
+  "techwear",
+  "western",
+  "bohemian",
+  "classic",
+  "grunge",
+  "punk",
+] as const;
+
 export type MemoryState =
   | { state: "loading" }
-  | { state: "ready"; memories: StyleMemory[]; events: StyleEvent[]; styleModel: StyleModelInfo }
+  | {
+      state: "ready";
+      memories: StyleMemory[];
+      events: StyleEvent[];
+      styleModel: StyleModelInfo;
+      interpretations: Interpretations | null;
+    }
   | { state: "unavailable"; reason: "disabled" | "offline"; message: string };
 
 const MUTATE = { "X-ClipCart-Request": "1" };
@@ -64,7 +100,9 @@ export async function loadMemory(): Promise<MemoryState> {
       call<{ memories: StyleMemory[] }>("GET", "/api/style/memories"),
       call<{ events: StyleEvent[] }>("GET", "/api/style/events?limit=50"),
     ]);
-    return { state: "ready", memories: m.memories ?? [], events: e.events ?? [], styleModel: p.styleModel };
+    // Interpretations are extra detail; their absence never makes the panel unavailable.
+    const interpretations = await call<Interpretations>("GET", "/api/style/interpretations").catch(() => null);
+    return { state: "ready", memories: m.memories ?? [], events: e.events ?? [], styleModel: p.styleModel, interpretations };
   } catch (err) {
     const status = err instanceof MemoryError ? err.status : 0;
     // 404 feature_disabled when FEATURE_STYLE_MEMORY is off; a plain 404 on a server without the routes.
@@ -106,16 +144,21 @@ export function noteResultReader(r: StyleNoteResult, m: StyleModelInfo | null): 
   return r.hosting === "remote" ? `${name}, hosted (not local)` : r.hosting === "local" ? `${name}, local` : name;
 }
 
-/** What result cards need from the panel: whether saving works, which results are saved, and the toggle. */
+/** What result cards need from the panel: whether memory works, which results are saved or hidden, and the toggles. */
 export interface MemoryActions {
   ready: boolean;
   savedEventId: (recommendationId: string, listingId: string) => string | null;
   toggleSave: (recommendationId: string, listingId: string) => void;
+  /** A rejected_item event: the offer is hidden from later results. Undo deletes the event. */
+  hiddenEventId: (recommendationId: string, listingId: string) => string | null;
+  toggleHide: (recommendationId: string, listingId: string) => void;
 }
 
 export const MemoryContext = createContext<MemoryActions>({
   ready: false,
   savedEventId: () => null,
   toggleSave: () => undefined,
+  hiddenEventId: () => null,
+  toggleHide: () => undefined,
 });
 export const useMemoryActions = () => useContext(MemoryContext);

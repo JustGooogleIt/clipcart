@@ -1,4 +1,5 @@
-import type { Health, SearchView, SessionView } from "./types";
+import type { ResearchJob, SubmittedProduct } from "@contracts";
+import type { CategoryInfo, Health, SearchView, SessionView } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -78,6 +79,12 @@ export const api = {
         warnings?: string[];
       }
     >("POST", `/api/sessions/${id}/youtube-analyze`, { youtubeUrl, expectedRevision }),
+  categories: () => req<{ categories: CategoryInfo[] }>("GET", "/api/categories"),
+  // Research jobs (FEATURE_AGENT_RESEARCH). Contract: docs/contracts/agent-research.md, v2.
+  startResearch: (id: string) => req<{ job: ResearchJob }>("POST", `/api/sessions/${id}/research-jobs`, { idempotencyKey: key() }),
+  research: (jobId: string) => req<{ job: ResearchJob }>("GET", `/api/research-jobs/${jobId}`),
+  importResearch: (jobId: string, products: SubmittedProduct[], notes: string | null) =>
+    req<{ job: ResearchJob }>("POST", `/api/research-jobs/${jobId}/import`, { products, notes }),
 };
 
 export function upload(
