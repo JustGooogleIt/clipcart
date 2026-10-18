@@ -7,6 +7,8 @@ local fixture RPC servers are never accepted as proof outside unit tests.
 
 from __future__ import annotations
 
+from app.demo.rpc import RpcError  # noqa: E402
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -205,14 +207,14 @@ def verify_payment(
         from app.demo.rpc import RpcError
 
         retryable = exc.retryable if isinstance(exc, RpcError) else True
-        return VerifyResult("rpc_error", detail=str(exc), retryable=retryable)
+        return VerifyResult("rpc_error", detail=str(exc) if isinstance(exc, RpcError) else type(exc).__name__, retryable=retryable)
 
     try:
         candidates = find_candidate_signatures(
             rpc, payment_reference=payment_reference, signature_hint=signature_hint
         )
     except Exception as exc:  # noqa: BLE001
-        return VerifyResult("rpc_error", detail=str(exc), retryable=True)
+        return VerifyResult("rpc_error", detail=str(exc) if isinstance(exc, RpcError) else type(exc).__name__, retryable=True)
 
     if not candidates:
         return VerifyResult("missing", detail="no transaction found for payment reference", retryable=True)
@@ -260,7 +262,7 @@ def verify_payment(
             last_mismatch = checked.detail
             # Keep scanning other reference signatures; a bad client hint is not proof.
         except Exception as exc:  # noqa: BLE001
-            return VerifyResult("rpc_error", detail=str(exc), retryable=True)
+            return VerifyResult("rpc_error", detail=str(exc) if isinstance(exc, RpcError) else type(exc).__name__, retryable=True)
 
     if saw_unconfirmed:
         return VerifyResult("unconfirmed", detail="payment not yet confirmed", retryable=True)

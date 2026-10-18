@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import secrets
+
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -16,8 +18,10 @@ from app.demo.verify import explorer_tx_url
 from app.sessions.service import ApiProblem, now
 
 RECEIPT_LABEL = "ClipCart demo receipt · Devnet · No retailer fulfillment."
-# Stale "building" lease (process died before persisting a signed tx).
-_BUILD_LEASE_STALE_S = 60
+# A build lease outlives every step its holder can still be in: devnet check (30 s) + build/sign worker (90 s),
+# plus margin. Only after it expires may another request take over, and the holder's signed write is conditional
+# on still holding its lease id, so a worker that lost the lease never persists or broadcasts what it built.
+_BUILD_LEASE_TTL_S = 180
 
 
 class MintAdapter(Protocol):
@@ -225,10 +229,12 @@ def _acquire_build_lease(db: Any, order_id: str) -> dict | None:
     """Exactly one concurrent caller may build a mint tx for this attempt.
 
     Transitions claimed → building. A stale building lease (no signed tx) may be
-    reclaimed after _BUILD_LEASE_STALE_S so restart can finish without a second mint
+    reclaimed after its lease expires (_BUILD_LEASE_TTL_S) so restart can finish without a second mint
     once a signed tx exists — callers must still reconcile before any new build.
     """
-    t = now().isoformat()
+    t = now()
+    lease = {"status": "building", "updatedAt": t.isoformat(), "leaseId": secrets.token_hex(12),
+             "leaseExpiresAt": (t + timedelta(seconds=_BUILD_LEASE_TTL_S)).isoformat()}
     won = db.receipt_mint_attempts.find_one_and_update(
         {
             "_id": order_id,
@@ -236,21 +242,20 @@ def _acquire_build_lease(db: Any, order_id: str) -> dict | None:
             "signedTxBase64": None,
             "mintSignature": None,
         },
-        {"$set": {"status": "building", "updatedAt": t}},
+        {"$set": lease},
         return_document=ReturnDocument.AFTER,
     )
     if won:
         return won
-    stale_before = (now() - timedelta(seconds=_BUILD_LEASE_STALE_S)).isoformat()
     return db.receipt_mint_attempts.find_one_and_update(
         {
             "_id": order_id,
             "status": "building",
             "signedTxBase64": None,
             "mintSignature": None,
-            "updatedAt": {"$lt": stale_before},
+            "leaseExpiresAt": {"$lt": t.isoformat()},
         },
-        {"$set": {"status": "building", "updatedAt": t}},
+        {"$set": lease},
         return_document=ReturnDocument.AFTER,
     )
 
@@ -311,7 +316,7 @@ def _reconcile_existing(adapter: MintAdapter, db: Any, order: dict, attempt: dic
                 db,
                 oid,
                 status="needs_reconciliation",
-                error=str(exc)[:300],
+                error=type(exc).__name__,
             )
             order = _set_order_receipt(db, oid, receiptStatus="needs_reconciliation")
             return order, attempt
@@ -322,7 +327,7 @@ def _reconcile_existing(adapter: MintAdapter, db: Any, order: dict, attempt: dic
     try:
         conf = adapter.confirm(sig)
     except Exception as exc:  # noqa: BLE001
-        attempt = _set_attempt(db, oid, status="needs_reconciliation", error=str(exc)[:300])
+        attempt = _set_attempt(db, oid, status="needs_reconciliation", error=type(exc).__name__)
         order = _set_order_receipt(db, oid, receiptStatus="needs_reconciliation", receiptMintSignature=sig)
         return order, attempt
 
@@ -378,7 +383,7 @@ def _reconcile_existing(adapter: MintAdapter, db: Any, order: dict, attempt: dic
             oid,
             status="confirmed",
             indexingStatus="pending",
-            error=str(exc)[:300],
+            error=type(exc).__name__,
         )
         order = _set_order_receipt(db, oid, receiptStatus="confirmed", receiptMintSignature=sig)
         return order, attempt
@@ -431,9 +436,10 @@ def mint_receipt(
         if _attempt_has_mint_work(attempt):
             order, attempt = _reconcile_existing(adapter, st.db, doc, attempt)
             return order, receipt_card(order, attempt)
-        order = _set_order_receipt(st.db, order_id, receiptStatus="minting")
-        return order, receipt_card(order, attempt)
+        raise ApiProblem(409, "receipt_mint_in_progress", "A receipt mint for this order is already in progress",
+                         retryable=True)
 
+    lease_id = leased["leaseId"]
     try:
         adapter.require_devnet()
         built = adapter.build_sign_mint(
@@ -444,16 +450,19 @@ def mint_receipt(
         )
         if built.get("leafOwner") != doc["buyerWallet"]:
             raise CnftWorkerError("worker leafOwner mismatch", retryable=False)
-        # Persist signed bytes before broadcast so restart reconciles instead of reminting.
-        attempt = _set_attempt(
-            st.db,
-            order_id,
-            status="signed",
-            signedTxBase64=built["signedTxBase64"],
-            mintSignature=built.get("signature"),
-            metadataUri=metadata_uri,
-            merkleTree=tree,
+        # Persist signed bytes before broadcast so restart reconciles instead of reminting — but only while this
+        # request still holds its lease. A holder that lost it discards what it built and never broadcasts.
+        attempt = st.db.receipt_mint_attempts.find_one_and_update(
+            {"_id": order_id, "status": "building", "leaseId": lease_id, "signedTxBase64": None},
+            {"$set": {"status": "signed", "signedTxBase64": built["signedTxBase64"],
+                      "mintSignature": built.get("signature"), "metadataUri": metadata_uri, "merkleTree": tree,
+                      "updatedAt": now().isoformat()},
+             "$unset": {"leaseId": "", "leaseExpiresAt": ""}},
+            return_document=ReturnDocument.AFTER,
         )
+        if attempt is None:
+            raise ApiProblem(409, "receipt_mint_in_progress", "Another request took over this receipt mint",
+                             retryable=True)
         try:
             sig = adapter.send_signed(built["signedTxBase64"])
         except Exception as exc:  # noqa: BLE001
@@ -461,7 +470,7 @@ def mint_receipt(
                 st.db,
                 order_id,
                 status="needs_reconciliation",
-                error=f"broadcast uncertain: {exc}"[:300],
+                error=f"broadcast uncertain: {type(exc).__name__}",
             )
             order = _set_order_receipt(st.db, order_id, receiptStatus="needs_reconciliation")
             return order, receipt_card(order, attempt)
@@ -472,7 +481,7 @@ def mint_receipt(
     except ApiProblem:
         raise
     except Exception as exc:  # noqa: BLE001
-        attempt = _set_attempt(st.db, order_id, status="failed", error=str(exc)[:300])
+        attempt = _set_attempt(st.db, order_id, status="failed", error=type(exc).__name__)
         order = _set_order_receipt(st.db, order_id, receiptStatus="failed")
         return order, receipt_card(order, attempt)
 

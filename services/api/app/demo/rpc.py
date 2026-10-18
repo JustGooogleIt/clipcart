@@ -48,7 +48,10 @@ class SolanaRpc:
             resp.raise_for_status()
             body = resp.json()
         except httpx.HTTPError as exc:
-            raise RpcError(f"RPC transport error: {exc}", retryable=True) from exc
+            # Never include str(exc): httpx puts the full RPC URL (which may carry an API key) in the message.
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            raise RpcError(f"Solana RPC unavailable ({type(exc).__name__}{f' {status}' if status else ''})",
+                           retryable=True) from exc
         if "error" in body:
             err = body["error"]
             raise RpcError(f"RPC {method}: {err.get('message', err)}", retryable=True)

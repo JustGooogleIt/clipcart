@@ -34,12 +34,18 @@ def test_concurrent_receipt_requests_single_build(cnft_app, monkeypatch):
     oid = order["id"]
 
     def one():
-        return mint_receipt(st, owner, oid, adapter=fake)
+        from app.sessions.service import ApiProblem
+
+        try:
+            return mint_receipt(st, owner, oid, adapter=fake)
+        except ApiProblem as exc:  # a concurrent loser: retryable "in progress", never a second build
+            assert exc.status == 409 and exc.code == "receipt_mint_in_progress" and exc.retryable
+            return None
 
     n = 8
     with ThreadPoolExecutor(max_workers=n) as pool:
         futs = [pool.submit(one) for _ in range(n)]
-        results = [f.result(timeout=30) for f in as_completed(futs)]
+        results = [r for r in (f.result(timeout=30) for f in as_completed(futs)) if r is not None]
 
     assert fake.build_calls == 1
     assert fake.send_calls == 1

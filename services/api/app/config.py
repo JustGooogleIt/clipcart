@@ -67,14 +67,14 @@ class Settings:
     feature_solana: bool
     feature_solana_cnft_receipts: bool
     solana_network: str
-    solana_rpc_url: str
+    solana_rpc_url: str = field(repr=False)
     solana_demo_merchant_wallet: str
     solana_demo_amount_lamports: int
     solana_demo_order_ttl_s: int
     solana_cnft_tree_address: str
     solana_cnft_receipt_authority: str
-    solana_cnft_authority_keypair_path: str
-    solana_das_rpc_url: str
+    solana_cnft_authority_keypair_path: str = field(repr=False)
+    solana_das_rpc_url: str = field(repr=False)
     solana_cnft_metadata_base_url: str
     solana_cnft_worker_dir: str
     cookie_secure: bool
