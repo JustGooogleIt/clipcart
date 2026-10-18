@@ -4,6 +4,18 @@ Status: **implemented on `feat/style-memory` (draft PR #15)**, first published e
 
 Style memory is **owner-scoped**, keyed to the browser owner cookie like sessions. It persists across sessions for the same owner. One owner can never read, change or delete another owner's events or memories.
 
+## Readiness (independent of Gemma)
+
+| Capability | Status | Needs Gemma? |
+| --- | --- | --- |
+| Events, memories, correction, removal, profile, owner isolation | **Ready** behind the flag; covered by tests | No |
+| Deterministic inference from saved, rejected and purchased items | **Ready** | No |
+| Search personalization (hide rejected items, soft reorder, reasons) | **Ready** | No |
+| `POST /api/style/notes` proposals | **Ready with the rule-based parser** (precision 1.00, recall 0.86 on the labelled set) | Optional. Gemma adds brands and phrasing variety. |
+| Model-written explanation sentences | Off by default; templates are used | Yes, and **not available**: no local Gemma runtime |
+
+The UI can ship everything above without Gemma. `styleModel.mode` tells it whether model proposals are in use.
+
 ## Concepts
 
 - **Event:** an append-only fact about what the shopper did or said. Events are the history.
@@ -47,6 +59,8 @@ Posting `retailer_click` or `verified_order` to the API returns `422 {code: "eve
 All need the owner cookie. Mutations also need `X-ClipCart-Request: 1` and accept an optional `idempotencyKey`. Errors use the standard body `{code, message, retryable, requestId}`.
 
 ### `GET /api/style/profile`
+
+The `profile` object is validated against `StyleProfileView` before it's returned.
 
 ```json
 {
@@ -177,3 +191,16 @@ Baseline for the rule-based fallback on the 10 labelled statements in that scrip
 | Precision | Recall | False positives | Misses |
 | --- | --- | --- | --- |
 | 1.00 | 0.86 | 0 | 2 (brands, which are left to the model by design) |
+
+## Shared types (codegen plan)
+
+`packages/contracts` is **not regenerated** on this branch. A preview regeneration (2026-10-18) showed:
+
+- **Already stale on integration, before this PR:** the committed `index.ts` lacks the research types from merged PR #6. That's 7 interfaces and about 338 lines of diff.
+- **Added by this PR, all additive:** `StyleEvent`, `StyleItem`, `StyleMemory`, `StyleProfileView`, `StyleProposal`, `ProfileEntry` and `OwnedItem`, plus optional `Recommendation.personalization?: string[]`. No existing field changes.
+
+The plan is one regeneration commit on `integration`, after the UI lane confirms this contract, covering both the research drift and the style types:
+
+```bash
+services/api/.venv/bin/python scripts/gen_contracts.py && (cd apps/web && npm run gen:types)
+```

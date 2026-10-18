@@ -252,6 +252,9 @@ def build_profile(db, owner: str) -> StyleProfile:
 
 
 def public_profile(profile: StyleProfile) -> dict:
-    d = profile.wire()
-    d["rejectedOfferCount"] = len(d.pop("rejectedProductKeys", []))
-    return d
+    """Validated against StyleProfileView so the wire shape matches the generated UI types exactly."""
+    from app.contracts import StyleProfileView
+
+    d = profile.model_dump()
+    d["rejected_offer_count"] = len(d.pop("rejected_product_keys", []))
+    return StyleProfileView.model_validate(d).wire()

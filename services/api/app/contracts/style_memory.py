@@ -106,3 +106,20 @@ class StyleProposal(Record):
     value: Any
     action: Literal["add", "set", "remove"]
     quote: str
+
+
+class StyleProfileView(Record):
+    """What GET /api/style/profile returns: the profile without internal product keys."""
+
+    size: ProfileEntry | None = None
+    fit: ProfileEntry | None = None
+    budget_max: ProfileEntry | None = None
+    colors_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    colors_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    materials_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    materials_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    brands_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    brands_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    recently_owned: list[OwnedItem] = Field(default_factory=list, max_length=5)
+    rejected_offer_count: int = 0
+    updated_at: datetime | None = None

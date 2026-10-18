@@ -200,3 +200,14 @@ def test_personalization_is_soft_and_respects_hard_constraints(style_app):
         if before:
             assert r["recommendation"]["constraintChecks"] == before["constraintChecks"]
             assert r["recommendation"]["section"] == before["section"]
+
+
+def test_profile_wire_shape_matches_public_contract(style_app):
+    from app.contracts import StyleProfileView
+
+    c, _ = style_app()
+    c.post("/api/sessions", headers=H)
+    mem(c, "size", "M")
+    prof = c.get("/api/style/profile").json()["profile"]
+    StyleProfileView.model_validate(prof)  # extra="forbid": any internal field would fail here
+    assert "rejectedProductKeys" not in prof and prof["rejectedOfferCount"] == 0
