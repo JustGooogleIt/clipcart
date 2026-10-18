@@ -31,7 +31,7 @@ def _ensure_ca_bundle() -> None:
 
 @dataclass(frozen=True)
 class Settings:
-    mongodb_uri: str | None
+    mongodb_uri: str | None = field(repr=False)  # may embed a password; never in repr/logs
     mongodb_db: str
     media_root: Path
     catalog_provider: str
@@ -57,7 +57,7 @@ class Settings:
     style_model_timeout_s: float
     style_model_explanations: bool
     style_remote_base_url: str | None
-    style_remote_api_key: str | None
+    style_remote_api_key: str | None = field(repr=False)
     style_remote_model: str | None
     style_remote_label: str | None
     style_remote_json_mode: str
