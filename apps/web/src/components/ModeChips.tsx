@@ -101,7 +101,7 @@ function ModeList({ health: hp }: { health: Health }) {
   );
 }
 
-/** Research jobs: off, or which provider runs them. Never Grok Bot: no bridge is implemented. */
+/** Research jobs: off, or which provider runs them. Grok Bot reads unverified until a real callback is accepted. */
 function ResearchChip({ health: hp, catalogMode }: { health: Health; catalogMode: string }) {
   const r = researchProvider(hp);
   if (!r) return <Chip name="More offers" mode="unavailable" note="Off" />;
@@ -109,7 +109,15 @@ function ResearchChip({ health: hp, catalogMode }: { health: Health; catalogMode
   // "live" only says jobs aren't fixtures: the SoleScout fallback is as healthy as the catalog it calls, and any other
   // live provider stays unverified until it has returned results.
   const mode =
-    r.mode === "manual" ? "rule" : r.mode === "live" ? (r.id === "solescout" ? catalogMode : "unverified") : (r.mode ?? "unavailable");
+    r.mode === "manual"
+      ? "rule"
+      : r.mode === "live"
+        ? r.id === "solescout"
+          ? catalogMode
+          : r.id === "grok_bot" && hp.research?.callbackProven === true
+            ? "live"
+            : "unverified"
+        : (r.mode ?? "unavailable");
   return <Chip name="More offers" mode={mode} note={r.name} />;
 }
 
@@ -174,6 +182,11 @@ export default function ModeChips({ health }: { health: Health | null }) {
             simulated data. These reset when the server restarts.
           </p>
           <ModeList health={health} />
+          {health.features.solana && (
+            <a className="diag-pop-link" href="#/demo-checkout" onClick={() => setOpen(false)}>
+              Demo checkout · Devnet test funds →
+            </a>
+          )}
           <a className="diag-pop-link" href="#/diagnostics" onClick={() => setOpen(false)}>
             Open full diagnostics →
           </a>

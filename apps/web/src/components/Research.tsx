@@ -71,15 +71,19 @@ export function researchProvider(health: Health | null): { id: string; name: str
         about: "Nothing is researched automatically. Start a job, then import offers you found yourself. They're labelled Imported manually.",
         mode,
       };
-    case "grok_bot":
-      // The Grok Bot callback is unproven (docs/grok-bot-bridge.md). Results, if any, arrive as agent submissions.
+    case "grok_bot": {
+      // Configured is not proven: the label drops "callback not proven" only once the server reports an accepted real
+      // callback (docs/grok-bot-bridge.md). Results, if any, arrive as agent submissions.
+      const proven = r.callbackProven === true;
       return {
         id: "grok_bot",
-        name: "Grok Bot research · callback not proven",
-        about:
-          "Sends this piece to a Grok Bot routine. Offers appear only if the Bot posts them back, which hasn't been proven yet. If nothing arrives, you can import offers by hand.",
+        name: proven ? "Grok Bot research" : "Grok Bot research · configured, callback not proven",
+        about: proven
+          ? "Sends this piece to a Grok Bot routine, which posts the offers it found back to ClipCart. If nothing arrives, you can import offers by hand."
+          : "Sends this piece to a Grok Bot routine. Offers appear only if the Bot posts them back, which hasn't been proven yet. If nothing arrives, you can import offers by hand.",
         mode,
       };
+    }
     default:
       return {
         id: r.provider,
@@ -188,7 +192,7 @@ export default function Research({
           <p className="research-status">
             {pending && job.provider !== "manual" && <span className="spinner" aria-hidden />}
             <strong>{statusLine(job, err)}</strong>
-            {(job.status === "completed" || job.status === "pending") && <span className={`research-mode rm-${job.mode}`}>{job.mode === "fixture" ? "Development data" : job.mode === "manual" ? (manualResults ? "Imported manually" : "Manual job · nothing runs") : "Live"}</span>}
+            {(job.status === "completed" || job.status === "pending") && <span className={`research-mode rm-${job.mode}`}>{modeTag(job, manualResults)}</span>}
           </p>
           {manualResults && (
             <p className="research-banner">
@@ -235,11 +239,27 @@ export default function Research({
   );
 }
 
+// The generated ResearchJob provider union gains "grok_bot" with PR #28; until then compare as a string.
+const isBot = (job: ResearchJob) => (job.provider as string) === "grok_bot";
+
+function modeTag(job: ResearchJob, manualResults: boolean): string {
+  if (job.mode === "fixture") return "Development data";
+  if (job.mode === "manual" || manualResults) return manualResults ? "Imported manually" : "Manual job · nothing runs";
+  if (isBot(job)) return job.status === "pending" ? "Running" : "Returned by Grok Bot";
+  return "Live";
+}
+
 function statusLine(job: ResearchJob, err: JobError | null): string {
-  if (job.status === "pending") return job.provider === "manual" ? "Waiting for your manual import" : "Researching…";
-  if (job.status === "expired") return job.summary ?? "No research results arrived before the job expired.";
+  const bot = isBot(job);
+  if (job.status === "pending") {
+    if (job.provider === "manual") return "Waiting for your manual import";
+    return bot ? "Sent to Grok Bot. Waiting for it to post results back…" : "Researching…";
+  }
+  if (job.status === "expired")
+    return job.summary ?? (bot ? "Grok Bot didn't post results before the job expired." : "No research results arrived before the job expired.");
   if (job.status === "failed") {
     if (err?.code === "catalog_unavailable") return "SoleScout didn't respond, so research stopped. Nothing was guessed.";
+    if (bot && err?.code === "dispatch_failed") return "Grok Bot didn't accept the job, so no research ran.";
     return `Research failed${err?.message ? `: ${err.message}` : ""}.`;
   }
   return job.summary ?? "Research finished.";

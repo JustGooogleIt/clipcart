@@ -80,7 +80,12 @@ export interface Health {
    * Both null when FEATURE_AGENT_RESEARCH is off (docs/contracts/agent-research.md). mode is what jobs get, and null
    * for a provider this server doesn't implement.
    */
-  research?: { provider: string | null; mode: "fixture" | "manual" | "live" | null };
+  research?: {
+    provider: string | null;
+    mode: "fixture" | "manual" | "live" | null;
+    /** Proposed for grok_bot: true only once a real Bot callback has been accepted. Absent reads as not proven. */
+    callbackProven?: boolean;
+  };
 }
 
 export type Category = GarmentObservation["category"];
