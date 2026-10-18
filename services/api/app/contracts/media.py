@@ -131,8 +131,9 @@ class Garment(_Record):
     representative_crop_id: str
     label: str
     grouping_basis: GroupingBasis
-    # Integration addition: optional words the shopper typed about the garment.
-    user_description: str | None = Field(default=None, max_length=200)
+    # Shopper text or model search_description for Find-in-video / garment notes.
+    # Long on purpose: non-apparel finds need rich catalog queries, not short nouns.
+    user_description: str | None = Field(default=None, max_length=800)
 
 
 class ProviderRequestMeta(_Record):

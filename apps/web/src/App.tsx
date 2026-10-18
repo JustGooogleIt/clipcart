@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, timestamp, upload } from "./api";
 import Constraints, { draftFrom, findLabel, patchFrom, type PrefsDraft } from "./components/Constraints";
 import Diagnostics from "./components/Diagnostics";
+import FindInVideo from "./components/FindInVideo";
 import GarmentTray, { cleanLabel } from "./components/GarmentTray";
 import Landing, { LinkInput, linkErrorText } from "./components/Landing";
 import ModeChips from "./components/ModeChips";
@@ -273,6 +274,28 @@ export default function App() {
     }
   };
 
+  const findInVideo = async (text: string) => {
+    if (!s) return;
+    setBusy(true);
+    setReply(null);
+    try {
+      setNotice({ kind: "info", text: "Searching the video for that…" });
+      const r = await api.findInMedia(s.id, text, s.revision);
+      setView(r);
+      setReply(r.reply);
+      if (r.find?.searchDescription) {
+        setNotice({ kind: "info", text: `Using full description: ${r.find.searchDescription}` });
+      } else {
+        setNotice(null);
+      }
+      if (r.searchId) setSearchId(r.searchId);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const analyzing = analysis && ["queued", "running"].includes(analysis.status);
   const detectionMode = analysis?.detectionMode ?? "unavailable";
   const pieceLabel = selected ? cleanLabel(selected.label) : null;
@@ -439,6 +462,10 @@ export default function App() {
               busy={busy}
               detectionMode={detectionMode}
             />
+            {/* PR #11: natural-language find in the analyzed frames; adds and selects a garment. */}
+            {frames.length > 0 && !analyzing && (
+              <FindInVideo disabled={busy} busy={busy} onFind={findInVideo} reply={reply} />
+            )}
           </section>
 
           <aside className="panel" aria-label="Selected piece and your rules">

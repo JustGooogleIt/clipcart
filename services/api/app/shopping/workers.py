@@ -163,7 +163,38 @@ def _synonym_queries(product: str, fabric: str, type_word: str, generic: str, ca
 
 
 def rule_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list[str]:
-    """Build short, high-signal catalog queries. SoleScout ranks clean 2–4 word phrases best."""
+    """Build catalog queries. Apparel uses short product phrases; open-vocab finds keep full text."""
+    qs: list[str] = []
+
+    def add(*parts: str) -> None:
+        qs.append(" ".join(p for p in parts if p))
+
+    # Non-apparel / Find-in-video: NEVER collapse a rich description to "green plant".
+    if profile.category == "other":
+        blob = (profile.description or "").strip()
+        if not blob:
+            blob = " ".join(profile.descriptors())
+        if blob:
+            add(blob[:120])
+            # Alternate windows — SoleScout ranks shorter rich phrases differently.
+            words = blob.split()
+            if len(words) > 10:
+                add(*words[:10])
+                add(*words[-10:])
+            toks = [d for d in profile.descriptors() if d not in _COLOR_SET][:8]
+            if toks:
+                add(*toks)
+            if profile.hue_colors() and toks:
+                add(profile.hue_colors()[0], *toks[:6])
+        out: list[str] = []
+        for q in qs:
+            q = " ".join(dict.fromkeys(q.lower().split()))
+            if len(q.split()) < 3:  # force denser queries for open-vocab finds
+                continue
+            if q and q.lower() not in [o.lower() for o in out]:
+                out.append(q)
+        return out[:5]
+
     product, fabric, type_word, generic = _product_phrase(profile)
     color = (profile.hue_colors()[:1] or [""])[0]
     descriptors = profile.descriptors()
@@ -172,10 +203,6 @@ def rule_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list
     washish = {"faded", "washed", "distressed", "vintage", "indigo", "raw", "selvedge", "oversized", "cropped", "slim"}
     extras = [d for d in descriptors if d in washish or (d not in core and d not in _COLOR_SET and len(d) > 3)]
     extras = list(dict.fromkeys(extras))[:4]
-    qs: list[str] = []
-
-    def add(*parts: str) -> None:
-        qs.append(" ".join(p for p in parts if p))
 
     syns = _synonym_queries(product, fabric, type_word, generic, profile.category)
 
