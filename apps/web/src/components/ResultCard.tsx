@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ago, mediaUrl, money } from "../api";
+import { useMemoryActions } from "../memory";
 import type { ResultItem } from "../types";
 
 // Only a verified listing is called a match. Everything else, including the ranker's "likely" tier, is a similar option.
@@ -12,6 +13,7 @@ const MODE: Record<string, string> = { live: "Live price", cached: "Cached price
 export default function ResultCard({ item, cropId }: { item: ResultItem; cropId: string | null }) {
   const [showEvidence, setShowEvidence] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
+  const mem = useMemoryActions();
   const { recommendation: r, listing: L, evidence } = item;
   if (!L) return null;
   const stock =
@@ -25,6 +27,9 @@ export default function ResultCard({ item, cropId }: { item: ResultItem; cropId:
   const destination = viaComparison ? `${first?.retailer ?? L.retailer}'s price comparison page` : `${first?.retailer ?? L.retailer}'s product page`;
   const open = r.constraintChecks.filter((c) => c.state !== "satisfied");
   const unmet = open.length;
+  // Style memory (PR #15) adds reasons when it reordered this result; packages/contracts doesn't carry the field yet.
+  const personalization = (r as typeof r & { personalization?: string[] }).personalization ?? [];
+  const saved = mem.savedEventId(r.id, L.id);
   return (
     <article className={`card card-${r.section}`} data-result={r.id}>
       <div className="card-media">
@@ -73,6 +78,14 @@ export default function ResultCard({ item, cropId }: { item: ResultItem; cropId:
             ))}
           </ul>
         )}
+        {personalization.length > 0 && (
+          <p className="card-personal">
+            <span className="card-personal-tag">
+              <span aria-hidden>✦</span> Your style
+            </span>{" "}
+            {personalization.join(" · ")}
+          </p>
+        )}
         <p className="card-reason">{r.explanation}</p>
         <div className="card-actions">
           {first && <span className={`dest dest-${viaComparison ? "compare" : "retailer"}`}>{viaComparison ? "Price comparison page" : "Retailer product page"}</span>}
@@ -81,6 +94,11 @@ export default function ResultCard({ item, cropId }: { item: ResultItem; cropId:
               <span>{first.label}</span>
               <span aria-hidden>↗</span>
             </a>
+          )}
+          {mem.ready && (
+            <button type="button" className={`btn btn-sm btn-save ${saved ? "btn-saved" : ""}`} aria-pressed={!!saved} onClick={() => mem.toggleSave(r.id, L.id)}>
+              {saved ? "Saved ✓" : "Save"}
+            </button>
           )}
           {rest.map((lk) => (
             <a key={lk.token} className="alt-link" href={`/go/${lk.token}`} target="_blank" rel="noopener noreferrer">

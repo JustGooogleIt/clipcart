@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, timestamp, upload } from "./api";
+import { loadMemory, memoryApi, MemoryContext, type MemoryActions, type MemoryState } from "./memory";
 import Constraints, { draftFrom, findLabel, patchFrom, type PrefsDraft } from "./components/Constraints";
 import Diagnostics from "./components/Diagnostics";
 import FindInVideo, { type FindReply } from "./components/FindInVideo";
@@ -9,6 +10,7 @@ import ModeChips from "./components/ModeChips";
 import Refine from "./components/Refine";
 import Results from "./components/Results";
 import SelectedPiece from "./components/SelectedPiece";
+import StylePanel from "./components/StylePanel";
 import Upload from "./components/Upload";
 import Viewer from "./components/Viewer";
 import type { GarmentDoc, GarmentObservation, Health, SearchView, SessionView } from "./types";
@@ -46,6 +48,8 @@ export default function App() {
   const [reply, setReply] = useState<string | null>(null);
   const [findReply, setFindReply] = useState<FindReply | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [memory, setMemory] = useState<MemoryState>({ state: "loading" });
+  const [styleOpen, setStyleOpen] = useState(false);
   const seqRef = useRef(0);
   const resultsRef = useRef<HTMLElement>(null);
 
@@ -86,6 +90,38 @@ export default function App() {
       }
     })();
   }, [refreshHealth]);
+
+  // Memory is optional: load it after the session, never in front of it. Offline just means no personalization.
+  const reloadMemory = useCallback((quiet = false) => {
+    if (!quiet) setMemory({ state: "loading" });
+    loadMemory().then((m) => (!quiet || m.state === "ready" ? setMemory(m) : undefined));
+  }, []);
+  // Wait for the session boot, which sets the owner cookie memory is scoped to.
+  const booted = !!s;
+  useEffect(() => {
+    if (booted) reloadMemory();
+  }, [booted, reloadMemory]);
+  // Opening the panel refreshes quietly, so links opened since the last load show up.
+  const openStyle = () => {
+    setStyleOpen(true);
+    if (memory.state === "ready") reloadMemory(true);
+  };
+  const closeStyle = useCallback(() => setStyleOpen(false), []);
+  const memoryActions = useMemo<MemoryActions>(() => {
+    const evs = memory.state === "ready" ? memory.events : [];
+    const savedEventId = (rid: string, lid: string) =>
+      evs.find((e) => e.type === "saved_item" && (e.item?.recommendationId === rid || e.item?.listingId === lid))?.id ?? null;
+    return {
+      ready: memory.state === "ready",
+      savedEventId,
+      toggleSave: (rid, lid) => {
+        const id = savedEventId(rid, lid);
+        (id ? memoryApi.removeEvent(id) : memoryApi.event("saved_item", rid))
+          .then(() => reloadMemory(true))
+          .catch(() => setNotice({ kind: "error", text: "Couldn't update Your style. The memory service may be offline; shopping still works." }));
+      },
+    };
+  }, [memory, reloadMemory]);
 
   // Poll the session while analysis runs.
   useEffect(() => {
@@ -352,238 +388,246 @@ export default function App() {
     : null;
 
   return (
-    <div className={`shell ${view?.media ? "" : "shell-landing"}`}>
-      <header className="top">
-        <a className="brand" href="#/" aria-label="ClipCart home">
-          <span className="brand-mark" aria-hidden>
-            ▶
-          </span>
-          <span className="wordmark">ClipCart</span>
-        </a>
-        <p className="tagline">Shop the look from any photo or clip.</p>
-        <ModeChips health={health} />
-      </header>
-
-      {view?.media && (
-        <ol className="steps" aria-label="Progress">
-          {["Upload", "Pick a piece", "Set rules", "Shop results"].map((label, i) => (
-            <li key={label} className={i < step ? "step-done" : i === step ? "step-now" : ""} aria-current={i === step ? "step" : undefined}>
-              <span className="step-n">{i < step ? "✓" : i + 1}</span>
-              {label}
-            </li>
-          ))}
-        </ol>
-      )}
-
-      {bootError && (
-        <div className="banner banner-error" role="alert">
-          Couldn't start a shopping session: {bootError}
-        </div>
-      )}
-      {notice && (
-        <div className={`banner ${notice.kind === "error" ? "banner-error" : ""}`} role={notice.kind === "error" ? "alert" : "status"}>
-          {notice.text}
-          <button type="button" className="linkish" onClick={() => setNotice(null)}>
-            Dismiss
+    <MemoryContext.Provider value={memoryActions}>
+      <div className={`shell ${view?.media ? "" : "shell-landing"}`}>
+        <header className="top">
+          <a className="brand" href="#/" aria-label="ClipCart home">
+            <span className="brand-mark" aria-hidden>
+              ▶
+            </span>
+            <span className="wordmark">ClipCart</span>
+          </a>
+          <p className="tagline">Shop the look from any photo or clip.</p>
+          <button type="button" className="style-btn" onClick={openStyle} aria-haspopup="dialog">
+            <span aria-hidden>✦</span> Your style
+            {memory.state === "ready" && memory.memories.length > 0 && <span className="style-count">{memory.memories.length}</span>}
+            {memory.state === "unavailable" && <span className="style-off">off</span>}
           </button>
-        </div>
-      )}
+          <ModeChips health={health} />
+        </header>
+        <StylePanel open={styleOpen} onClose={closeStyle} memory={memory} onReload={() => reloadMemory(true)} />
 
-      {!view?.media ? (
-        <Landing
-          busy={busy || !s}
-          progress={progress}
-          onFile={onFile}
-          youtubeEnabled={youtubeEnabled}
-          onYouTube={analyzeLink}
-          linkError={linkError}
-        />
-      ) : (
-        <main className="studio">
-          <section className="scene" aria-label="Your scene">
-            <div className="scene-head">
-              <div>
-                <h2>Your scene</h2>
-                {mediaMeta && <p>{mediaMeta}</p>}
-              </div>
-              <Upload busy={busy} progress={progress} onFile={onFile} compact />
-            </div>
-            {youtubeEnabled && (
-              <div className="yt-again">
-                <LinkInput busy={busy} onSubmit={analyzeLink} error={linkError} compact />
-              </div>
-            )}
-            {analyzing && (
-              <div className="scene-status" role="status">
-                <span className="spinner" aria-hidden /> {analysis?.frameIds?.length ? "Looking for jackets, tops, pants and bags…" : "Reading frames…"}
-              </div>
-            )}
-            {analysis?.message && !analyzing && (
-              <div className={`scene-status ${analysis.status === "failed" ? "scene-status-error" : ""}`}>{analysis.message}</div>
-            )}
-            {frames.length > 0 && (
-              <Viewer
-                frames={frames}
-                frameId={frameId}
-                onFrame={(id) => setFrameId(id)}
-                observations={view.observations}
-                garmentOf={garmentOf}
-                selectedGarmentId={s?.selectedGarmentId ?? null}
-                onSelectGarment={selectGarment}
-                drawing={!!drawing}
-                draft={draft}
-                onDraft={setDraft}
-                isVideo={isVideo}
-              />
-            )}
-            {frames.length > 0 && !analyzing && (
-              <div className="draw">
-                {!drawing ? (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDrawing({ mode: "new" })} disabled={busy}>
-                    <span aria-hidden>⬚</span> Draw a box around a garment
-                  </button>
-                ) : (
-                  <div className="draw-panel">
-                    <p>
-                      {drawing.mode === "edit" ? "Drag a new box around the garment." : "Drag a box around the garment you want."}{" "}
-                      {!draft && (
-                        <button type="button" className="linkish" onClick={() => setDraft([0.02, 0.02, 0.98, 0.98])}>
-                          Use the whole frame
-                        </button>
-                      )}
-                    </p>
-                    {draft && drawing.mode === "new" && (
-                      <div className="draw-fields">
-                        <label>
-                          Category
-                          <select value={manualCat} onChange={(e) => setManualCat(e.target.value)}>
-                            <option value="jacket">Jacket</option>
-                            <option value="top">Top</option>
-                            <option value="pants">Pants</option>
-                            <option value="bag">Bag</option>
-                          </select>
-                        </label>
-                        <label>
-                          Describe it (optional)
-                          <input
-                            id="manual-desc"
-                            value={manualDesc}
-                            maxLength={120}
-                            placeholder="e.g. black nylon bomber"
-                            onChange={(e) => setManualDesc(e.target.value)}
-                          />
-                        </label>
-                      </div>
-                    )}
-                    <div className="draw-actions">
-                      <button type="button" className="btn btn-primary btn-sm" disabled={!draft || busy} onClick={saveDraft}>
-                        {drawing.mode === "edit" ? "Save crop" : "Use this garment"}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => {
-                          setDrawing(null);
-                          setDraft(null);
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            <GarmentTray
-              garments={view.garments}
-              observations={view.observations}
-              selectedId={s?.selectedGarmentId ?? null}
-              onSelect={selectGarment}
-              busy={busy}
-              detectionMode={detectionMode}
-            />
-            {/* PR #11: natural-language find in the analyzed frames; adds and selects a garment. */}
-            {frames.length > 0 && !analyzing && (
-              <FindInVideo disabled={busy} busy={busy} onFind={findInVideo} reply={findReply} />
-            )}
-          </section>
+        {view?.media && (
+          <ol className="steps" aria-label="Progress">
+            {["Upload", "Pick a piece", "Set rules", "Shop results"].map((label, i) => (
+              <li key={label} className={i < step ? "step-done" : i === step ? "step-now" : ""} aria-current={i === step ? "step" : undefined}>
+                <span className="step-n">{i < step ? "✓" : i + 1}</span>
+                {label}
+              </li>
+            ))}
+          </ol>
+        )}
 
-          <aside className="panel" aria-label="Selected piece and your rules">
-            <SelectedPiece
-              garment={selected}
-              observations={view.observations}
-              detectionMode={detectionMode}
-              busy={busy}
-              onRelabel={async (gid, category) => {
-                try {
-                  await api.patchGarment(gid, { category });
-                  setView(await api.session(s!.id));
-                } catch (e) {
-                  fail(e);
-                }
-              }}
-              onRedraw={(g) => {
-                const o = view.observations.find((x) => x.id === g.observationIds[0]);
-                if (o) setFrameId(o.frameAssetId);
-                setDraft(null);
-                setDrawing({ mode: "edit", garmentId: g.id });
-              }}
-            />
-            <h2 className="panel-title">Your rules</h2>
-            {s && <Constraints session={s} canSearch={!!selected} pieceLabel={pieceLabel} busy={busy} onSubmit={findIt} />}
-          </aside>
+        {bootError && (
+          <div className="banner banner-error" role="alert">
+            Couldn't start a shopping session: {bootError}
+          </div>
+        )}
+        {notice && (
+          <div className={`banner ${notice.kind === "error" ? "banner-error" : ""}`} role={notice.kind === "error" ? "alert" : "status"}>
+            {notice.text}
+            <button type="button" className="linkish" onClick={() => setNotice(null)}>
+              Dismiss
+            </button>
+          </div>
+        )}
 
-          <section className="col-results" aria-label="Results" ref={resultsRef}>
-            {search ? (
-              <>
-                <Results
-                  view={search}
-                  cropId={selected?.representativeCropId ?? null}
-                  garmentLabel={pieceLabel}
-                  onRetry={() => s && findIt(draftFrom(s))}
-                  onCancel={async () => {
-                    if (searchId) await api.cancel(searchId).catch(fail);
-                  }}
-                />
-                <Refine disabled={busy || !selected} onSend={refine} reply={reply} />
-              </>
-            ) : (
-              <div className="placeholder">
-                <span className="placeholder-icon" aria-hidden>
-                  ◎
-                </span>
+        {!view?.media ? (
+          <Landing
+            busy={busy || !s}
+            progress={progress}
+            onFile={onFile}
+            youtubeEnabled={youtubeEnabled}
+            onYouTube={analyzeLink}
+            linkError={linkError}
+          />
+        ) : (
+          <main className="studio">
+            <section className="scene" aria-label="Your scene">
+              <div className="scene-head">
                 <div>
-                  <h2>Shopping results land here</h2>
-                  <p className="muted">
-                    {selected
-                      ? `Set your rules, then press “${findLabel(false, true, pieceLabel)}”.`
-                      : "Select or draw the garment you want first. Only that garment is searched."}
-                  </p>
+                  <h2>Your scene</h2>
+                  {mediaMeta && <p>{mediaMeta}</p>}
                 </div>
+                <Upload busy={busy} progress={progress} onFile={onFile} compact />
+              </div>
+              {youtubeEnabled && (
+                <div className="yt-again">
+                  <LinkInput busy={busy} onSubmit={analyzeLink} error={linkError} compact />
+                </div>
+              )}
+              {analyzing && (
+                <div className="scene-status" role="status">
+                  <span className="spinner" aria-hidden /> {analysis?.frameIds?.length ? "Looking for jackets, tops, pants and bags…" : "Reading frames…"}
+                </div>
+              )}
+              {analysis?.message && !analyzing && (
+                <div className={`scene-status ${analysis.status === "failed" ? "scene-status-error" : ""}`}>{analysis.message}</div>
+              )}
+              {frames.length > 0 && (
+                <Viewer
+                  frames={frames}
+                  frameId={frameId}
+                  onFrame={(id) => setFrameId(id)}
+                  observations={view.observations}
+                  garmentOf={garmentOf}
+                  selectedGarmentId={s?.selectedGarmentId ?? null}
+                  onSelectGarment={selectGarment}
+                  drawing={!!drawing}
+                  draft={draft}
+                  onDraft={setDraft}
+                  isVideo={isVideo}
+                />
+              )}
+              {frames.length > 0 && !analyzing && (
+                <div className="draw">
+                  {!drawing ? (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDrawing({ mode: "new" })} disabled={busy}>
+                      <span aria-hidden>⬚</span> Draw a box around a garment
+                    </button>
+                  ) : (
+                    <div className="draw-panel">
+                      <p>
+                        {drawing.mode === "edit" ? "Drag a new box around the garment." : "Drag a box around the garment you want."}{" "}
+                        {!draft && (
+                          <button type="button" className="linkish" onClick={() => setDraft([0.02, 0.02, 0.98, 0.98])}>
+                            Use the whole frame
+                          </button>
+                        )}
+                      </p>
+                      {draft && drawing.mode === "new" && (
+                        <div className="draw-fields">
+                          <label>
+                            Category
+                            <select value={manualCat} onChange={(e) => setManualCat(e.target.value)}>
+                              <option value="jacket">Jacket</option>
+                              <option value="top">Top</option>
+                              <option value="pants">Pants</option>
+                              <option value="bag">Bag</option>
+                            </select>
+                          </label>
+                          <label>
+                            Describe it (optional)
+                            <input
+                              id="manual-desc"
+                              value={manualDesc}
+                              maxLength={120}
+                              placeholder="e.g. black nylon bomber"
+                              onChange={(e) => setManualDesc(e.target.value)}
+                            />
+                          </label>
+                        </div>
+                      )}
+                      <div className="draw-actions">
+                        <button type="button" className="btn btn-primary btn-sm" disabled={!draft || busy} onClick={saveDraft}>
+                          {drawing.mode === "edit" ? "Save crop" : "Use this garment"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => {
+                            setDrawing(null);
+                            setDraft(null);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <GarmentTray
+                garments={view.garments}
+                observations={view.observations}
+                selectedId={s?.selectedGarmentId ?? null}
+                onSelect={selectGarment}
+                busy={busy}
+                detectionMode={detectionMode}
+              />
+              {/* PR #11: natural-language find in the analyzed frames; adds and selects a garment. */}
+              {frames.length > 0 && !analyzing && (
+                <FindInVideo disabled={busy} busy={busy} onFind={findInVideo} reply={findReply} />
+              )}
+            </section>
+
+            <aside className="panel" aria-label="Selected piece and your rules">
+              <SelectedPiece
+                garment={selected}
+                observations={view.observations}
+                detectionMode={detectionMode}
+                busy={busy}
+                onRelabel={async (gid, category) => {
+                  try {
+                    await api.patchGarment(gid, { category });
+                    setView(await api.session(s!.id));
+                  } catch (e) {
+                    fail(e);
+                  }
+                }}
+                onRedraw={(g) => {
+                  const o = view.observations.find((x) => x.id === g.observationIds[0]);
+                  if (o) setFrameId(o.frameAssetId);
+                  setDraft(null);
+                  setDrawing({ mode: "edit", garmentId: g.id });
+                }}
+              />
+              <h2 className="panel-title">Your rules</h2>
+              {s && <Constraints session={s} canSearch={!!selected} pieceLabel={pieceLabel} busy={busy} onSubmit={findIt} />}
+            </aside>
+
+            <section className="col-results" aria-label="Results" ref={resultsRef}>
+              {search ? (
+                <>
+                  <Results
+                    view={search}
+                    cropId={selected?.representativeCropId ?? null}
+                    garmentLabel={pieceLabel}
+                    onRetry={() => s && findIt(draftFrom(s))}
+                    onCancel={async () => {
+                      if (searchId) await api.cancel(searchId).catch(fail);
+                    }}
+                  />
+                  <Refine disabled={busy || !selected} onSend={refine} reply={reply} />
+                </>
+              ) : (
+                <div className="placeholder">
+                  <span className="placeholder-icon" aria-hidden>
+                    ◎
+                  </span>
+                  <div>
+                    <h2>Shopping results land here</h2>
+                    <p className="muted">
+                      {selected
+                        ? `Set your rules, then press “${findLabel(false, true, pieceLabel)}”.`
+                        : "Select or draw the garment you want first. Only that garment is searched."}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {selected && !drawing && (
+              <div className="dock" aria-label="Quick actions">
+                {search && !searching ? (
+                  <button type="button" className="btn btn-quiet" onClick={() => resultsRef.current?.scrollIntoView({ behavior: "smooth" })}>
+                    See results
+                  </button>
+                ) : null}
+                <button className="btn btn-primary" type="submit" form="rules-form" disabled={busy || searching}>
+                  {searching ? "Searching…" : findLabel(busy, true, pieceLabel)}
+                </button>
               </div>
             )}
-          </section>
-
-          {selected && !drawing && (
-            <div className="dock" aria-label="Quick actions">
-              {search && !searching ? (
-                <button type="button" className="btn btn-quiet" onClick={() => resultsRef.current?.scrollIntoView({ behavior: "smooth" })}>
-                  See results
-                </button>
-              ) : null}
-              <button className="btn btn-primary" type="submit" form="rules-form" disabled={busy || searching}>
-                {searching ? "Searching…" : findLabel(busy, true, pieceLabel)}
-              </button>
-            </div>
-          )}
-        </main>
-      )}
-      <footer className="foot">
-        <p>
-          ClipCart doesn't sell anything and has no checkout. Prices come from the listed sources and change often; confirm on the destination site.
-          Links are not affiliate links.
-        </p>
-      </footer>
-    </div>
+          </main>
+        )}
+        <footer className="foot">
+          <p>
+            ClipCart doesn't sell anything and has no checkout. Prices come from the listed sources and change often; confirm on the destination site.
+            Links are not affiliate links.
+          </p>
+        </footer>
+      </div>
+    </MemoryContext.Provider>
   );
 }
