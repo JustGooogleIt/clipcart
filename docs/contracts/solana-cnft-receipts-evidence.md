@@ -1,12 +1,14 @@
 # Solana demo cNFT receipts — verification evidence
 
-Stacked on payment PR #13 (`feat/solana-demo-checkout`). **No new payment.**
+Stacked on payment PR #13 (`feat/solana-demo-checkout`). **No new payment. No second tree/mint.**
+
+Frozen for Terminal integration review (~2026-10-18 09:00 PT).
 
 ## Offline (complete)
 
 | Check | Result |
 | --- | --- |
-| `tests/demo_receipts` + `tests/demo_orders` | **20 passed** (FakeMintAdapter / FakeRpc only) |
+| `tests/demo_receipts` + `tests/demo_orders` | **20 passed** (FakeMintAdapter / FakeRpc only; re-run 2026-10-18) |
 | Atomic claim + idempotent remint | No second `build_sign_mint` after success |
 | Uncertain broadcast | `needs_reconciliation`; reconcile uses persisted signed tx |
 | `local_memory` live mint | Refused (`cnft_durable_required`) |
@@ -20,62 +22,54 @@ Pinned worker SDKs (`services/api/cnft_worker/package.json`):
 - `@metaplex-foundation/umi-bundle-defaults@1.6.0`
 - `@metaplex-foundation/digital-asset-standard-api@2.1.1`
 
-## Live provision (bounded; blocked on faucet)
+## Live provision + mint (complete)
 
 | Step | Result |
 | --- | --- |
-| `getGenesisHash` via worker | Pass (devnet) |
-| Generate receipt authority (mode `0600`, under `.data/cnft/`, gitignored) | Pass |
-| Authority public key | `7DYdA9NWaGS3QxGP4uBWve5KAML4s3yZjuKDeBkpaUUT` |
-| Devnet airdrop to authority | **Blocked** — public RPC `requestAirdrop` 429; faucet requires captcha/GitHub |
-| Create private Bubblegum V2 tree (`maxDepth=5`, `maxBuffer=8`, `canopy=3`, `public=false`) | **Not run** (authority balance 0) |
-| Mint receipt to paid buyer `8W3Rgm2M…Swjo` | **Not run** |
-| DAS `getAsset` | **Not run** — configure `SOLANA_DAS_RPC_URL` (Helius/Triton DAS-enabled devnet) locally |
+| `getGenesisHash` via public RPC | Pass (devnet) |
+| Receipt authority (mode `0600`, gitignored under `.data/cnft/`) | `7DYdA9NWaGS3QxGP4uBWve5KAML4s3yZjuKDeBkpaUUT` |
+| Authority funded | Pass (operator-funded; not faucet in-session) |
+| Private Bubblegum V2 tree | `HaWhPiE6wEBENDnjWZh3KH3vS8R34cpmvui25itZ6aRD` (`maxDepth=3`, `maxBuffer=8`, `canopy=3`, `public=false`) |
+| Tree create signature | `5o4ygUZpcPF5RiBtWrHuskv1e7J2Kb7U6BWAzqePMgYkwTVg484sDJVtEipNtnFWPDMvbTKRjdxGn6dnK1BS7FBL` |
+| Mint to paid buyer `8W3Rgm2M…Swjo` | Pass |
+| Mint signature | `Hfs1KdaiKLstxgXrbw7xzuiAL5CREUVFpw92pGQLdJCM6xjgiAnTadqH2WNaSwFFJKTRgvsNLwjmEDJmvim8KbD` |
+| Asset ID | `HEtzjRrzUzYrSo2AaQJJsb5UXAXRXb8phLBchW7KUEhq` |
+| DAS `getAsset` buyer ownership | Pass — `owner == 8W3Rgm2MFFkA3SP1TcUuvVaHMAPhJshZ4rdgJw2QSwjo` |
 
-Preserved payment (unchanged):
+Machine-readable revalidation (no DAS URL/key):
+[`solana-cnft-live-mint-evidence.json`](./solana-cnft-live-mint-evidence.json).
+
+Preserved payment (unchanged; see also `solana-demo-live-verify-evidence.md`):
 
 - Signature `3KjLMeXJUjidmxgbsvqWZQVCfHeBAupHnTk8rdc2EkNjr12A7iCCRXsgkbYqyjLVsioAPmsoDGPtA2Psz51HkbJh`
-- Buyer `8W3Rgm2MFFkA3SP1TcUuvVaHMAPhJshZ4rdgJw2QSwjo` (~0.99 SOL remaining on buyer; **not** used as fee payer)
+- Buyer `8W3Rgm2MFFkA3SP1TcUuvVaHMAPhJshZ4rdgJw2QSwjo`
+- Order id `dmo_V-lqM-ub8XR8bsg5`
+- Reference `HDKkghtD6ZYWBPEPPwFQrY1BL9TfVLM3H4J1ffFy8WyL`
 
 ## Public metadata hosting
 
-Committed demo metadata (after push):
+Live mint used the public gist (private-repo raw GitHub 404):
+
+- `https://gist.githubusercontent.com/JustGooogleIt/0d8fd0741788906da0165de7a7d6a98e/raw/cnft-receipt-demo-metadata.json`
+
+Committed copies on this branch (optional alternate):
 
 - https://raw.githubusercontent.com/JustGooogleIt/clipcart/feat/cnft-receipts/docs/contracts/cnft-receipt-demo-metadata.json
-- Image: `docs/contracts/cnft-receipt-demo-mark.svg` on the same branch
+- Image: `docs/contracts/cnft-receipt-demo-mark.svg`
 
-Set `SOLANA_CNFT_METADATA_BASE_URL` to that JSON URL (or its directory) in local `.env` only.
+## DAS-enabled RPC
 
-## DAS-enabled RPC (identify)
+Public `https://api.devnet.solana.com` is **not** DAS-complete for cNFT reads. Local `.env` only: `SOLANA_DAS_RPC_URL` (e.g. Helius devnet). Never commit API keys.
 
-Public `https://api.devnet.solana.com` is **not** DAS-complete for cNFT reads. Use a DAS-enabled provider in local config only, e.g.:
+## Operator freeze rules
 
-- Helius: `https://devnet.helius-rpc.com/?api-key=<LOCAL>`
-- Triton / other Metaplex DAS partners
-
-Never commit API keys.
-
-## Resume live mint (operator)
-
-1. Fund `7DYdA9NWaGS3QxGP4uBWve5KAML4s3yZjuKDeBkpaUUT` with ≥1 SOL on **devnet** (human faucet / CLI when rate limits allow).
-2. Local `.env` (flag off in committed example):
-
-```text
-FEATURE_SOLANA=true
-FEATURE_SOLANA_CNFT_RECEIPTS=true
-SOLANA_CNFT_AUTHORITY_KEYPAIR_PATH=services/api/.data/cnft/receipt-authority.json
-SOLANA_CNFT_RECEIPT_AUTHORITY=7DYdA9NWaGS3QxGP4uBWve5KAML4s3yZjuKDeBkpaUUT
-SOLANA_CNFT_METADATA_BASE_URL=https://raw.githubusercontent.com/JustGooogleIt/clipcart/feat/cnft-receipts/docs/contracts/cnft-receipt-demo-metadata.json
-SOLANA_DAS_RPC_URL=<local DAS URL>
-MONGODB_URI=<already required for durable attempts>
-```
-
-3. `node services/api/cnft_worker/src/cli.mjs create-tree --keypair … --max-depth 5 --max-buffer 8 --canopy 3`
-4. Set `SOLANA_CNFT_TREE_ADDRESS` from the JSON result.
-5. `python services/api/scripts/cnft_live_mint_preserved_order.py`
+1. **Do not** create another tree, payment, or mint.
+2. Preserve durable `receipt_mint_attempts`, reconciliation, and this evidence.
+3. Keep authority keypair local (`services/api/.data/cnft/receipt-authority.json`, mode `0600`).
+4. Leave port **8000** and `main` to Terminal; do not merge #13/#29 from this lane.
+5. Committed `.env.example` keeps both feature flags **false**.
 
 ## Limitations
 
-- Live tree + mint **not completed** in this session (faucet rate limit / captcha).
 - Wallet UI visibility of the cNFT is **untested** — do not claim Phantom shows it.
-- Payment PR #13 remains separate; this PR stacks on it and must stay draft until live mint evidence exists or the integration owner accepts the faucet limitation.
+- Durable Mongo attempt rows for the live mint require operator `MONGODB_URI`; on-chain evidence above is independent and finalized.
