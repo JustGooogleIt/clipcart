@@ -11,7 +11,9 @@ Do **not** create another tree, payment, or mint. Do **not** merge from this lan
 | PR | Branch | Base | Head SHA | Draft |
 | --- | --- | --- | --- | --- |
 | [#13](https://github.com/JustGooogleIt/clipcart/pull/13) | `feat/solana-demo-checkout` | `integration` | `1eb6c47a4f1e2bee53ce55aef2b5f35044820500` | yes |
-| [#29](https://github.com/JustGooogleIt/clipcart/pull/29) | `feat/cnft-receipts` | `feat/solana-demo-checkout` | `df8f84ebf05d98f032a257f782bcda605f984ec6` | yes |
+| [#29](https://github.com/JustGooogleIt/clipcart/pull/29) | `feat/cnft-receipts` | `feat/solana-demo-checkout` | `git rev-parse origin/feat/cnft-receipts` | yes |
+
+After fetch: `git rev-parse origin/feat/solana-demo-checkout origin/feat/cnft-receipts` (authoritative).
 
 Stack: #13 ⊂ #29 (`feat/solana-demo-checkout` is an ancestor of `feat/cnft-receipts`).
 
