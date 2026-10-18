@@ -102,7 +102,7 @@ export default function Landing({
 }: {
   busy: boolean;
   progress: number | null;
-  onFile: (f: File) => void;
+  onFile: (f: File) => void | Promise<void>;
   youtubeEnabled: boolean;
   onYouTube: (url: string) => void;
   linkError: string | null;
@@ -110,17 +110,31 @@ export default function Landing({
   const reduced = useReducedMotion();
   const demoRef = useRef<() => void>(() => undefined);
   const [sampleError, setSampleError] = useState<string | null>(null);
+  // Set synchronously on the first click and held until the upload settles, so repeated clicks
+  // while the sample is being fetched (before `busy` flips) can't start a second upload.
+  const sampleLock = useRef(false);
+  const [sampleBusy, setSampleBusy] = useState(false);
 
   // "Try this video" sends the real fc01 MP4 through the same upload flow as a picked file.
   const trySample = async () => {
+    if (sampleLock.current || busy) return;
+    sampleLock.current = true;
+    setSampleBusy(true);
     setSampleError(null);
     try {
-      const blob = await toBlob(WALKTHROUGH.src);
+      let blob: Blob;
+      try {
+        blob = await toBlob(WALKTHROUGH.src);
+      } catch {
+        setSampleError("The sample video didn't load. Upload a clip instead.");
+        return;
+      }
       // The studio replaces the landing in place; start the user at the top of it.
       window.scrollTo({ top: 0, behavior: "auto" });
-      onFile(new File([blob], WALKTHROUGH.fileName, { type: "video/mp4" }));
-    } catch {
-      setSampleError("The sample video didn't load. Upload a clip instead.");
+      await onFile(new File([blob], WALKTHROUGH.fileName, { type: "video/mp4" }));
+    } finally {
+      sampleLock.current = false;
+      setSampleBusy(false);
     }
   };
 
@@ -153,7 +167,7 @@ export default function Landing({
         }
       />
       <Gallery reduced={reduced} />
-      <Walkthrough reduced={reduced} busy={busy} onTry={trySample} demoRef={demoRef} error={sampleError} />
+      <Walkthrough reduced={reduced} busy={busy || sampleBusy} onTry={trySample} demoRef={demoRef} error={sampleError} />
       <Marquee reduced={reduced} />
       <Truth />
       <section className="rv-start" id="start">

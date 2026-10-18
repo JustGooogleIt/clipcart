@@ -29,8 +29,15 @@ export default function Walkthrough({
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [failed, setFailed] = useState(false);
   const timers = useRef<number[]>([]);
   const ran = useRef(false);
+  // Every playback action takes a token; leaving the viewport, unmounting or a newer action
+  // invalidates older tokens, so a step still waiting on metadata or a seek can never resume playback.
+  const epoch = useRef(0);
+  const alive = useRef(true);
+  const inViewRef = useRef(inView);
+  inViewRef.current = inView;
   const t = W.t;
 
   const clear = () => {
@@ -38,45 +45,75 @@ export default function Walkthrough({
     timers.current = [];
   };
   const later = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
+  const begin = () => ++epoch.current;
+  const cancel = () => {
+    begin();
+    clear();
+  };
+  const current = (token: number) => alive.current && inViewRef.current && token === epoch.current;
 
-  const whenReady = (v: HTMLVideoElement) =>
-    new Promise<void>((resolve) => {
-      if (v.readyState >= 1) return resolve();
-      v.addEventListener("loadedmetadata", () => resolve(), { once: true });
-      v.load();
+  /** Resolves true once metadata is available, false if the media fails to load. */
+  const once = (v: HTMLVideoElement, ok: string, start?: () => void) =>
+    new Promise<boolean>((resolve) => {
+      const ac = new AbortController();
+      const done = (r: boolean) => {
+        ac.abort();
+        resolve(r);
+      };
+      v.addEventListener(ok, () => done(true), { signal: ac.signal });
+      v.addEventListener("error", () => done(false), { signal: ac.signal });
+      start?.();
     });
+  const whenReady = (v: HTMLVideoElement) => {
+    if (v.error) return Promise.resolve(false);
+    if (v.readyState >= 1) return Promise.resolve(true);
+    return once(v, "loadedmetadata", () => {
+      if (v.networkState !== HTMLMediaElement.NETWORK_LOADING) v.load();
+    });
+  };
 
-  const seekPause = async () => {
+  /** Pause on the walkthrough frame. Returns false if superseded or the media failed. */
+  const seekPause = async (token: number) => {
     const v = vref.current;
-    if (!v) return;
+    if (!v) return false;
     v.pause();
-    await whenReady(v);
-    if (Math.abs(v.currentTime - t) < 0.04) return;
-    await new Promise<void>((resolve) => {
-      v.addEventListener("seeked", () => resolve(), { once: true });
+    if (!(await whenReady(v)) || !current(token)) return false;
+    if (Math.abs(v.currentTime - t) < 0.04) return true;
+    const ok = await once(v, "seeked", () => {
       v.currentTime = t;
     });
+    return ok && current(token);
+  };
+
+  /** Play from where the clip is. Only Replay (restart = true) jumps back to the lead-in. */
+  const play = async (restart: boolean) => {
+    const token = begin();
+    const v = vref.current;
+    if (!v) return;
+    setStep(0);
+    if (!(await whenReady(v)) || !current(token)) return;
+    if (restart) v.currentTime = Math.max(0, t - 3);
+    try {
+      await v.play();
+    } catch {
+      /* autoplay refused, or a newer pause interrupted it */
+    }
+    // Left the viewport or unmounted while play() was pending: stop. A newer action owns the clip otherwise.
+    if (!alive.current || !inViewRef.current) v.pause();
   };
 
   const go = async (n: number, manual = true) => {
     if (manual) clear();
-    const v = vref.current;
-    if (!v) return;
-    if (n === 0) {
-      setStep(0);
-      await whenReady(v);
-      v.currentTime = Math.max(0, t - 3);
-      v.play().catch(() => undefined);
-      return;
-    }
-    await seekPause();
-    setStep(n);
+    if (n === 0) return play(false);
+    const token = begin();
+    if (await seekPause(token)) setStep(n);
   };
 
   const runDemo = () => {
     clear();
+    if (failed) return;
     if (reduced) return void go(2, false);
-    go(0, false);
+    void play(true);
     later(2800, () => go(1, false));
     later(3700, () => go(2, false));
     later(5500, () => setStep(3));
@@ -86,7 +123,7 @@ export default function Walkthrough({
   // Run the demo once when the section first comes into view; pause it whenever it leaves.
   useEffect(() => {
     if (!inView) {
-      clear();
+      cancel();
       vref.current?.pause();
       return;
     }
@@ -96,7 +133,14 @@ export default function Walkthrough({
     }
   }, [inView]);
 
-  useEffect(() => clear, []);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      cancel();
+      vref.current?.pause();
+    };
+  }, []);
 
   const rect = coverRect(size.w, size.h, W.frame.w, W.frame.h);
   const showBox = step >= 2 && !playing && Math.abs(time - t) < 0.3;
@@ -139,7 +183,7 @@ export default function Walkthrough({
           <button type="button" className="rv-btn rv-btn-main rv-btn-sm" onClick={onTry} disabled={busy}>
             {busy ? "Uploading…" : COPY.tryVideo}
           </button>
-          <button type="button" className="rv-btn rv-btn-sm" onClick={runDemo}>
+          <button type="button" className="rv-btn rv-btn-sm" onClick={runDemo} disabled={failed}>
             {reduced ? "Show the frame" : "Replay the demo"}
           </button>
         </div>
@@ -170,7 +214,17 @@ export default function Walkthrough({
                 setStep(0);
               }}
               onPause={() => setPlaying(false)}
+              onError={() => {
+                cancel();
+                setPlaying(false);
+                setFailed(true);
+              }}
             />
+            {failed && (
+              <p className="rv-media-error" role="status">
+                This clip didn't load. Use “{COPY.tryVideo}” to run it through ClipCart instead.
+              </p>
+            )}
             {showBox && (
               <>
                 <span className="rv-illus">Illustrative box · not detection output</span>
@@ -179,7 +233,7 @@ export default function Walkthrough({
                   className={`rv-gbox ${selected ? "rv-gbox-on" : ""}`}
                   style={box}
                   onClick={() => {
-                    clear();
+                    cancel();
                     setStep(3);
                   }}
                   aria-label={`Select the ${W.label.toLowerCase()}`}
@@ -203,12 +257,16 @@ export default function Walkthrough({
             <button
               type="button"
               className="rv-play"
+              disabled={failed}
               onClick={() => {
                 if (playing) {
-                  clear();
+                  cancel();
                   vref.current?.pause();
                   setStep(1);
-                } else go(0);
+                } else {
+                  clear();
+                  void play(false);
+                }
               }}
               aria-label={playing ? "Pause" : "Play"}
             >
@@ -234,8 +292,9 @@ export default function Walkthrough({
                 max={duration || 1}
                 step="0.01"
                 value={Math.min(time, duration || 1)}
+                disabled={failed}
                 onChange={(e) => {
-                  clear();
+                  cancel();
                   const v = vref.current;
                   if (!v) return;
                   v.pause();
@@ -248,7 +307,7 @@ export default function Walkthrough({
             <span className="rv-time">
               {fmt(time)} / {fmt(duration)}
             </span>
-            <button type="button" className="rv-jump" onClick={() => go(Math.max(2, step))}>
+            <button type="button" className="rv-jump" onClick={() => go(Math.max(2, step))} disabled={failed}>
               Frame {fmt(t)}
             </button>
           </div>
