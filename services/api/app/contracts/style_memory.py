@@ -34,6 +34,13 @@ MemorySource = Literal[
     "model_interpretation",  # proposed by the style model from evidence, validated in code; never changes hard constraints
 ]
 MemoryStatus = Literal["active", "overridden", "removed"]
+# Style vocabulary for style_like / style_avoid and tone_like / tone_avoid values. app/style/tags.py and
+# app/style/vocab.py read these, so the generated StyleTag / Tone types and GET /api/categories always agree.
+StyleTag = Literal[
+    "vintage", "minimalist", "streetwear", "workwear", "preppy", "athleisure", "y2k", "outdoor", "techwear",
+    "western", "bohemian", "classic", "grunge", "punk",
+]
+Tone = Literal["gold-tone", "silver-tone", "rose-gold-tone", "black", "two-tone"]
 
 
 class StyleTagFact(Record):
@@ -191,3 +198,57 @@ class StyleProfileView(Record):
     recently_owned: list[OwnedItem] = Field(default_factory=list, max_length=5)
     rejected_offer_count: int = 0
     updated_at: datetime | None = None
+
+
+# ---------------------------------------------------------------- model interpretations (GET /api/style/interpretations)
+class InterpretationApplied(Record):
+    """A soft style memory the model proposed and validation accepted."""
+
+    kind: MemoryKind
+    value: str
+    confidence: float
+    evidence_event_ids: list[str]
+
+
+class InterpretationRejected(Record):
+    """A model proposal validation refused, with the reason. ``kind``/``value`` are what the model sent (truncated)."""
+
+    kind: str | None = None
+    value: str | None = None
+    reason: str
+
+
+class InterpretationRun(Record):
+    id: str
+    at: datetime
+    model: str | None = None
+    evidence_event_ids: list[str]
+    status: Literal["running", "done"]
+    applied: list[InterpretationApplied] = Field(default_factory=list)
+    rejected: list[InterpretationRejected] = Field(default_factory=list)
+    usage: StyleNoteUsage | None = None
+
+
+class StyleInterpretations(Record):
+    """What GET /api/style/interpretations returns.
+
+    rankingInfluence: whether model-proposed memories may change result order (STYLE_MODEL_RANKING).
+    styleModel: the configured reader; only ``mode: "live"`` means a model actually answered since startup.
+    """
+
+    status: Literal["idle", "debouncing", "waiting_for_model"]
+    pending_events: int
+    not_before: datetime | None = None
+    runs: list[InterpretationRun] = Field(default_factory=list)
+    ranking_influence: bool
+    style_model: StyleModelInfo
+
+
+class InterpretationRunResult(Record):
+    """What POST /api/style/interpretations/run returns."""
+
+    status: Literal["idle", "debouncing", "waiting_for_model", "already_running", "duplicate", "model_unavailable", "done"]
+    pending_events: int | None = None
+    run_id: str | None = None
+    applied: list[InterpretationApplied] = Field(default_factory=list)
+    rejected: list[InterpretationRejected] = Field(default_factory=list)

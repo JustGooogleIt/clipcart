@@ -159,6 +159,51 @@ These are added: `source` (`agent`, `catalog` or `manual_import`, **set by the s
 - **Uncertain prices:** `uncertainPriceCount` counts offers in the group with no confirmed price. They are shown as "Price not confirmed" and never ranked as cheapest.
 - **Timing:** groups are computed before the result limit, so `offerCount` can exceed the offers shown.
 
+### Sections for unpriced offers (answer to #26 question 7)
+
+**An offer without a confirmed price is never Recommended (`primary`), with or without a budget.** "Confirmed" means a price that came with the page text showing it. That excludes comparison pages, prices without an excerpt, and offers with no price.
+
+| Shopper budget | Check added | Section |
+| --- | --- | --- |
+| Set | `budget: unknown` ("No sourced price") | `needs_checking` |
+| Not set | `price: unknown` ("Price not confirmed on the page") | `needs_checking` |
+
+Such an offer never satisfies a budget, is never `isLowestConfirmed`, and counts toward `uncertainPriceCount`. Before this change, an unpriced offer with no budget landed in `primary`, as #26 observed with SoleScout comparison pages.
+
+### Health mode (answer to #26 question 4)
+
+`research.mode` in health is the mode jobs from the configured provider get:
+
+| `RESEARCH_PROVIDER` | `mode` |
+| --- | --- |
+| `fixture` | `fixture` |
+| `manual` | `manual` |
+| `solescout` | `fixture` with `CATALOG_PROVIDER=fixture`, otherwise `live` |
+| anything not implemented (`grok_bot` on integration) | `null`, because no job can start |
+
+`mode` describes the data source. It says nothing about reachability: a `live` SoleScout job can still fail with `catalog_unavailable`.
+
+### Typed fields (answers to #26 questions 5 and 6)
+
+- **`ResearchJob.error`** is `JobError | null`, that is `{code, message, retryable}`.
+- **`warningCodes`** (on `ResearchProduct` and on `Recommendation`) holds stable codes for the warnings ClipCart itself adds. In TypeScript the type is `NonNullable<Recommendation["warningCodes"]>[number]`, the same union as on `ResearchProduct`. The readable text stays in `warnings`.
+
+  | Code | Where | Meaning |
+  | --- | --- | --- |
+  | `seller_claims_unverified` | both | Metal, stone or authenticity words are the seller's description |
+  | `availability_unknown` | search | Availability unknown |
+  | `fixture_data` | both | Fixture data, not a live result |
+  | `price_without_page_text` | research | A price came without page text and was dropped |
+  | `comparison_page` | research | A price-comparison page, not a retailer checkout |
+  | `observation_stale` | research | Seen more than 24 h ago by a non-live source |
+  | `brand_not_evidenced` | research | Brand not in the page evidence, so it was dropped |
+  | `image_rejected` | research | Image link failed the URL check |
+  | `exact_claim_unconfirmed` | research | The agent said exact match; not confirmed |
+
+  The research product's first warning, which names the source, has no code: read `source` instead. Provider-supplied warning text, such as SoleScout disclaimers, has no code either.
+
+  **Ordering (contract):** the coded warnings are the **last** entries of `warnings`, one per `warningCodes` entry and in the same order. So `warnings.slice(-warningCodes.length)` pairs with `warningCodes`. On a research product, that means every warning after the first. Provider text that repeats a coded sentence is dropped from the uncoded part, so de-duplication can't shift the pairing. Tests: `tests/api/test_ui_review_fixtures.py`, `tests/research/test_research_v2.py`.
+
 ### Manual import: `POST /api/research-jobs/{jobId}/import`
 
 This is for the owner, with the `X-ClipCart-Request: 1` header and a limit of 10 per 10 minutes. The body is `{products: SubmittedProduct[] (≤20), notes?}`.

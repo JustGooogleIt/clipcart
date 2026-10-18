@@ -8,11 +8,11 @@ imply a style here: that would be ClipCart's opinion, not a listing fact.
 from __future__ import annotations
 
 import re
+from typing import get_args
 
-STYLE_TAGS = (
-    "vintage", "minimalist", "streetwear", "workwear", "preppy", "athleisure", "y2k", "outdoor", "techwear",
-    "western", "bohemian", "classic", "grunge", "punk",
-)
+from app.contracts import StyleTag
+
+STYLE_TAGS: tuple[str, ...] = get_args(StyleTag)  # the contract's StyleTag enum is the vocabulary
 
 _RULES: dict[str, str] = {
     "vintage": r"vintage|retro|(?:19)?[5-9]0s|deadstock",

@@ -21,12 +21,14 @@ export default function Results({
   view,
   cropId,
   garmentLabel,
+  accessory = false,
   onRetry,
   onCancel,
 }: {
   view: SearchView | null;
   cropId: string | null;
   garmentLabel: string | null;
+  accessory?: boolean;
   onRetry: () => void;
   onCancel: () => void;
 }) {
@@ -118,7 +120,7 @@ export default function Results({
       {!running && primary.length > 0 && (
         <>
           <h3 className="section-title">Recommended</h3>
-          <div className="cards">{primary.map((r) => <ResultCard key={r.recommendation.id} item={r} cropId={cropId} />)}</div>
+          <div className="cards">{primary.map((r) => <ResultCard key={r.recommendation.id} item={r} cropId={cropId} accessory={accessory} />)}</div>
         </>
       )}
       {!running && primary.length === 0 && needs.length > 0 && (
@@ -130,13 +132,13 @@ export default function Results({
         <>
           <h3 className="section-title">Needs checking</h3>
           <p className="muted small section-sub">Each one has something to confirm before you buy, listed on the card.</p>
-          <div className="cards">{needs.map((r) => <ResultCard key={r.recommendation.id} item={r} cropId={cropId} />)}</div>
+          <div className="cards">{needs.map((r) => <ResultCard key={r.recommendation.id} item={r} cropId={cropId} accessory={accessory} />)}</div>
         </>
       )}
       {!running && original.length > 0 && (
         <>
           <h3 className="section-title">Possible original, above your budget</h3>
-          <div className="cards">{original.map((r) => <ResultCard key={r.recommendation.id} item={r} cropId={cropId} />)}</div>
+          <div className="cards">{original.map((r) => <ResultCard key={r.recommendation.id} item={r} cropId={cropId} accessory={accessory} />)}</div>
         </>
       )}
       {!running && job.status === "no_match" && (

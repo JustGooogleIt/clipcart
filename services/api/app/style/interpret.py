@@ -195,8 +195,9 @@ def apply_proposals(db, owner: str, raw: Any, events: dict[str, dict], *, now: d
         kind = p.get("kind") if isinstance(p, dict) else None
 
         def reject(reason: str, value: Any = None):
-            rejected.append({"kind": kind, "value": value if value is not None else (p.get("value") if isinstance(p, dict) else None),
-                             "reason": reason})
+            raw = value if value is not None else (p.get("value") if isinstance(p, dict) else None)
+            rejected.append({"kind": str(kind)[:40] if kind is not None else None,
+                             "value": str(raw)[:80] if raw is not None else None, "reason": reason})
 
         if kind not in SOFT_KINDS:
             reject("kind not allowed (soft style kinds only)")
@@ -277,8 +278,12 @@ def prune(db, owner: str) -> list[str]:
 
 def status(db, owner: str, limit: int = 10) -> dict:
     q = db.style_interpret_queue.find_one({"_id": owner})
-    runs = [{k: v for k, v in r.items() if k not in ("_id", "ownerId")}
+    keep = ("id", "at", "model", "evidenceEventIds", "status", "applied", "rejected", "usage")
+    runs = [{k: r[k] for k in keep if k in r}
             for r in db.style_interpret_runs.find({"ownerId": owner}).sort("at", -1).limit(limit)]
+    for r in runs:  # runs stored before the typed contract may hold non-string model values
+        r["rejected"] = [{**x, "kind": None if x.get("kind") is None else str(x["kind"])[:40],
+                          "value": None if x.get("value") is None else str(x["value"])[:80]} for x in r.get("rejected", [])]
     return {"pendingEvents": len(q["pendingEventIds"]) if q else 0, "notBefore": q["notBefore"] if q else None, "runs": runs}
 
 
