@@ -12,6 +12,9 @@ from .types import Evidence, Listing
 _REPO_ROOT = Path(__file__).resolve().parents[5]
 _DEFAULT_CATALOG = _REPO_ROOT / "fixtures" / "catalog" / "demo_catalog.json"
 _DEFAULT_EXAMPLES = _REPO_ROOT / "fixtures" / "catalog" / "search_examples.json"
+# Hand-written listings for UI review paths the sourced demo catalog can't cover (watches, jewelry, style words).
+# Labelled synthetic in the file and on every listing; only loaded with the default catalog.
+_UI_REVIEW_CATALOG = _REPO_ROOT / "fixtures" / "catalog" / "ui_review_catalog.json"
 
 
 class FixtureCatalogProvider:
@@ -22,6 +25,12 @@ class FixtureCatalogProvider:
     def __init__(self, catalog_path: Path | None = None) -> None:
         self.catalog_path = catalog_path or _DEFAULT_CATALOG
         self._data = self._load()
+        if catalog_path is None and _UI_REVIEW_CATALOG.is_file():
+            extra = json.loads(_UI_REVIEW_CATALOG.read_text(encoding="utf-8"))
+            if "NOT REAL PRODUCTS" not in str(extra.get("fixture_label", "")).upper():
+                raise CatalogProviderError("unavailable", "synthetic fixture catalog must carry its fixture_label", retryable=False)
+            self._data = {**self._data, "listings": [*self._data.get("listings", []), *extra.get("listings", [])],
+                          "evidence": [*self._data.get("evidence", []), *extra.get("evidence", [])]}
 
     def _load(self) -> dict[str, Any]:
         if not self.catalog_path.is_file():

@@ -139,7 +139,8 @@ def verify_submission(
             continue
 
         warnings: list[str] = [FIRST_WARNING.get(source, FIRST_WARNING["agent"])]
-        codes: list[str] = []  # stable codes for the warnings below (contract: WarningCode); the first has none
+        # Contract: every warning after the first (which names the source) is coded, in warningCodes order.
+        codes: list[str] = []
 
         def warn(code: str, text: str) -> None:
             warnings.append(text)

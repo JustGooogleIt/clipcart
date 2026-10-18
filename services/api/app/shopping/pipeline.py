@@ -280,17 +280,17 @@ def run_search(
         L = c.listing
         rec_id = "rec_" + hashlib.sha256(f"{search_id}|{L.id}|{section}".encode()).hexdigest()[:20]
         links, targets = _links_for(rec_id, L, prefs)
-        warnings = list(L.warnings)
-        codes: list[str] = []  # stable codes for the warnings ClipCart adds (contract: WarningCode)
+        # Contract: the warnings ClipCart adds come last, one per warningCodes entry, in the same order.
+        coded: list[tuple[str, str]] = []
         if is_accessory(profile.category) and seller_claims(L.title, L.material_text):
-            warnings.append(SELLER_CLAIMS_WARNING)
-            codes.append("seller_claims_unverified")
+            coded.append(("seller_claims_unverified", SELLER_CLAIMS_WARNING))
         if L.availability == "unknown":
-            warnings.append("Availability unknown")
-            codes.append("availability_unknown")
+            coded.append(("availability_unknown", "Availability unknown"))
         if L.mode in ("fixture", "catalog"):
-            warnings.append("Fixture data: not a live result")
-            codes.append("fixture_data")
+            coded.append(("fixture_data", "Fixture data: not a live result"))
+        coded_text = {t for _, t in coded}
+        warnings = [w for w in dict.fromkeys(L.warnings) if w not in coded_text] + [t for _, t in coded]
+        codes = [c for c, _ in coded]
         out.recommendations.append(
             Recommendation(
                 id=rec_id,
@@ -302,7 +302,7 @@ def run_search(
                 identity_evidence_ids=L.evidence_ids if tier != "similar" else [],
                 constraint_checks=checks,
                 explanation=explanation(L, profile, tier, reason, prefs),
-                warnings=list(dict.fromkeys(warnings)),
+                warnings=warnings,
                 warning_codes=codes,
                 rank=rank,
                 ranking_version=RANKING_VERSION,

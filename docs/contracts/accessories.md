@@ -93,6 +93,20 @@ There are new memory kinds:
 
 The clothing `size` memory never applies to accessories.
 
+## Fixtures for UI review (no injected data)
+
+All of these come from the real fixture providers, on `PERCEPTION_PROVIDER=fixture` and `CATALOG_PROVIDER=fixture`:
+
+- **Accessory detection** (`FEATURE_ACCESSORY_DETECTION=1`): `tests/perception/fixtures/perceptron_dev_fixture.json` adds a labelled `wristwatch` box on every frame. Its attributes come back as `color: ["silver-tone"]`, `cut: ["round case"]`, `details: ["metal bracelet", "white dial"]` and `visibleText: ["FIELD 38"]`. With the flag off, the box is dropped.
+- **Accessory and style results:** the fixture catalog also loads `fixtures/catalog/ui_review_catalog.json`. These are synthetic listings, labelled "NOT REAL PRODUCTS", with `example.com` URLs and the warning "Synthetic UI test listing".
+  - Watches: a "14K … Diamond … Authentic, Swiss Made" watch (`seller_claims_unverified`), a plain field watch, and a watch band that is excluded.
+  - Rings: a sterling signet ring in US 7 (with claims) and a gold-tone stacking ring in US 6.
+  - A necklace and earrings.
+  - Three black jackets whose titles state a style (two "vintage", one "chore coat" for workwear). Saving both vintage jackets infers `style_like: vintage` with two evidence excerpts.
+- **Accessory research offers:** use `RESEARCH_PROVIDER=manual` and the labelled manual import. SoleScout research only turns SoleScout store records into offers, so the synthetic listings never appear there.
+
+Tests: `tests/api/test_ui_review_fixtures.py`.
+
 ## Health
 
 `features.accessoryDetection` reports the flag. `GET /api/categories` is always available.

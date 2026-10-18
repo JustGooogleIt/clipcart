@@ -202,6 +202,8 @@ Such an offer never satisfies a budget, is never `isLowestConfirmed`, and counts
 
   The research product's first warning, which names the source, has no code: read `source` instead. Provider-supplied warning text, such as SoleScout disclaimers, has no code either.
 
+  **Ordering (contract):** the coded warnings are the **last** entries of `warnings`, one per `warningCodes` entry and in the same order. So `warnings.slice(-warningCodes.length)` pairs with `warningCodes`. On a research product, that means every warning after the first. Provider text that repeats a coded sentence is dropped from the uncoded part, so de-duplication can't shift the pairing. Tests: `tests/api/test_ui_review_fixtures.py`, `tests/research/test_research_v2.py`.
+
 ### Manual import: `POST /api/research-jobs/{jobId}/import`
 
 This is for the owner, with the `X-ClipCart-Request: 1` header and a limit of 10 per 10 minutes. The body is `{products: SubmittedProduct[] (≤20), notes?}`.
