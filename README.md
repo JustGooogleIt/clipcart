@@ -12,7 +12,9 @@ Ashwin and Vinay built it at **DubHacks ’26**. ClipCart is a web shopping stud
 
 | See a look | Pick the piece | Shop the match | Keep your style |
 |:---:|:---:|:---:|:---:|
-| <img src="apps/web/docs/screenshots/real-video-landing/phone-1-hero.jpg" width="200" alt="ClipCart landing with real fit-check clips"> | <img src="apps/web/docs/screenshots/find-and-style/find-after-phone.png" width="200" alt="Studio with selected garment and video frames"> | <img src="apps/web/docs/screenshots/desktop-06-results.png" width="280" alt="Product results with prices and retailers"> | <img src="apps/web/docs/screenshots/find-and-style/style-phone-note.png" width="200" alt="Style notes and wardrobe preferences"> |
+| <img src="apps/web/docs/screenshots/readme-2026-10-18/01-landing.png" width="220" alt="ClipCart landing — Tap it. Shop it."> | <img src="apps/web/docs/screenshots/readme-2026-10-18/02-find.png" width="220" alt="Studio with garment boxes on a fit-check frame"> | <img src="apps/web/docs/screenshots/readme-2026-10-18/03-results.png" width="220" alt="Shopping results with prices and match labels"> | <img src="apps/web/docs/screenshots/readme-2026-10-18/04-style.png" width="220" alt="Your style panel for preferences and wardrobe"> |
+
+Screenshots from the current product UI (Oct 18, 2026). Studio / results / style were captured with labeled fixture providers so detection and listings stay stable for docs.
 
 ## The problem
 
