@@ -4,13 +4,13 @@ Local media for the 10 YouTube Shorts listed in [`fixtures/fit-checks/youtube_sh
 
 Demo story and live results: [`docs/fit-checks.md`](../../docs/fit-checks.md).
 
-**Not committed** — only this README is tracked. Run:
+**Tracked in git** — the `fc01_….mp4` … `fc10_….mp4` clips and `index.json` are committed (~26 MB) so anyone can clone and upload them in the product UI without re-downloading.
+
+Re-download or refresh if a Short goes down:
 
 ```bash
 # from repo root (uses services/api/.venv yt-dlp when present)
 services/api/.venv/bin/python scripts/download_fit_checks.py
 ```
 
-Files land here as `fc01_<videoId>.mp4` … `fc10_….mp4` plus `index.json`.
-
-Then upload a clip in the product UI, or paste the Short URL (product YouTube path).
+Source URLs stay in the fixture manifest. Prefer pasting the Short URL in the product YouTube path when the feature flag is on; uploading these MP4s is the offline fallback.

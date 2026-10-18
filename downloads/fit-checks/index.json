@@ -1,0 +1,86 @@
+{
+  "clips": [
+    {
+      "id": "fc01",
+      "label": "Rich Paul street fit",
+      "url": "https://www.youtube.com/shorts/zf6CmntK3BY",
+      "videoId": "zf6CmntK3BY",
+      "path": "fc01_zf6CmntK3BY.mp4",
+      "download": "skip (exists): fc01_zf6CmntK3BY.mp4"
+    },
+    {
+      "id": "fc02",
+      "label": "NYC street interviews",
+      "url": "https://www.youtube.com/shorts/fGZB8iLJJ7E",
+      "videoId": "fGZB8iLJJ7E",
+      "path": "fc02_fGZB8iLJJ7E.mp4",
+      "download": "skip (exists): fc02_fGZB8iLJJ7E.mp4"
+    },
+    {
+      "id": "fc03",
+      "label": "Rate the fit 1-10",
+      "url": "https://www.youtube.com/shorts/g5mXVuj-eEI",
+      "videoId": "g5mXVuj-eEI",
+      "path": "fc03_g5mXVuj-eEI.mp4",
+      "download": "skip (exists): fc03_g5mXVuj-eEI.mp4"
+    },
+    {
+      "id": "fc04",
+      "label": "Streetwear, Mexico City",
+      "url": "https://www.youtube.com/shorts/GArRdb6qAZ8",
+      "videoId": "GArRdb6qAZ8",
+      "path": "fc04_GArRdb6qAZ8.mp4",
+      "download": "skip (exists): fc04_GArRdb6qAZ8.mp4"
+    },
+    {
+      "id": "fc05",
+      "label": "Menswear outfit check",
+      "url": "https://www.youtube.com/shorts/BiF8fA2kMgE",
+      "videoId": "BiF8fA2kMgE",
+      "path": "fc05_BiF8fA2kMgE.mp4",
+      "download": "skip (exists): fc05_BiF8fA2kMgE.mp4"
+    },
+    {
+      "id": "fc06",
+      "label": "Polo fit check",
+      "url": "https://www.youtube.com/shorts/yJ4vevoYXHU",
+      "videoId": "yJ4vevoYXHU",
+      "path": "fc06_yJ4vevoYXHU.mp4",
+      "download": "skip (exists): fc06_yJ4vevoYXHU.mp4"
+    },
+    {
+      "id": "fc07",
+      "label": "Pullover fit, woman",
+      "url": "https://www.youtube.com/shorts/7aSXFmRYGSk",
+      "videoId": "7aSXFmRYGSk",
+      "path": "fc07_7aSXFmRYGSk.mp4",
+      "download": "skip (exists): fc07_7aSXFmRYGSk.mp4"
+    },
+    {
+      "id": "fc08",
+      "label": "OOTD, woman",
+      "url": "https://www.youtube.com/shorts/dAKca9yKo_U",
+      "videoId": "dAKca9yKo_U",
+      "path": "fc08_dAKca9yKo_U.mp4",
+      "download": "skip (exists): fc08_dAKca9yKo_U.mp4"
+    },
+    {
+      "id": "fc09",
+      "label": "Casual fit check, woman",
+      "url": "https://www.youtube.com/shorts/k12-rM2V_pE",
+      "videoId": "k12-rM2V_pE",
+      "path": "fc09_k12-rM2V_pE.mp4",
+      "download": "skip (exists): fc09_k12-rM2V_pE.mp4"
+    },
+    {
+      "id": "fc10",
+      "label": "Kurta and jeans, woman",
+      "url": "https://www.youtube.com/shorts/KGEXdHOOfWU",
+      "videoId": "KGEXdHOOfWU",
+      "path": "fc10_KGEXdHOOfWU.mp4",
+      "download": "skip (exists): fc10_KGEXdHOOfWU.mp4"
+    }
+  ],
+  "ok": 10,
+  "fail": 0
+}
