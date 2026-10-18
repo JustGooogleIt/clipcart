@@ -68,6 +68,9 @@ class ToolBox:
     ):
         self.provider = provider
         self.ledger = ledger
+        # Retrieval accounting, so "nothing searched" is never reported as "searched, nothing found".
+        self.searches_attempted = 0  # catalog searches that ran (live or cached)
+        self.budget_stops: list[str] = []  # budget/deadline refusals (e.g. "deadline", "tool_calls")
         self.filters = filters
         self.emit = emit
         self.status = status
@@ -121,7 +124,9 @@ class ToolBox:
         try:
             self.ledger.take_tool(cached=cached is not None)
         except BudgetExceeded as exc:
+            self.budget_stops.append(str(exc.kind))
             return {"error": f"budget_exhausted:{exc.kind}"}
+        self.searches_attempted += 1
         t0 = time.monotonic()
         stage = "searching_original" if worker == "exact" else "searching_alternatives"
         if cached is None:

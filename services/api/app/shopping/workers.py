@@ -217,10 +217,10 @@ def rule_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list
         if blob:
             add(blob[:120])
             # Alternate windows — SoleScout ranks shorter rich phrases differently.
-            words = blob.split()
-            if len(words) > 10:
-                add(*words[:10])
-                add(*words[-10:])
+            blob_words = blob.split()  # not "words": that would shadow rules.words for the whole function
+            if len(blob_words) > 10:
+                add(*blob_words[:10])
+                add(*blob_words[-10:])
             toks = [d for d in profile.descriptors() if d not in _COLOR_SET][:8]
             if toks:
                 add(*toks)
@@ -287,6 +287,13 @@ def rule_queries(role: str, profile: GarmentProfile, prefs: Preferences) -> list
             continue
         if q and q.lower() not in [o.lower() for o in out]:
             out.append(q)
+    if not out and generic:
+        # Controlled fallback: a valid category with nothing richer to search on still gets one query, built only from
+        # the category and the shopper's own colour choice (never invented attributes). Category verification and the
+        # shopper's constraints still apply to every result.
+        pref = words(prefs.colors[0]) if prefs.colors else []
+        pref_color = pref[0] if pref and pref[0] in _COLOR_SET else ""
+        out = [f"{pref_color} {generic}".strip() if role != "exact" else generic]
     return out[:5]
 
 

@@ -17,6 +17,9 @@ const STAGE: Record<string, string> = {
 };
 const PIPELINE = ["searching_original", "searching_alternatives", "verifying_listings", "ranking"];
 
+/** Search outcomes where no catalog call happened (backend pipeline): shown as such, never as an empty catalog. */
+const NO_RETRIEVAL = new Set(["no_search_query", "deadline_before_search", "budget_before_search"]);
+
 export default function Results({
   view,
   cropId,
@@ -93,7 +96,11 @@ export default function Results({
 
       {job.status === "failed" && (
         <div className="banner banner-error" role="alert">
-          {job.error?.code === "interrupted" ? "The server restarted during this search." : "The listing provider didn't respond."}{" "}
+          {job.error?.code === "interrupted"
+            ? "The server restarted during this search."
+            : NO_RETRIEVAL.has(job.error?.code ?? "")
+              ? job.summary // the server says nothing was searched (or time ran out first): never "no listings found"
+              : "The listing provider didn't respond."}{" "}
           Your garment and preferences are saved.{" "}
           <button type="button" className="btn btn-sm" onClick={onRetry}>
             Retry
