@@ -48,6 +48,8 @@ class Settings:
     research_provider: str
     research_job_ttl_s: int
     research_resolve_dns: bool
+    feature_youtube_download: bool
+    youtube_allowed_video_ids: frozenset[str]
     feature_photon: bool
     feature_voice: bool
     feature_solana: bool
@@ -109,6 +111,10 @@ def load_settings() -> Settings:
         research_provider=(os.getenv("RESEARCH_PROVIDER") or "fixture").lower(),
         research_job_ttl_s=int(os.getenv("RESEARCH_JOB_TTL_S", "900")),
         research_resolve_dns=_flag("RESEARCH_RESOLVE_DNS", True),
+        feature_youtube_download=_flag("FEATURE_YOUTUBE_DOWNLOAD"),
+        youtube_allowed_video_ids=frozenset(
+            v.strip() for v in (os.getenv("YOUTUBE_ALLOWED_VIDEO_IDS") or "").split(",") if v.strip()
+        ),
         feature_photon=_flag("FEATURE_PHOTON"),
         feature_voice=_flag("FEATURE_VOICE"),
         feature_solana=_flag("FEATURE_SOLANA"),

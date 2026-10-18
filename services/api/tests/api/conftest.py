@@ -16,7 +16,15 @@ H = {"X-ClipCart-Request": "1"}
 
 @pytest.fixture
 def app_factory(tmp_path, monkeypatch):
-    for k in ("MONGODB_URI", "PERCEPTRON_API_KEY", "XAI_API_KEY", "PERCEPTION_PROVIDER"):
+    for k in (
+        "MONGODB_URI",
+        "PERCEPTRON_API_KEY",
+        "XAI_API_KEY",
+        "PERCEPTION_PROVIDER",
+        "FEATURE_YOUTUBE_DOWNLOAD",
+        "YOUTUBE_ALLOWED_VIDEO_IDS",
+        "FEATURE_AGENT_RESEARCH",
+    ):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("CLIPCART_SKIP_DOTENV", "1")  # never read real keys in tests
     monkeypatch.setenv("CLIPCART_MEDIA_ROOT", str(tmp_path / "media"))

@@ -60,9 +60,24 @@ Follow-up (same day) with **pants** category + ranked frames for ≤90s video:
 - Multi-person street interviews can fill the tray (pick the piece you want).
 - Temporary YouTube download is labeled in the UI; not tab-share or link-only magic.
 
+## Production settings
+
+YouTube URL analysis is **off by default** and allowlisted:
+
+```bash
+FEATURE_YOUTUBE_DOWNLOAD=true
+YOUTUBE_ALLOWED_VIDEO_IDS=zf6CmntK3BY,fGZB8iLJJ7E,...   # see .env.example
+```
+
+- Unlisted IDs → `403 video_not_permitted` (no download).
+- Flag off → UI hides the URL field; API returns `404 feature_disabled`.
+- Download failures tell the user to **upload the clip** instead (no cookie workarounds).
+- Upload of local MP4s always works (preferred for unpermitted / blocked videos).
+
 ## Demo script
 
-1. `./scripts/dev.sh` → http://127.0.0.1:8000  
-2. Paste `https://www.youtube.com/shorts/zf6CmntK3BY` → **Scan video**, *or* upload `downloads/fit-checks/fc01_zf6CmntK3BY.mp4`.  
-3. Select a jacket/top in the tray → set budget → **Find it**.  
-4. Open a result via `/go/{token}` and note the SoleScout/source labeling.
+1. Copy `.env.example` → `.env`, set `PERCEPTRON_API_KEY`, enable YouTube + allowlist (or just use uploads).  
+2. `./scripts/dev.sh` → http://127.0.0.1:8000  
+3. Paste `https://www.youtube.com/shorts/zf6CmntK3BY` → **Scan video**, *or* upload `downloads/fit-checks/fc01_zf6CmntK3BY.mp4`.  
+4. Select a jacket/top/pants in the tray → set budget → **Find it**.  
+5. Open a result via `/go/{token}` and note the SoleScout/source labeling.

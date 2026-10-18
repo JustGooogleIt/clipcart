@@ -293,7 +293,12 @@ export default function App() {
 
       {!view?.media ? (
         <main className="empty">
-          <Upload busy={busy || !s} progress={progress} onFile={onFile} onYoutube={onYoutube} />
+          <Upload
+            busy={busy || !s}
+            progress={progress}
+            onFile={onFile}
+            onYoutube={health?.features?.youtubeDownload ? onYoutube : undefined}
+          />
           <ol className="how">
             <li>
               <strong>Send a look.</strong> Photo, short clip, or YouTube URL — we scan for jackets, tops, pants and bags.
@@ -311,7 +316,13 @@ export default function App() {
           <section className="col-look" aria-label="Your look">
             <div className="section-head">
               <h2>1 · Pick the garment</h2>
-              <Upload busy={busy} progress={progress} onFile={onFile} onYoutube={onYoutube} compact />
+              <Upload
+                busy={busy}
+                progress={progress}
+                onFile={onFile}
+                onYoutube={health?.features?.youtubeDownload ? onYoutube : undefined}
+                compact
+              />
             </div>
             {analyzing && (
               <div className="banner" role="status">

@@ -1,6 +1,6 @@
 # ClipCart status
 
-Updated 2026-10-17. YouTube product ingest lands on `feat/youtube-product` (based on `integration`).
+Updated 2026-10-17. YouTube URL ingest is **feature-flagged** (`FEATURE_YOUTUBE_DOWNLOAD`, allowlisted IDs). Fit-check story: [`docs/fit-checks.md`](fit-checks.md).
 
 ## Working flow (verified locally in headless Chrome and with offline tests)
 
