@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import type { Health } from "../types";
+import type { Health, ProviderSnapshot } from "../types";
 
 const LABEL: Record<string, string> = {
   live: "Live",
@@ -18,43 +18,61 @@ function Chip({ name, mode, note }: { name: string; mode: string; note?: string 
   );
 }
 
+/**
+ * Health wording that matches the server's semantics (services/api/app/providers/status.py):
+ * fixture = simulated data; unavailable = not configured; unverified = configured, no successful call since the
+ * server started; live = at least one real call succeeded since then (later calls may still fail, so the latest
+ * result is shown too).
+ */
+function health(s: ProviderSnapshot, notYet: string): { mode: string; note: string } {
+  if (s.mode === "fixture") return { mode: "fixture", note: "Fixture (simulated data)" };
+  if (s.mode === "unavailable") return { mode: "unavailable", note: "Not configured" };
+  const latestFailed = s.recent?.[0] ? !s.recent[0].ok : false;
+  if (s.mode === "live") return latestFailed ? { mode: "unverified", note: "Worked earlier · latest call failed" } : { mode: "live", note: "Live" };
+  return s.failures > 0 ? { mode: "unverified", note: "Configured · calls failing" } : { mode: "unverified", note: notYet };
+}
+
 /** True when detection or listings are simulated, so the header can say so without the full list. */
 export function usesFixtures(health: Health | null) {
   if (!health) return false;
   return health.providers.perceptron.mode === "fixture" || health.providers.catalog.mode === "fixture";
 }
 
-function ModeList({ health }: { health: Health }) {
-  const p = health.providers;
-  const db = health.database.mode;
+function ModeList({ health: hp }: { health: Health }) {
+  const p = hp.providers;
+  const db = hp.database.mode;
+  const det = health(p.perceptron, "Key set, no successful call yet");
+  const grok = health(p.grok, "Key set, no successful call yet");
+  const cat = health(p.catalog, "No successful call yet");
+  const catName = p.catalog.provider === "solescout" ? "SoleScout" : p.catalog.provider;
+  const store =
+    db === "local_memory"
+      ? { mode: "rule", note: "Local dev store (not Atlas)" }
+      : { mode: hp.database.ok ? "live" : "unavailable", note: `${db === "atlas" ? "MongoDB Atlas" : "MongoDB"} · ${hp.database.ok ? "reachable" : "not reachable"}` };
   return (
     <ul className="chips" aria-label="Service modes">
-      <Chip name="Detection · Perceptron" mode={p.perceptron.mode} />
-      <Chip
-        name="Search agent"
-        mode={p.grok.mode === "unavailable" ? "rule" : p.grok.mode}
-        note={p.grok.mode === "unavailable" ? "Rule-based (Grok not configured)" : `Grok · ${LABEL[p.grok.mode] ?? p.grok.mode}`}
-      />
-      <Chip
-        name="Listings"
-        mode={p.catalog.mode === "unverified" ? "ready" : p.catalog.mode}
-        note={
-          p.catalog.mode === "fixture"
-            ? "Fixture catalog"
-            : `${p.catalog.provider === "solescout" ? "SoleScout" : p.catalog.provider} · ${p.catalog.mode === "live" ? "Live" : "Live API, no call yet"}`
-        }
-      />
-      <Chip name="Storage" mode={db === "local_memory" ? "rule" : "live"} note={db === "local_memory" ? "Local dev store (not Atlas)" : db === "atlas" ? "MongoDB Atlas" : "MongoDB"} />
+      <Chip name="Detection · Perceptron" mode={det.mode} note={det.note} />
+      {p.grok.mode === "unavailable" ? (
+        <Chip name="Search agent" mode="rule" note="Rule-based (Grok not configured)" />
+      ) : (
+        <Chip name="Search agent" mode={grok.mode} note={`Grok · ${grok.note}`} />
+      )}
+      {p.catalog.mode === "fixture" ? (
+        <Chip name="Listings" mode="fixture" note="Fixture catalog (simulated data)" />
+      ) : (
+        <Chip name="Listings" mode={cat.mode} note={`${catName} · ${cat.note}`} />
+      )}
+      <Chip name="Storage" mode={store.mode} note={store.note} />
       <Chip
         name="YouTube URL"
-        mode={health.features.youtubeDownload ? "live" : "unavailable"}
+        mode={hp.features.youtubeDownload ? "live" : "unavailable"}
         note={
-          health.features.youtubeDownload
-            ? `On · ${health.youtube?.allowedVideoCount ?? 0} permitted clips`
+          hp.features.youtubeDownload
+            ? `On · ${hp.youtube?.allowedVideoCount ?? 0} permitted clips`
             : "Off · upload clips instead"
         }
       />
-      {health.features.styleMemory && (
+      {hp.features.styleMemory && (
         <Chip
           name="Style notes"
           mode={p.styleModel?.mode === "live" ? "live" : "rule"}
@@ -122,7 +140,10 @@ export default function ModeChips({ health }: { health: Health | null }) {
       </button>
       {open && (
         <div className="diag-pop" id={id} role="region" aria-label="Service modes">
-          <p className="diag-pop-note">“Live” means a real call succeeded since the server started.</p>
+          <p className="diag-pop-note">
+            Live: a real call succeeded since this server started (Style notes: its latest call succeeded). Fixture:
+            simulated data. These reset when the server restarts.
+          </p>
           <ModeList health={health} />
           <a className="diag-pop-link" href="#/diagnostics" onClick={() => setOpen(false)}>
             Open full diagnostics →
