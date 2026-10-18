@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import tempfile
+import threading
 from typing import Any
 
 from fastapi import APIRouter, Request, Response
@@ -210,18 +211,25 @@ def create(request: Request, response: Response) -> dict:
     return session_view(st, st.db.sessions.find_one({"_id": s.id}))
 
 
+_resume_lock = threading.Lock()  # resume is one find (and at most one insert), so one lock costs nothing
+
+
 @router.post("/api/sessions/resume")
 def resume(request: Request, response: Response) -> dict:
     """Boot: the owner's most recent committed session, or a new one."""
     require_mutation_header(request)
     owner = ensure_owner(request, response)
     st = state_of(request)
-    doc = st.db.sessions.find_one({"ownerId": owner}, sort=[("createdAt", -1)])
-    if doc:
-        return session_view(st, doc)
-    limiter.check(owner, "session", 30)
-    st.bump("sessions_created")
-    s = create_session(st.db, owner)
+    # Concurrent resumes for one owner (two tabs, or a dev StrictMode double boot) must land on one session, not
+    # create one each. The lock is per process; the API runs as a single process. Cookie-less requests can't be
+    # told apart here: each mints its own owner, and the web client recovers from that (App.tsx adoptCurrentSession).
+    with _resume_lock:
+        doc = st.db.sessions.find_one({"ownerId": owner}, sort=[("createdAt", -1)])
+        if doc:
+            return session_view(st, doc)
+        limiter.check(owner, "session", 30)
+        st.bump("sessions_created")
+        s = create_session(st.db, owner)
     return session_view(st, st.db.sessions.find_one({"_id": s.id}))
 
 

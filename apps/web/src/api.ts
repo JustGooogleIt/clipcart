@@ -36,11 +36,20 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 export const key = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
+// One boot request at a time per page. A fresh browser has no owner cookie yet, and every cookie-less resume mints a
+// new owner: two in flight (React StrictMode runs the boot effect twice in dev) could leave the page on one owner's
+// session while the cookie names the other, and the upload then 404s.
+let resuming: Promise<SessionView> | null = null;
+const resumeOnce = () =>
+  (resuming ??= req<SessionView>("POST", "/api/sessions/resume", {}).finally(() => {
+    resuming = null;
+  }));
+
 export const api = {
   health: () => req<Health>("GET", "/api/health"),
   diagnostics: () => req<Record<string, unknown>>("GET", "/api/diagnostics"),
   latest: () => req<SessionView>("GET", "/api/sessions/latest"),
-  resume: () => req<SessionView>("POST", "/api/sessions/resume", {}),
+  resume: resumeOnce,
   createSession: () => req<SessionView>("POST", "/api/sessions"),
   session: (id: string) => req<SessionView>("GET", `/api/sessions/${id}`),
   patch: (id: string, body: Record<string, unknown>) => req<SessionView>("PATCH", `/api/sessions/${id}`, body),
