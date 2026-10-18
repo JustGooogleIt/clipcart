@@ -40,14 +40,22 @@ export function patchFrom(d: PrefsDraft) {
   };
 }
 
+export function findLabel(busy: boolean, canSearch: boolean, pieceLabel: string | null) {
+  if (busy) return "Working…";
+  if (!canSearch) return "Select a garment first";
+  return pieceLabel ? `Find this ${pieceLabel.toLowerCase()}` : "Find it";
+}
+
 export default function Constraints({
   session,
   canSearch,
+  pieceLabel,
   busy,
   onSubmit,
 }: {
   session: SessionWire;
   canSearch: boolean;
+  pieceLabel: string | null;
   busy: boolean;
   onSubmit: (d: PrefsDraft) => void;
 }) {
@@ -60,6 +68,7 @@ export default function Constraints({
     setD((x) => ({ ...x, excluded: x.excluded.includes(m) ? x.excluded.filter((y) => y !== m) : [...x.excluded, m] }));
   return (
     <form
+      id="rules-form"
       className="constraints"
       onSubmit={(e) => {
         e.preventDefault();
@@ -124,8 +133,8 @@ export default function Constraints({
           <option value="used">Used only</option>
         </select>
       </div>
-      <button className="btn btn-primary btn-block" type="submit" disabled={!canSearch || busy || budgetBad}>
-        {busy ? "Starting…" : canSearch ? "Find it" : "Select a garment first"}
+      <button className="btn btn-primary btn-block btn-find" type="submit" disabled={!canSearch || busy || budgetBad}>
+        {findLabel(busy, canSearch, pieceLabel)}
       </button>
     </form>
   );

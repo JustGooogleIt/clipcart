@@ -30,6 +30,8 @@ export interface SessionView {
   observations: GarmentObservation[];
   activeSearch?: SearchJobDoc | null;
   searchId?: string;
+  /** Present on the youtube-analyze response only. */
+  youtube?: { videoId: string; title: string | null; cacheHit: boolean; source: string };
 }
 
 export interface ResultItem {
