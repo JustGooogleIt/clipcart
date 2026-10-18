@@ -73,6 +73,15 @@ export interface Health {
     agentResearch?: boolean;
     youtubeDownload?: boolean;
     styleMemory?: boolean;
+    accessoryDetection?: boolean;
   };
   youtube?: { enabled: boolean; allowedVideoCount: number; maxDurationS: number };
+  /**
+   * Both null when FEATURE_AGENT_RESEARCH is off (docs/contracts/agent-research.md). mode is what jobs get, and null
+   * for a provider this server doesn't implement.
+   */
+  research?: { provider: string | null; mode: "fixture" | "manual" | "live" | null };
 }
+
+export type Category = GarmentObservation["category"];
+

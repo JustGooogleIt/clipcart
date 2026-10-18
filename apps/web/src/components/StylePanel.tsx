@@ -8,6 +8,7 @@ import {
   type MemoryKind,
   type MemoryState,
   type StyleEvent,
+  type StyleInterpretations,
   type StyleMemory,
   type StyleModelInfo,
   type StyleNoteResult,
@@ -24,13 +25,19 @@ const KIND: Record<MemoryKind, string> = {
   material_avoid: "Avoids",
   brand_like: "Likes",
   brand_avoid: "Avoids",
-  // Accessory kinds (docs/contracts/accessories.md). Type-compat labels only; the UI lane owns their presentation.
+  // Accessory kinds (docs/contracts/accessories.md): tone applies to watches and jewelry only.
   tone_like: "Likes",
   tone_avoid: "Avoids",
-  ring_size: "Ring size",
-  // Style kinds (docs/contracts/style-memory.md, v2). Type-compat labels only; the UI lane owns presentation.
+  ring_size: "Ring size (US)",
+  // Style kinds (docs/contracts/style-memory.md, v2), shown as chips.
   style_like: "Likes",
   style_avoid: "Avoids",
+};
+const OPPOSITE: Partial<Record<MemoryKind, MemoryKind>> = {
+  style_like: "style_avoid",
+  style_avoid: "style_like",
+  tone_like: "tone_avoid",
+  tone_avoid: "tone_like",
 };
 const FIT: Record<string, string> = { womens: "Women's", mens: "Men's", unisex: "Unisex" };
 
@@ -42,6 +49,10 @@ export function valueText(kind: MemoryKind, v: unknown): string {
     return `Up to ${money(b.amountMinor, b.currency ?? "USD")} per item`;
   }
   if (kind === "fit") return FIT[String(v)] ?? String(v);
+  if (kind === "tone_like" || kind === "tone_avoid") {
+    const t = String(v ?? "");
+    return `${t.charAt(0).toUpperCase()}${t.slice(1)} (watches and jewelry)`;
+  }
   return String(v ?? "");
 }
 
@@ -52,7 +63,7 @@ function editText(kind: MemoryKind, v: unknown): string {
 }
 
 // Every memory says where it came from. Inferred ones say so and how much evidence they rest on.
-function sourceText(m: StyleMemory): string {
+function sourceText(m: StyleMemory, modelRanks = false): string {
   if (m.origin === "stated") {
     if (m.source === "style_note") return "From your style note";
     if (m.source === "style_panel") return "You corrected this";
@@ -63,11 +74,62 @@ function sourceText(m: StyleMemory): string {
   if (m.source === "saved_items") return `Inferred from ${n} saved item${n === 1 ? "" : "s"}`;
   if (m.source === "rejected_items") return `Inferred from ${n} item${n === 1 ? "" : "s"} you hid`;
   if (m.source === "purchases") return `Inferred from ${n} item${n === 1 ? "" : "s"} you said you bought`;
+  if (m.source === "model_interpretation")
+    return `Suggested by the style model from your saves${modelRanks ? "" : " (doesn't affect ranking)"}`;
   return "Inferred";
 }
 
+/** Contract bands: High ≥ 0.7, Medium ≥ 0.45, otherwise Low. Stated memories are the shopper's word, not a score. */
+export function confidenceLabel(m: Pick<StyleMemory, "origin" | "confidence">): { band: "stated" | "high" | "medium" | "low"; text: string } | null {
+  if (m.origin === "stated") return { band: "stated", text: "You said so" };
+  if (m.confidence == null) return null;
+  const band = m.confidence >= 0.7 ? "high" : m.confidence >= 0.45 ? "medium" : "low";
+  return { band, text: `${band.charAt(0).toUpperCase()}${band.slice(1)} confidence` };
+}
+
+const EVIDENCE_TYPE: Record<string, string> = {
+  saved_item: "You saved",
+  rejected_item: "You hid",
+  user_confirmed_purchase: "You said you bought",
+  verified_order: "Verified order",
+  explicit_preference: "You said",
+};
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+/** Why ClipCart believes a memory: confidence, the latest evidence date and each excerpt with its date. */
+function Evidence({ m }: { m: StyleMemory }) {
+  const conf = confidenceLabel(m);
+  const ev = m.evidence ?? [];
+  return (
+    <div className="mem-evidence">
+      <p>
+        {conf && <span className={`conf conf-${conf.band}`}>{conf.text}</span>}
+        {m.lastEvidenceAt && <span className="mem-when"> · latest evidence {shortDate(m.lastEvidenceAt)}</span>}
+      </p>
+      {ev.length > 0 ? (
+        <ul>
+          {ev.map((e) => (
+            <li key={e.eventId}>
+              <span className="ev-type">{EVIDENCE_TYPE[e.type] ?? e.type}</span> {shortDate(e.at)}
+              {e.excerpt && (
+                <>
+                  {": "}
+                  <q>{e.excerpt}</q>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        m.origin === "inferred" && <p className="mem-note">No evidence excerpts kept for this one.</p>
+      )}
+    </div>
+  );
+}
+
 const EVENT_SOURCE: Partial<Record<StyleEvent["type"], string>> = {
-  saved_item: "You saved this",
+  saved_item: "You saved this · interest, not ownership",
+  rejected_item: "You marked this Not for me",
   retailer_click: "Opened retailer link · not a purchase",
   user_confirmed_purchase: "You said you bought this · not verified by ClipCart",
   verified_order: "Verified ClipCart demo order",
@@ -78,8 +140,10 @@ const failText = (e: unknown, fallback: string) =>
     ? "ClipCart doesn't recognize that value. Use a plain color, material, brand, size or amount."
     : fallback;
 
-function MemoryRow({ m, onChanged }: { m: StyleMemory; onChanged: () => void }) {
+function MemoryRow({ m, modelRanks, onChanged }: { m: StyleMemory; modelRanks: boolean; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
+  const [why, setWhy] = useState(false);
+  const conf = confidenceLabel(m);
   const [confirming, setConfirming] = useState(false);
   const [value, setValue] = useState(editText(m.kind, m.value));
   const [busy, setBusy] = useState(false);
@@ -169,9 +233,19 @@ function MemoryRow({ m, onChanged }: { m: StyleMemory; onChanged: () => void }) 
           </strong>
         )}
         <span className="mem-source">
-          <span className={`src src-${m.origin}`}>{sourceText(m)}</span>
+          <span className={`src src-${m.origin}`}>{sourceText(m, modelRanks)}</span>
+          {conf && m.origin === "inferred" && <span className={`conf conf-${conf.band}`}>{conf.text}</span>}
           <span className="mem-when"> · {ago(m.updatedAt)}</span>
+          {m.origin === "inferred" && (
+            <>
+              {" · "}
+              <button type="button" className="linkish" aria-expanded={why} onClick={() => setWhy(!why)}>
+                {why ? "Hide why" : "Why?"}
+              </button>
+            </>
+          )}
         </span>
+        {why && <Evidence m={m} />}
       </div>
       {!editing && (
         <div className="mem-actions">
@@ -225,7 +299,20 @@ function EventRow({ ev, bought, onChanged }: { ev: StyleEvent; bought: boolean; 
     <li className={`mem mem-ev-${ev.type}`}>
       <div className="mem-text">
         <strong className="mem-title">{it?.title ?? "Item"}</strong>
-        <span className="mem-sub">{[it?.brand, it?.domain].filter(Boolean).join(" · ")}</span>
+        <span className="mem-sub">{[it?.brand, it?.domain, it?.condition && it.condition !== "unknown" ? it.condition : null].filter(Boolean).join(" · ")}</span>
+        {!!it?.styleFacts?.length && (
+          <ul className="style-facts" aria-label="Style words in the listing">
+            {it.styleFacts.map((f) => (
+              <li key={`${f.tag}-${f.excerpt}`} title={`From the listing ${f.field}: “${f.excerpt}”`}>
+                {f.tag}
+                <small>
+                  {" "}
+                  “{f.excerpt}”
+                </small>
+              </li>
+            ))}
+          </ul>
+        )}
         <span className="mem-source">
           <span className={`src src-ev-${ev.type}`}>{EVENT_SOURCE[ev.type] ?? ev.type}</span>
           <span className="mem-when"> · {ago(ev.occurredAt)}</span>
@@ -252,7 +339,7 @@ function EventRow({ ev, bought, onChanged }: { ev: StyleEvent; bought: boolean; 
             disabled={busy}
             onClick={() => run(() => memoryApi.removeEvent(ev.id), "Couldn't remove. The memory service may be offline.")}
           >
-            Remove
+            {ev.type === "rejected_item" ? "Unhide" : "Remove"}
           </button>
         )}
       </div>
@@ -381,6 +468,187 @@ function StyleNote({ model, memories, onSaved }: { model: StyleModelInfo; memori
   );
 }
 
+interface ChipGroup {
+  like: "style_like" | "tone_like";
+  avoid: "style_avoid" | "tone_avoid";
+  title: string;
+  note: string;
+  noun: string;
+  empty: string;
+}
+const STYLE_GROUP: ChipGroup = {
+  like: "style_like",
+  avoid: "style_avoid",
+  title: "Style",
+  note: "Styles you like or avoid. They reorder results and never change your rules. Tap one to see why.",
+  noun: "style",
+  empty: "No styles yet. Add one below, or save a few results you like.",
+};
+const TONE_GROUP: ChipGroup = {
+  like: "tone_like",
+  avoid: "tone_avoid",
+  title: "Tone for watches and jewelry",
+  note: "How metal-look pieces should look. Used only for watch and jewelry searches; it never says what a piece is made of.",
+  noun: "tone",
+  empty: "No tone preferences.",
+};
+
+/** Likes and avoids as chips; each opens to its evidence, confidence and date, with switch and remove. */
+function PrefChips({
+  group,
+  vocab,
+  memories,
+  interpretations,
+  onChanged,
+}: {
+  group: ChipGroup;
+  /** From GET /api/categories; empty when that call failed, which hides adding but keeps existing chips editable. */
+  vocab: readonly string[];
+  memories: StyleMemory[];
+  interpretations: StyleInterpretations | null;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [add, setAdd] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const styles = memories.filter((m) => m.kind === group.like || m.kind === group.avoid);
+  const taken = new Set(styles.map((m) => String(m.value)));
+  const fromModel = styles.some((m) => m.source === "model_interpretation");
+  const active = styles.find((m) => m.id === open) ?? null;
+
+  const run = async (f: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await f();
+      setOpen(null);
+      onChanged();
+    } catch (e) {
+      setError(failText(e, "Couldn't save. The memory service may be offline."));
+    } finally {
+      setBusy(false);
+    }
+  };
+  // Correction is post-then-delete, so a failed delete leaves both visible rather than neither.
+  const flip = (m: StyleMemory) =>
+    run(async () => {
+      await memoryApi.state(OPPOSITE[m.kind]!, m.value);
+      await memoryApi.remove(m.id);
+    });
+
+  return (
+    <section className="mem-section">
+      <h3>{group.title}</h3>
+      <p className="mem-note">{group.note}</p>
+      {styles.length ? (
+        <ul className="style-chips">
+          {styles.map((m) => {
+            const conf = confidenceLabel(m);
+            const like = m.kind === group.like;
+            return (
+              <li key={m.id}>
+                <button
+                  type="button"
+                  className={`style-chip ${like ? "sc-like" : "sc-avoid"} sc-${m.origin} ${open === m.id ? "sc-open" : ""}`}
+                  aria-expanded={open === m.id}
+                  onClick={() => setOpen(open === m.id ? null : m.id)}
+                >
+                  <span aria-hidden>{like ? "♥" : "✕"}</span>
+                  <span className="sr-only">{like ? "Likes" : "Avoids"}</span> {String(m.value)}
+                  {conf && m.origin === "inferred" && <span className={`conf-dot conf-${conf.band}`} title={conf.text} aria-label={conf.text} />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="mem-empty">{group.empty}</p>
+      )}
+      {active && (
+        <div className="style-chip-detail" role="region" aria-label={`About ${String(active.value)}`}>
+          <p>
+            <strong>
+              {active.kind === group.like ? "Likes" : "Avoids"} {String(active.value)}
+            </strong>{" "}
+            <span className={`src src-${active.origin}`}>{active.source === "style_panel" ? "You set this" : sourceText(active, !!interpretations?.rankingInfluence)}</span>
+            <span className="mem-when"> · {ago(active.updatedAt)}</span>
+          </p>
+          {active.source === "model_interpretation" && (
+            <p className="mem-note">
+              {interpretations?.rankingInfluence
+                ? "The style model's suggestions are allowed to reorder results on this server."
+                : "The style model's suggestions don't change your results' order while ranking from them is off."}
+            </p>
+          )}
+          <Evidence m={active} />
+          <div className="mem-actions">
+            <button type="button" className="btn btn-sm" disabled={busy} onClick={() => flip(active)}>
+              {active.kind === group.like ? "Switch to avoid" : "Switch to like"}
+            </button>
+            <button type="button" className="linkish" disabled={busy} onClick={() => run(() => memoryApi.remove(active.id))}>
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+      {vocab.length ? (
+        <form
+          className="mem-edit style-add"
+          onSubmit={(e) => {
+            e.preventDefault();
+          }}
+        >
+          <label className="sr-only" htmlFor={`${group.noun}-add`}>
+            Add a {group.noun}
+          </label>
+          <select id={`${group.noun}-add`} value={add} onChange={(e) => setAdd(e.target.value)} disabled={busy}>
+            <option value="">Add a {group.noun}…</option>
+            {vocab.filter((v) => !taken.has(v)).map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="btn btn-sm" disabled={!add || busy} onClick={() => run(async () => (await memoryApi.state(group.like, add), setAdd("")))}>
+            I like it
+          </button>
+          <button type="button" className="btn btn-quiet btn-sm" disabled={!add || busy} onClick={() => run(async () => (await memoryApi.state(group.avoid, add), setAdd("")))}>
+            Not for me
+          </button>
+        </form>
+      ) : (
+        <p className="mem-note">ClipCart couldn't load its {group.noun} list, so you can't add one right now. Any you already have still work.</p>
+      )}
+      {group.like === "style_like" && (fromModel || interpretations) && <ModelLine interpretations={interpretations} />}
+      {error && (
+        <p className="mem-error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** What reads saves for style suggestions. Names a model only once a real call succeeded. */
+function ModelLine({ interpretations: it }: { interpretations: StyleInterpretations | null }) {
+  if (!it) return null;
+  const m = it.styleModel;
+  const live = m?.mode === "live";
+  const who = live ? (m?.label ?? m?.model ?? "The style model") : null;
+  let text: string;
+  if (it.status === "waiting_for_model" || (!live && m?.mode === "unavailable"))
+    text = "No style model is running, so only ClipCart's fixed rules suggest styles: two saves, or one purchase, with the style word in the listing.";
+  else if (!live) text = "A style model is set up but hasn't answered yet. Until it does, only ClipCart's fixed rules suggest styles.";
+  else text = `${who} reads new saves and suggests styles, checked against each listing's own words.`;
+  return (
+    <p className="mem-note mem-model">
+      {text}
+      {it.pendingEvents > 0 && live ? ` ${it.pendingEvents} new item${it.pendingEvents === 1 ? "" : "s"} waiting to be read.` : ""}
+    </p>
+  );
+}
+
 function Section({ title, note, empty, children }: { title: string; note?: string; empty: string; children: React.ReactNode[] }) {
   return (
     <section className="mem-section">
@@ -395,11 +663,14 @@ export default function StylePanel({
   open,
   onClose,
   memory,
+  vocab,
   onReload,
 }: {
   open: boolean;
   onClose: () => void;
   memory: MemoryState;
+  /** Style tags and tones from GET /api/categories. */
+  vocab: { styleTags: readonly string[]; tones: readonly string[] };
   onReload: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -440,13 +711,13 @@ export default function StylePanel({
     const evs = (t: StyleEvent["type"]) => memory.events.filter((e) => e.type === t);
     const purchases = [...evs("user_confirmed_purchase"), ...evs("verified_order")];
     const bought = new Set(purchases.map((e) => e.item?.listingId).filter(Boolean));
-    const row = (m: StyleMemory) => <MemoryRow key={`${m.id}:${m.updatedAt}`} m={m} onChanged={onReload} />;
+    const row = (m: StyleMemory) => <MemoryRow key={`${m.id}:${m.updatedAt}`} m={m} modelRanks={!!memory.interpretations?.rankingInfluence} onChanged={onReload} />;
     const evRow = (e: StyleEvent) => <EventRow key={e.id} ev={e} bought={!!e.item?.listingId && bought.has(e.item.listingId)} onChanged={onReload} />;
     body = (
       <>
         <StyleNote model={memory.styleModel} memories={ms} onSaved={onReload} />
-        <Section title="Sizes and fit" empty="No size remembered. Say it in a style note above.">
-          {of("size", "fit").map(row)}
+        <Section title="Sizes and fit" note="Clothing size is never used for watches or jewelry; ring size is used for rings only." empty="No size remembered. Say it in a style note above.">
+          {of("size", "fit", "ring_size").map(row)}
         </Section>
         <Section title="Budget" empty="No budget remembered.">
           {of("budget_max").map(row)}
@@ -458,19 +729,26 @@ export default function StylePanel({
         >
           {of("color_like", "color_avoid", "material_like", "material_avoid", "brand_like", "brand_avoid").map(row)}
         </Section>
-        <Section title="Saved items" empty="Nothing saved. Press Save on a result to keep it here.">
-          {evs("saved_item").map(evRow)}
-        </Section>
-        <Section
-          title="Purchases"
-          note="Only items you told us you bought, or verified ClipCart demo orders. ClipCart can't see retailer orders."
-          empty="No purchases. Opening a retailer link doesn't count as one."
-        >
-          {purchases.map(evRow)}
-        </Section>
-        <Section title="Opened retailer links" note="Opening a link is not a purchase. If you bought it, say so and it's added to Purchases." empty="No links opened yet.">
-          {evs("retailer_click").map(evRow)}
-        </Section>
+        <PrefChips group={STYLE_GROUP} vocab={vocab.styleTags} memories={ms} interpretations={memory.interpretations} onChanged={onReload} />
+        <PrefChips group={TONE_GROUP} vocab={vocab.tones} memories={ms} interpretations={memory.interpretations} onChanged={onReload} />
+        <div className="wardrobe">
+          <h3 className="wardrobe-title">Wardrobe</h3>
+          <Section title="Owned (you said)" note="Items you told ClipCart you own or bought. ClipCart doesn't verify them." empty="Nothing yet. Opening a retailer link doesn't count.">
+            {evs("user_confirmed_purchase").map(evRow)}
+          </Section>
+          <Section title="Owned (verified)" note="Paid ClipCart demo orders only. ClipCart can't see retailer orders." empty="No verified orders.">
+            {evs("verified_order").map(evRow)}
+          </Section>
+          <Section title="Saved (interest)" note="Saving shows interest. It never counts as owning something." empty="Nothing saved. Press Save on a result to keep it here.">
+            {evs("saved_item").map(evRow)}
+          </Section>
+          <Section title="Hidden" note="Offers you marked Not for me. They stay out of your results until you unhide them." empty="Nothing hidden.">
+            {evs("rejected_item").map(evRow)}
+          </Section>
+          <Section title="Opened links (not purchases)" note="Opening a link is not a purchase. If you bought it, say so and it moves to Owned (you said)." empty="No links opened yet.">
+            {evs("retailer_click").map(evRow)}
+          </Section>
+        </div>
       </>
     );
   }

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { Health, ProviderSnapshot } from "../types";
+import { researchProvider } from "./Research";
 
 const LABEL: Record<string, string> = {
   live: "Live",
@@ -35,7 +36,11 @@ function health(s: ProviderSnapshot, notYet: string): { mode: string; note: stri
 /** True when detection or listings are simulated, so the header can say so without the full list. */
 export function usesFixtures(health: Health | null) {
   if (!health) return false;
-  return health.providers.perceptron.mode === "fixture" || health.providers.catalog.mode === "fixture";
+  return (
+    health.providers.perceptron.mode === "fixture" ||
+    health.providers.catalog.mode === "fixture" ||
+    researchProvider(health)?.mode === "fixture"
+  );
 }
 
 function ModeList({ health: hp }: { health: Health }) {
@@ -72,6 +77,18 @@ function ModeList({ health: hp }: { health: Health }) {
             : "Off · upload clips instead"
         }
       />
+      <Chip
+        name="Watches and jewelry"
+        mode={hp.features.accessoryDetection ? (det.mode === "fixture" ? "fixture" : "unverified") : "unavailable"}
+        note={
+          hp.features.accessoryDetection
+            ? det.mode === "fixture"
+              ? "On · fixture detection"
+              : "On · not yet checked live"
+            : "Off · box them or use Find"
+        }
+      />
+      <ResearchChip health={hp} catalogMode={p.catalog.mode === "fixture" ? "fixture" : cat.mode} />
       {hp.features.styleMemory && (
         <Chip
           name="Style notes"
@@ -82,6 +99,18 @@ function ModeList({ health: hp }: { health: Health }) {
       )}
     </ul>
   );
+}
+
+/** Research jobs: off, or which provider runs them. Never Grok Bot: no bridge is implemented. */
+function ResearchChip({ health: hp, catalogMode }: { health: Health; catalogMode: string }) {
+  const r = researchProvider(hp);
+  if (!r) return <Chip name="More offers" mode="unavailable" note="Off" />;
+  // Health reports the mode jobs get; manual import runs nothing, and null means the provider isn't implemented here.
+  // "live" only says jobs aren't fixtures: the SoleScout fallback is as healthy as the catalog it calls, and any other
+  // live provider stays unverified until it has returned results.
+  const mode =
+    r.mode === "manual" ? "rule" : r.mode === "live" ? (r.id === "solescout" ? catalogMode : "unverified") : (r.mode ?? "unavailable");
+  return <Chip name="More offers" mode={mode} note={r.name} />;
 }
 
 /**
