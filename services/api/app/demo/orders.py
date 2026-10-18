@@ -145,6 +145,7 @@ def create_order(st: Any, owner_id: str, catalog_item_id: str) -> dict:
         payment_signature=None,
         receipt_status="ineligible",
         receipt_asset_id=None,
+        receipt_mint_signature=None,
         created_at=t,
         updated_at=t,
         merchant_label=item.merchant_label,

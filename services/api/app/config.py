@@ -65,11 +65,18 @@ class Settings:
     feature_photon: bool
     feature_voice: bool
     feature_solana: bool
+    feature_solana_cnft_receipts: bool
     solana_network: str
     solana_rpc_url: str
     solana_demo_merchant_wallet: str
     solana_demo_amount_lamports: int
     solana_demo_order_ttl_s: int
+    solana_cnft_tree_address: str
+    solana_cnft_receipt_authority: str
+    solana_cnft_authority_keypair_path: str
+    solana_das_rpc_url: str
+    solana_cnft_metadata_base_url: str
+    solana_cnft_worker_dir: str
     cookie_secure: bool
     search_deadline_s: float
     analysis_deadline_s: float
@@ -147,11 +154,18 @@ def load_settings() -> Settings:
         feature_photon=_flag("FEATURE_PHOTON"),
         feature_voice=_flag("FEATURE_VOICE"),
         feature_solana=_flag("FEATURE_SOLANA"),
+        feature_solana_cnft_receipts=_flag("FEATURE_SOLANA_CNFT_RECEIPTS"),
         solana_network=(os.getenv("SOLANA_NETWORK") or "devnet").strip().lower(),
         solana_rpc_url=(os.getenv("SOLANA_RPC_URL") or "https://api.devnet.solana.com").rstrip("/"),
         solana_demo_merchant_wallet=(os.getenv("SOLANA_DEMO_MERCHANT_WALLET") or "").strip(),
         solana_demo_amount_lamports=int(os.getenv("SOLANA_DEMO_AMOUNT_LAMPORTS", "10000000")),
         solana_demo_order_ttl_s=int(os.getenv("SOLANA_DEMO_ORDER_TTL_S", "900")),
+        solana_cnft_tree_address=(os.getenv("SOLANA_CNFT_TREE_ADDRESS") or "").strip(),
+        solana_cnft_receipt_authority=(os.getenv("SOLANA_CNFT_RECEIPT_AUTHORITY") or "").strip(),
+        solana_cnft_authority_keypair_path=(os.getenv("SOLANA_CNFT_AUTHORITY_KEYPAIR_PATH") or "").strip(),
+        solana_das_rpc_url=(os.getenv("SOLANA_DAS_RPC_URL") or "").strip(),
+        solana_cnft_metadata_base_url=(os.getenv("SOLANA_CNFT_METADATA_BASE_URL") or "").strip(),
+        solana_cnft_worker_dir=(os.getenv("SOLANA_CNFT_WORKER_DIR") or "").strip(),
         cookie_secure=_flag("COOKIE_SECURE"),
         search_deadline_s=float(os.getenv("SEARCH_DEADLINE_S", "60")),
         analysis_deadline_s=float(os.getenv("ANALYSIS_DEADLINE_S", "60")),

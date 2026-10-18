@@ -1,0 +1,16 @@
+{
+  "name": "ClipCart demo receipt",
+  "symbol": "CCDEMO",
+  "description": "ClipCart demo receipt · Devnet · No retailer fulfillment. This compressed NFT acknowledges a server-verified 0.01 SOL demo payment on Solana devnet. It is not a retailer purchase, shipment, warranty, or affiliate receipt.",
+  "image": "https://raw.githubusercontent.com/JustGooogleIt/clipcart/feat/cnft-receipts/docs/contracts/cnft-receipt-demo-mark.svg",
+  "attributes": [
+    { "trait_type": "network", "value": "devnet" },
+    { "trait_type": "product", "value": "ClipCart Demo Jacket (devnet)" },
+    { "trait_type": "amount", "value": "0.01 SOL" },
+    { "trait_type": "fulfillment", "value": "none" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": []
+  }
+}

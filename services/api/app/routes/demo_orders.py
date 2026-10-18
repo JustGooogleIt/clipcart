@@ -16,6 +16,7 @@ from app.demo.orders import (
     transfer_request,
     verify_order,
 )
+from app.demo.receipts import get_receipt_for_order
 from app.sessions.service import ApiProblem, idempotent
 
 from .api import In
@@ -113,6 +114,9 @@ def get_demo_order(order_id: str, request: Request) -> dict:
     out: dict = {"order": public_order(doc)}
     if doc["status"] in ("awaiting_payment", "created", "verifying"):
         out["transferRequest"] = transfer_request(doc)
+    receipt = get_receipt_for_order(st, doc)
+    if receipt is not None:
+        out["receipt"] = receipt
     return out
 
 
