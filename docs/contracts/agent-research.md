@@ -109,3 +109,78 @@ Expired response: `status: "expired"`, `products: []`, and `summary: "No researc
 ## Health
 
 `GET /api/health` adds `features.agentResearch` and `research: { provider, mode }`. Both are `null` when the flag is off.
+
+## v2 (additive, `feat/research-v2`)
+
+All new fields are optional or have defaults, so v1 clients keep working.
+
+### Providers (`RESEARCH_PROVIDER`)
+
+| Provider | `mode` | What it does | Live status |
+| --- | --- | --- | --- |
+| `fixture` (default) | `fixture` | Labelled development submission | n/a |
+| `solescout` | `live` (or `fixture` with the fixture catalog) | **Fallback.** Runs at most 2 catalog searches built from the observed attributes and shopper constraints, then at most 3 detail checks on the closest matches. Each **named store record** (URL, price and sizes all from that same record) becomes an offer. When SoleScout names no stores, the offer is its comparison page, with no price. | Retrieval verified live on 2026-10-17 (see below). **No independent-retailer coverage is claimed.** |
+| `manual` | `manual` | Dispatches nothing. The job waits for the owner's import. | n/a |
+| `grok_bot` | — | **Not implemented.** The callback round trip is unproven. See `docs/grok-bot-bridge.md`. | — |
+
+A catalog failure fails the job with `catalog_unavailable` (retryable) instead of completing it with nothing. The existing SoleScout search (`POST /api/sessions/{id}/searches`) is unchanged and remains the main path.
+
+### Job
+
+- **`styleHints`:** set only when `FEATURE_STYLE_MEMORY` is on. Shape: `{colorsLike, colorsAvoid, brandsLike, brandsAvoid, materialsAvoid, tonesLike}`. These are **soft context for the researcher, never constraints.** `preferences` stays the only source of hard constraints.
+- **`resultSource`:** `provider` or `manual_import`.
+- **`mode`** may be `manual`, and **`provider`** may be `solescout` or `manual`.
+
+### Submission fields (`SubmittedProduct`)
+
+| Field | Validation |
+| --- | --- |
+| `imageUrl` | Kept only if it is HTTPS and passes the URL-safety check. The image is never fetched. |
+| `brand` | Kept only when an `evidence` entry with `field: "brand"` contains it (`brandBasis: "page_text"`) or the source is the catalog (`"catalog_record"`). Otherwise it is dropped with a warning. Never inferred from appearance. |
+| `condition` | `new`, `used`, `pre_owned` (stored as `used`) or `unknown`. Feeds the condition check. |
+| `sellerKind` | `retailer`, `marketplace`, `resale` or `unknown` |
+| `variants[]` | `{label, available: true|false|null, price?, priceExcerpt?}`. **Unavailable variants are kept** (`availability: "unavailable"`), never dropped. Only available ones count as in stock. A variant price needs its own excerpt. |
+| `evidence[]` | `{field, excerpt}`, where `field` is title, price, availability, size, condition, brand, identifier or image. At most 12. |
+| `identifiers` | `{gtin (8–14 digits), mpn, sku, styleCode, catalogRef}`. Used only for equivalence. |
+
+### Product fields (`ResearchProduct`)
+
+These are added: `source` (`agent`, `catalog` or `manual_import`, **set by the server, never by the submission**), `imageUrl`, `brand`, `brandBasis`, `condition`, `sellerKind`, `variants`, `evidence` and `offerGroup`. The first warning names the source, for example "From SoleScout's store record…" or "Imported manually…". Offers older than 24 h from a non-live source get a "Seen on <date>; price and stock may have changed" warning. The result limit is now 5 primary and 5 needs-checking.
+
+### Offer comparison (`offerGroup`)
+
+| `equivalence` | When | UI wording |
+| --- | --- | --- |
+| `identifier_match` | The offers share a GTIN, MPN, SKU, style code or catalog product | "Same product (`basis`)" |
+| `approximate` | The same evidenced brand and a near-identical title (token Jaccard ≥ 0.75) | "Looks like the same product — not confirmed" |
+| `single` | Neither | No comparison |
+
+- **Lowest price:** `lowestConfirmedPrice` counts only offers whose price came with page text, in the shopper's currency. `isLowestConfirmed` marks that offer.
+- **Uncertain prices:** `uncertainPriceCount` counts offers in the group with no confirmed price. They are shown as "Price not confirmed" and never ranked as cheapest.
+- **Timing:** groups are computed before the result limit, so `offerCount` can exceed the offers shown.
+
+### Manual import: `POST /api/research-jobs/{jobId}/import`
+
+This is for the owner, with the `X-ClipCart-Request: 1` header and a limit of 10 per 10 minutes. The body is `{products: SubmittedProduct[] (≤20), notes?}`.
+
+- **When it's allowed:** while the job is pending, which is how `manual` jobs wait, or **after a failed or expired job**, for example when a bridge callback failed.
+- **Labelling:** products are labelled `source: "manual_import"` and `mode: "manual"`, the job gets `resultSource: "manual_import"`, and its summary starts with "Manually imported results."
+- **Validation:** the same as for any submission.
+
+| HTTP | `code` | When |
+| --- | --- | --- |
+| 404 | `not_found` | Not this owner's job |
+| 409 | `already_completed` | The job already has results |
+| 422 | `invalid_import` | Envelope invalid. The job is left as it was. |
+
+### Rendering additions (UI)
+
+1. **Source label:** show `source` as "From SoleScout's store record", "Found by research agent" or "Imported manually".
+2. **Offer groups:** for `offerGroup.offerCount > 1`, show the group with the wording above. Mark the `isLowestConfirmed` offer "Lowest confirmed price". Never mark an offer whose `price` is null.
+3. **Variants:** show unavailable variants struck through or labelled "Unavailable". Don't hide them.
+4. **Brand and image:** show `brand` only when it's present, and add "(from the page)" or "(from SoleScout)" per `brandBasis`. Show `imageUrl` with `referrerpolicy="no-referrer"`.
+5. **Import:** a manual import form, or a JSON paste, for failed, expired or `manual` jobs, clearly labelled "Manual import".
+
+### Live retrieval check (2026-10-17, no key, no paid provider)
+
+One run of the `solescout` provider covered a blue denim trucker jacket with a $300 budget. It made 5 SoleScout calls: 2 searches and 3 detail checks. All three detailed products reported **one hidden store and no named store records**, so the result was 3 SoleScout comparison-page offers. They're priced "not confirmed", labelled, and sorted into needs-checking. **On SoleScout's free tier, this run found no independent retailer offers.** Real multi-retailer and resale coverage needs a working research agent (`docs/grok-bot-bridge.md`) or eBay credentials (`docs/ebay-adapter.md`).
