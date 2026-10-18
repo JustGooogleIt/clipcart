@@ -52,8 +52,8 @@ export default function ModeChips({ health }: { health: Health | null }) {
         <Chip
           name="Style notes"
           mode={p.styleModel?.mode === "live" ? "live" : "rule"}
-          // The local model is only named as in use once a real call has succeeded.
-          note={p.styleModel?.mode === "live" ? `${p.styleModel.model ?? "Local model"} · Live` : "Rule-based parser"}
+          // The model is only named as in use once a real call has succeeded, using the server's own label.
+          note={p.styleModel?.mode === "live" ? `${p.styleModel.label ?? p.styleModel.model ?? "Style model"} · Live` : "Rule-based parser"}
         />
       )}
       <a className="chip chip-link" href="#/diagnostics">

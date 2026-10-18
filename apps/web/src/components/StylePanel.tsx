@@ -4,12 +4,14 @@ import {
   MemoryError,
   memoryApi,
   noteReader,
+  noteResultReader,
   type MemoryKind,
   type MemoryState,
-  type NoteProposal,
-  type NoteResult,
   type StyleEvent,
   type StyleMemory,
+  type StyleModelInfo,
+  type StyleNoteResult,
+  type StyleProposal,
 } from "../memory";
 
 const KIND: Record<MemoryKind, string> = {
@@ -46,6 +48,7 @@ function editText(kind: MemoryKind, v: unknown): string {
 function sourceText(m: StyleMemory): string {
   if (m.origin === "stated") {
     if (m.source === "style_note") return "From your style note";
+    if (m.source === "style_panel") return "You corrected this";
     if (m.source === "chat_refinement") return "From what you typed in Refine";
     return "You set this";
   }
@@ -255,10 +258,10 @@ function EventRow({ ev, bought, onChanged }: { ev: StyleEvent; bought: boolean; 
   );
 }
 
-function StyleNote({ reader, memories, onSaved }: { reader: string; memories: StyleMemory[]; onSaved: () => void }) {
+function StyleNote({ model, memories, onSaved }: { model: StyleModelInfo; memories: StyleMemory[]; onSaved: () => void }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<NoteResult | null>(null);
+  const [result, setResult] = useState<StyleNoteResult | null>(null);
   const [keep, setKeep] = useState<boolean[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -268,7 +271,7 @@ function StyleNote({ reader, memories, onSaved }: { reader: string; memories: St
     try {
       const r = await memoryApi.note(text.trim());
       setResult(r);
-      setKeep(r.proposals.map(() => true));
+      setKeep((r.proposals ?? []).map(() => true));
     } catch {
       setError("Couldn't read that note. The memory service may be offline.");
     } finally {
@@ -280,7 +283,7 @@ function StyleNote({ reader, memories, onSaved }: { reader: string; memories: St
     setBusy(true);
     setError(null);
     try {
-      for (const [i, p] of result.proposals.entries()) {
+      for (const [i, p] of (result.proposals ?? []).entries()) {
         if (!keep[i]) continue;
         if (p.action !== "remove") await memoryApi.state(p.kind, p.value, "style_note");
         else {
@@ -297,12 +300,12 @@ function StyleNote({ reader, memories, onSaved }: { reader: string; memories: St
       setBusy(false);
     }
   };
-  const describe = (p: NoteProposal) => `${p.action === "remove" ? "Forget: " : ""}${KIND[p.kind]} ${valueText(p.kind, p.value)}`;
+  const describe = (p: StyleProposal) => `${p.action === "remove" ? "Forget: " : ""}${KIND[p.kind]} ${valueText(p.kind, p.value)}`;
 
   return (
     <section className="mem-section mem-note-box">
       <h3>Tell ClipCart your style</h3>
-      <p className="mem-note">Nothing is saved until you confirm it. Read by: {reader}.</p>
+      <p className="mem-note">Nothing is saved until you confirm it. Read by: {noteReader(model)}.</p>
       <form
         className="mem-edit"
         onSubmit={(e) => {
@@ -328,10 +331,10 @@ function StyleNote({ reader, memories, onSaved }: { reader: string; memories: St
       {result && (
         <div className="mem-proposals" role="status">
           <p className="mem-note">
-            {result.mode === "model" ? `Read by ${result.model ?? "the local model"}.` : "Read by the rule-based parser."}{" "}
-            {result.proposals.length ? "Untick anything that's wrong, then save." : "Nothing ClipCart can remember was found in that note."}
+            Read by {noteResultReader(result, model)}.{" "}
+            {result.proposals?.length ? "Untick anything that's wrong, then save." : "Nothing ClipCart can remember was found in that note."}
           </p>
-          {result.proposals.length > 0 && (
+          {!!result.proposals?.length && (
             <>
               <ul className="mem-list">
                 {result.proposals.map((p, i) => (
@@ -434,7 +437,7 @@ export default function StylePanel({
     const evRow = (e: StyleEvent) => <EventRow key={e.id} ev={e} bought={!!e.item?.listingId && bought.has(e.item.listingId)} onChanged={onReload} />;
     body = (
       <>
-        <StyleNote reader={noteReader(memory.styleModel)} memories={ms} onSaved={onReload} />
+        <StyleNote model={memory.styleModel} memories={ms} onSaved={onReload} />
         <Section title="Sizes and fit" empty="No size remembered. Say it in a style note above.">
           {of("size", "fit").map(row)}
         </Section>

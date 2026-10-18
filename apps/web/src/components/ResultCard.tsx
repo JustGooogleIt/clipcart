@@ -27,8 +27,8 @@ export default function ResultCard({ item, cropId }: { item: ResultItem; cropId:
   const destination = viaComparison ? `${first?.retailer ?? L.retailer}'s price comparison page` : `${first?.retailer ?? L.retailer}'s product page`;
   const open = r.constraintChecks.filter((c) => c.state !== "satisfied");
   const unmet = open.length;
-  // Style memory (PR #15) adds reasons when it reordered this result; packages/contracts doesn't carry the field yet.
-  const personalization = (r as typeof r & { personalization?: string[] }).personalization ?? [];
+  // Style memory's reasons when it reordered this result; empty when it had no effect.
+  const personalization = r.personalization ?? [];
   const saved = mem.savedEventId(r.id, L.id);
   return (
     <article className={`card card-${r.section}`} data-result={r.id}>

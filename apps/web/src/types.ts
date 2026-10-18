@@ -55,6 +55,8 @@ export interface ProviderSnapshot {
   lastError: { code?: string; note?: string; traceId?: string } | null;
   recent?: { at: string; ok: boolean; traceId: string | null; code: string | null; note: string }[];
   model?: string;
+  label?: string | null;
+  hosting?: "local" | "remote" | null;
   provider?: string;
   setting?: string;
   error?: string | null;

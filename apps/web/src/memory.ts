@@ -1,95 +1,15 @@
 /**
- * Style memory client. Contract: docs/contracts/style-memory.md on feat/style-memory (draft PR #15).
+ * Style memory client. Contract: docs/contracts/style-memory.md (PR #15); types come from @contracts.
  *
- * These types are written by hand from that contract for the UI only. packages/contracts is not regenerated
- * until the backend lane confirms the contract.
- *
- * Every call fails soft: the feature flag being off, an offline memory service or an offline local model must
+ * Every call fails soft: the feature flag being off, an offline memory service or an unreachable style model must
  * never block the shopping flow. Nothing in the upload → pick → rules → search path waits on this module.
  */
 import { createContext, useContext } from "react";
+import type { StyleEvent, StyleMemory, StyleModelInfo, StyleNoteResult } from "@contracts";
 import { key } from "./api";
 
-export type MemoryKind =
-  | "size"
-  | "fit"
-  | "budget_max"
-  | "color_like"
-  | "color_avoid"
-  | "material_like"
-  | "material_avoid"
-  | "brand_like"
-  | "brand_avoid";
-export type MemorySource = "preferences_form" | "style_note" | "chat_refinement" | "saved_items" | "rejected_items" | "purchases";
-export type Origin = "stated" | "inferred";
-
-export interface StyleMemory {
-  id: string;
-  kind: MemoryKind;
-  /** size: {raw, system}; budget_max: {amountMinor, currency}; others: a string. */
-  value: unknown;
-  origin: Origin;
-  source: MemorySource;
-  status: "active" | "overridden" | "removed";
-  sourceEventIds: string[];
-  evidenceCount: number;
-  overriddenBy: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type StyleEventType =
-  | "explicit_preference"
-  | "saved_item"
-  | "rejected_item"
-  | "retailer_click"
-  | "user_confirmed_purchase"
-  | "verified_order";
-
-export interface StyleItem {
-  recommendationId?: string | null;
-  listingId?: string | null;
-  offerKey?: string | null;
-  productKey?: string | null;
-  title: string;
-  brand?: string | null;
-  domain?: string | null;
-  category?: string | null;
-}
-
-export interface StyleEvent {
-  id: string;
-  type: StyleEventType;
-  origin: Origin;
-  source: string;
-  occurredAt: string;
-  item?: StyleItem | null;
-  memoryId?: string | null;
-  linkKind?: string | null;
-  orderId?: string | null;
-}
-
-/** unavailable: feature or provider off. unverified: configured, no successful call yet. live: a real call succeeded. */
-export interface StyleModelInfo {
-  mode: "unavailable" | "unverified" | "live";
-  model: string | null;
-}
-
-export interface NoteProposal {
-  kind: MemoryKind;
-  value: unknown;
-  action: "add" | "set" | "remove";
-  quote: string;
-}
-
-export interface NoteResult {
-  /** model: the local model's output, validated in code. rule_based: the model was unavailable or invalid. */
-  mode: "model" | "rule_based";
-  model: string | null;
-  proposals: NoteProposal[];
-  rejectedProposals: number;
-  note?: string | null;
-}
+export type { StyleEvent, StyleItem, StyleMemory, StyleModelInfo, StyleNoteResult, StyleProposal } from "@contracts";
+export type MemoryKind = StyleMemory["kind"];
 
 export type MemoryState =
   | { state: "loading" }
@@ -156,7 +76,7 @@ export async function loadMemory(): Promise<MemoryState> {
 
 export const memoryApi = {
   /** A stated preference. For one-active kinds (size, fit, budget_max) the server overrides the older one. */
-  state: (kind: MemoryKind, value: unknown, source: "preferences_form" | "style_note" = "preferences_form") =>
+  state: (kind: MemoryKind, value: unknown, source: "style_panel" | "style_note" = "style_panel") =>
     call<{ memory: StyleMemory; overridden: string[] }>("POST", "/api/style/memories", { kind, value, source, idempotencyKey: key() }),
   remove: (id: string) => call<{ memory: StyleMemory }>("DELETE", `/api/style/memories/${id}`),
   /** saved_item, rejected_item or user_confirmed_purchase. Clicks and verified orders are server-only. */
@@ -164,14 +84,26 @@ export const memoryApi = {
     call<{ event: StyleEvent }>("POST", "/api/style/events", { type, recommendationId, idempotencyKey: key() }),
   removeEvent: (id: string) => call<{ deleted: string }>("DELETE", `/api/style/events/${id}`),
   /** Proposes updates from text and saves nothing. */
-  note: (text: string) => call<NoteResult>("POST", "/api/style/notes", { text }),
+  note: (text: string) => call<StyleNoteResult>("POST", "/api/style/notes", { text }),
 };
 
-/** One-line, honest description of what reads style notes right now. Never claims the model works before a real call. */
+/**
+ * One-line description of what reads style notes right now, from the server's own label and hosting.
+ * Never calls a reader local unless the server says so, and never names a model before a real call succeeded.
+ */
 export function noteReader(m: StyleModelInfo): string {
-  if (m.mode === "live") return `Local model ${m.model ?? ""} (live)`.replace("  ", " ");
-  if (m.mode === "unverified") return `Rule-based parser · ${m.model ?? "local model"} set up but not yet working`;
-  return "Rule-based parser · local model off";
+  const name = m.label ?? m.model ?? "style model";
+  if (m.mode === "live") return name;
+  if (m.mode === "unverified") return `Rule-based parser · ${name} set up, no successful call yet`;
+  return m.label ?? "Rule-based parser only";
+}
+
+/** Who read one note: the rule-based parser, or the model the response names, with where it runs. */
+export function noteResultReader(r: StyleNoteResult, m: StyleModelInfo | null): string {
+  if (r.mode !== "model") return "the rule-based parser";
+  if (m?.mode === "live" && m.label) return m.label;
+  const name = r.model ?? r.provider;
+  return r.hosting === "remote" ? `${name}, hosted (not local)` : r.hosting === "local" ? `${name}, local` : name;
 }
 
 /** What result cards need from the panel: whether saving works, which results are saved, and the toggle. */
