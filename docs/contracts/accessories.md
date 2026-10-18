@@ -26,10 +26,12 @@ Read-only, no flag, no auth. The UI should build category pickers and per-catego
   { "id": "jacket", "label": "Jacket", "family": "apparel", "sizeRule": "clothing", "attributeKeys": ["color", "pattern", "cut", "details"] },
   { "id": "ring", "label": "Ring", "family": "jewelry", "sizeRule": "ring", "attributeKeys": ["color", "cut", "details"] },
   { "id": "watch", "label": "Watch", "family": "watch", "sizeRule": "none", "attributeKeys": ["color", "cut", "details"] }
-] }
+],
+  "styleTags": ["vintage", "minimalist", "…", "punk"],
+  "tones": ["gold-tone", "silver-tone", "rose-gold-tone", "black", "two-tone"] }
 ```
 
-`sizeRule` is `clothing`, `ring` or `none`.
+`sizeRule` is `clothing`, `ring` or `none`. The response is the generated `CategoriesResponse` type (`CategoryInfo` rows). `styleTags` and `tones` are the style-memory vocabulary (in TypeScript, `CategoriesResponse["styleTags"][number]` and `CategoriesResponse["tones"][number]`; see `docs/contracts/style-memory.md`), added for #26 so the UI never hard-codes them.
 
 ## Observed attributes (`GarmentObservation.observedAttributes`)
 
@@ -67,7 +69,7 @@ A garment whose attributes were changed this way gets `"appearanceNormalized": [
 ## Results for accessories
 
 - **Identity tier:** a watch or jewelry result is never `verified` or `likely` from appearance. The tier is capped at `similar`, and the card says "Similar look".
-- **Seller claims:** when a listing's title or material text claims precious metal, gemstones or authenticity (for example "14k gold", "diamond", "authentic"), the result gets this warning: *"Metal, stones and authenticity are the seller's description; ClipCart doesn't verify them."* The claim is never repeated as a ClipCart fact.
+- **Seller claims:** when a listing's title or material text claims precious metal, gemstones or authenticity (for example "14k gold", "diamond", "authentic"), the result gets this warning: *"Metal, stones and authenticity are the seller's description; ClipCart doesn't verify them."* The claim is never repeated as a ClipCart fact. Match on the stable code `seller_claims_unverified` in `recommendation.warningCodes` (or `warningCodes` on a research product), never on the text. Research products for an accessory get the same code from their title.
 - **Category matching:**
   - Watch straps and bands are not watches.
   - "Key ring", "ring light" and "O-ring" are not rings.

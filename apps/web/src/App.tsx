@@ -63,9 +63,29 @@ export default function App() {
 
   const refreshHealth = useCallback(() => api.health().then(setHealth).catch(() => undefined), []);
 
+  // A session this page shows can stop being ours: another tab opened at the same time on a fresh browser minted a
+  // different owner cookie, and the browser kept that one. Resume with the cookie we actually hold and switch to it.
+  // Returns the new view, or null when the session didn't change (a real 404) or the resume failed.
+  const adoptCurrentSession = useCallback(async (staleId: string) => {
+    try {
+      const v = await api.resume();
+      if (v.session.id === staleId) return null;
+      setView(v);
+      setSearch(null);
+      setSearchId(v.session.activeSearchId ?? null);
+      return v;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const fail = useCallback(
     async (e: unknown) => {
       const err = e instanceof ApiError ? e : new ApiError(0, "error", String(e));
+      if (err.status === 404 && err.code === "not_found" && s && (await adoptCurrentSession(s.id))) {
+        setNotice({ kind: "info", text: "ClipCart started in another tab at the same time, so this tab switched to that session. Try again." });
+        return;
+      }
       if (err.status === 409 && s) {
         try {
           setView(await api.session(s.id));
@@ -77,7 +97,7 @@ export default function App() {
         setNotice({ kind: "error", text: `${err.message}${err.requestId ? ` (ref ${err.requestId})` : ""}` });
       }
     },
-    [s],
+    [s, adoptCurrentSession],
   );
 
   // Boot: restore the last committed session or create one.
@@ -213,7 +233,24 @@ export default function App() {
     setDrawing(null);
     setDraft(null);
     try {
-      setView(await upload(s.id, s.revision, f, setProgress));
+      try {
+        setView(await upload(s.id, s.revision, f, setProgress));
+      } catch (e) {
+        // Session no longer ours (see adoptCurrentSession): retry once into the cookie's session, but only while
+        // that session is still empty, so a clip another tab already added is never replaced without asking.
+        const moved = e instanceof ApiError && e.status === 404 && e.code === "not_found" ? await adoptCurrentSession(s.id) : null;
+        if (!moved) throw e;
+        const replaceText = "ClipCart started in another tab at the same time, so this tab switched to that session. Upload again to replace its clip.";
+        if (moved.media) return setNotice({ kind: "info", text: replaceText });
+        try {
+          setView(await upload(moved.session.id, moved.session.revision, f, setProgress));
+        } catch (e2) {
+          if (!(e2 instanceof ApiError && e2.status === 409)) throw e2;
+          // The other tab's clip landed first: show it, and never replace it without asking.
+          setView(await api.session(moved.session.id).catch(() => moved));
+          setNotice({ kind: "info", text: replaceText });
+        }
+      }
     } catch (e) {
       fail(e);
     } finally {

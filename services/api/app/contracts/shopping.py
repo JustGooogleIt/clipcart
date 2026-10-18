@@ -26,6 +26,19 @@ Condition = Literal["new", "used", "any"]
 SearchStatus = Literal["queued", "running", "completed", "partial", "no_match", "failed", "cancelled", "superseded"]
 AnalysisStatus = Literal["queued", "running", "completed", "partial", "detection_unavailable", "failed"]
 Section = Literal["primary", "needs_checking", "original_over_budget"]
+# Stable codes for the warnings ClipCart itself adds, so clients never match warning text.
+# Provider-supplied warning text (e.g. SoleScout disclaimers) has no code.
+WarningCode = Literal[
+    "seller_claims_unverified",  # accessory metal/stone/authenticity words are the seller's description
+    "availability_unknown",
+    "fixture_data",  # development or captured fixture, not a live result
+    "price_without_page_text",  # research: a price came without the page text showing it, so it was dropped
+    "comparison_page",  # research: a price-comparison page, not a retailer checkout
+    "observation_stale",  # research: seen more than 24 h ago by a non-live source
+    "brand_not_evidenced",  # research: brand not shown in the page evidence, so it was dropped
+    "image_rejected",  # research: image link failed the URL check
+    "exact_claim_unconfirmed",  # research: the agent said exact match; not independently confirmed
+]
 PriceBasis = Literal["seller_offer", "aggregate_lowest", "unknown"]
 SellerVisibility = Literal["named", "hidden", "unknown"]
 LinkKind = Literal["aggregator_product_page", "retailer_product_page"]
@@ -195,6 +208,7 @@ class Recommendation(Record):
     constraint_checks: list[ConstraintCheck]
     explanation: str
     warnings: list[str]
+    warning_codes: list[WarningCode] = Field(default_factory=list)
     rank: int
     ranking_version: str
     found_by: list[Literal["exact", "alternatives"]]

@@ -257,3 +257,30 @@ def test_model_unavailable_requeues_and_status_reports_waiting(wapp):
     st.style_model = lambda: None
     info = c.get("/api/style/interpretations").json()
     assert info["status"] == "waiting_for_model" and info["rankingInfluence"] is False
+
+
+def test_interpretations_response_is_the_generated_shape(wapp):
+    from app.contracts import InterpretationRunResult, StyleInterpretations
+
+    def reply(req):
+        e = next(x for x in req["events"] if x["brand"] == "Levis")
+        return {"proposals": [
+            {"kind": "brand_like", "value": "Levis", "evidenceEventIds": [e["eventId"]], "quote": "Brand: Levis", "confidence": 0.6},
+            {"kind": "size", "value": 42, "evidenceEventIds": [e["eventId"]], "quote": "x"},  # non-string value from a model
+        ]}
+
+    c, st, fake, s, recs = _setup_saves(wapp, reply)
+    _ev(c, "saved_item", recs["Vintage 90s Denim Trucker Jacket"])
+    ran = c.post("/api/style/interpretations/run", headers=H).json()
+    InterpretationRunResult.model_validate(ran)
+    assert ran["status"] == "done" and ran["applied"][0]["value"] == "Levis" and ran["rejected"][0]["value"] == "42"
+    info = c.get("/api/style/interpretations").json()
+    StyleInterpretations.model_validate(info)  # strict: unknown keys or shapes raise
+    run = info["runs"][0]
+    assert info["rankingInfluence"] is False and info["styleModel"]["mode"] in ("unavailable", "unverified", "live")
+    assert run["status"] == "done" and run["usage"] == {"wallMs": 5, "promptTokens": 100, "completionTokens": 20}
+    assert run["applied"] == [{"kind": "brand_like", "value": "Levis", "confidence": 0.6, "evidenceEventIds": run["evidenceEventIds"]}]
+    # Runs stored before the typed contract could hold a raw model value; they still read back as strings.
+    st.db.style_interpret_runs.update_one({"id": run["id"]}, {"$set": {"rejected": [{"kind": 7, "value": {"a": 1}, "reason": "old"}]}})
+    old = c.get("/api/style/interpretations").json()["runs"][0]["rejected"][0]
+    assert old == {"kind": "7", "value": "{'a': 1}", "reason": "old"}

@@ -15,7 +15,12 @@ from .media import (
 )
 from .research import ResearchJob, ResearchProduct, ResearchSubmission, SubmittedProduct
 from .style_memory import (
+    InterpretationApplied,
+    InterpretationRejected,
+    InterpretationRun,
+    InterpretationRunResult,
     StyleEvent,
+    StyleInterpretations,
     StyleMemory,
     StyleModelInfo,
     StyleNoteResult,
@@ -23,7 +28,10 @@ from .style_memory import (
     StyleProfile,
     StyleProfileView,
     StyleProposal,
+    StyleTag,
+    Tone,
 )
+from .vocabulary import CategoriesResponse, CategoryInfo
 from .shopping import (
     AgentEvent,
     AnalysisJob,
@@ -45,10 +53,13 @@ from .shopping import (
     SizePref,
     SizeStock,
     StoreOffer,
+    WarningCode,
 )
 
 __all__ = [
-    "AgentEvent", "AnalysisJob", "AnalysisResult", "ApiError", "ConstraintCheck", "CropRef", "Evidence", "EvidenceClaim",
+    "AgentEvent", "AnalysisJob", "CategoriesResponse", "CategoryInfo", "InterpretationApplied",
+    "InterpretationRejected", "InterpretationRun", "InterpretationRunResult", "StyleInterpretations", "StyleTag", "Tone",
+    "WarningCode", "AnalysisResult", "ApiError", "ConstraintCheck", "CropRef", "Evidence", "EvidenceClaim",
     "FrameRef", "FrameTransform", "Garment", "GarmentObservation", "JobError", "Listing", "MediaAsset", "Money",
     "OutboundLink", "PreferencePatch", "Preferences", "ProviderIssue", "ProviderRequestMeta", "Recommendation", "Record",
     "ReferralEvent", "StyleEvent", "StyleMemory", "StyleModelInfo", "StyleNoteResult", "StyleNoteUsage", "StyleProfile", "StyleProfileView", "StyleProposal", "ResearchJob", "ResearchProduct", "ResearchSubmission", "SubmittedProduct", "SearchBudget", "SearchJob", "ShoppingSession", "SizePref", "SizeStock", "StoreOffer",
