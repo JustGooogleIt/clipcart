@@ -72,12 +72,12 @@ export function researchProvider(health: Health | null): { id: string; name: str
         mode,
       };
     case "grok_bot":
-      // The Grok Bot callback is unproven (docs/grok-bot-bridge.md). Results, if any, arrive as agent submissions.
+      // Results arrive as agent submissions and are validated like any agent's claims (docs/grok-bot-bridge.md).
       return {
         id: "grok_bot",
-        name: "Grok Bot research · callback not proven",
+        name: health.research?.status === "operational" ? "Grok Bot research agent" : "Grok Bot research · not yet verified here",
         about:
-          "Sends this piece to a Grok Bot routine. Offers appear only if the Bot posts them back, which hasn't been proven yet. If nothing arrives, you can import offers by hand.",
+          "Sends this piece to a Grok Bot routine, which browses stores and posts offers back. ClipCart checks every link and keeps only prices shown with the page's own text; nothing the Bot says is treated as verified. If nothing arrives, you can import offers by hand.",
         mode,
       };
     default:

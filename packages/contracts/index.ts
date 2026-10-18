@@ -626,7 +626,7 @@ export interface ResearchJob {
   mode: "live" | "fixture" | "manual";
   preferences: Preferences;
   products?: ResearchProduct[];
-  provider: "fixture" | "solescout" | "manual";
+  provider: "fixture" | "solescout" | "manual" | "grok_bot";
   rejected?: RejectedItem[];
   resultSource?: "provider" | "manual_import";
   sessionId: string;

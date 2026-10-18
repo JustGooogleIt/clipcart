@@ -18,7 +18,8 @@ const extRoot = path.resolve(here, "..");
 const out = path.join(here, "out");
 const BASE = (process.env.CLIPCART_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
 const CHROME = process.env.CHROME_PATH ?? "/opt/pw-browsers/chromium";
-const VIDEO_PORT = 8765;
+// The local test video page's port. Override with E2E_VIDEO_PORT when 8765 is taken (the Grok Bot probe listens there).
+const VIDEO_PORT = Number(process.env.E2E_VIDEO_PORT ?? 8765);
 const VIDEO_URL = `http://video.test:${VIDEO_PORT}/video.html`; // a host the extension has no permission for
 const DEAD_URL = "http://127.0.0.1:8009"; // nothing listens here
 fs.mkdirSync(out, { recursive: true });
@@ -172,7 +173,7 @@ await step("Shop this frame captures the visible video tab before any overlay, t
   assert.equal(stored.sourceUrl, VIDEO_URL);
   assert.match(stored.sourceTitle, /denim trucker jacket/);
   fs.writeFileSync(path.join(out, "03-raw-capture.jpg"), Buffer.from(stored.dataUrl.split(",")[1], "base64"));
-  assert.match(await crop.locator("#source-text").textContent(), /denim trucker jacket \(test page\) · video\.test:8765/);
+  assert.match(await crop.locator("#source-text").textContent(), new RegExp(`denim trucker jacket \\(test page\\) · video\\.test:${VIDEO_PORT}`));
   assert.equal(await crop.locator("#blank").isHidden(), true);
   // The capture is the video page (its red player bar is there), not the popup or the preview.
   const red = await crop.evaluate(() => {

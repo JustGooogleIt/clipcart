@@ -80,7 +80,12 @@ export interface Health {
    * Both null when FEATURE_AGENT_RESEARCH is off (docs/contracts/agent-research.md). mode is what jobs get, and null
    * for a provider this server doesn't implement.
    */
-  research?: { provider: string | null; mode: "fixture" | "manual" | "live" | null };
+  research?: {
+    provider: string | null;
+    mode: "fixture" | "manual" | "live" | null;
+    /** operational only after a job from this provider completed with its own results (not a manual import). */
+    status?: "unavailable" | "unverified" | "operational" | null;
+  };
 }
 
 export type Category = GarmentObservation["category"];

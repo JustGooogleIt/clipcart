@@ -152,7 +152,7 @@ def import_manual(state, job_id: str, owner: str, payload: dict) -> tuple[bool, 
 
 def public_view(state, doc: dict) -> dict:
     doc = expire_if_due(state, doc)
-    d = {k: v for k, v in doc.items() if k not in ("_id", "ownerId")}
+    d = {k: v for k, v in doc.items() if k not in ("_id", "ownerId", "callbackTokenHash")}  # internal only
     if d.get("status") == "ingesting":
         d["status"] = "pending"
     return ResearchJob.model_validate(d).wire()

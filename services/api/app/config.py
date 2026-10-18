@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -49,6 +50,10 @@ class Settings:
     research_provider: str
     research_job_ttl_s: int
     research_resolve_dns: bool
+    grok_bot_webhook_url: str | None
+    grok_bot_webhook_key: str | None = field(repr=False)
+    public_base_url: str | None  # public HTTPS origin the Bot can reach (tunnel), for callbacks and crop URLs
+    research_url_secret: str = field(repr=False)  # HMAC key for signed crop URLs
     feature_youtube_download: bool
     youtube_allowed_video_ids: frozenset[str]
     feature_style_memory: bool
@@ -128,6 +133,10 @@ def load_settings() -> Settings:
         research_provider=(os.getenv("RESEARCH_PROVIDER") or "fixture").lower(),
         research_job_ttl_s=int(os.getenv("RESEARCH_JOB_TTL_S", "900")),
         research_resolve_dns=_flag("RESEARCH_RESOLVE_DNS", True),
+        grok_bot_webhook_url=os.getenv("GROK_BOT_WEBHOOK_URL") or None,
+        grok_bot_webhook_key=os.getenv("GROK_BOT_WEBHOOK_KEY") or None,
+        public_base_url=(os.getenv("CLIPCART_PUBLIC_BASE_URL") or "").rstrip("/") or None,
+        research_url_secret=os.getenv("RESEARCH_URL_SECRET") or secrets.token_urlsafe(32),
         feature_youtube_download=_flag("FEATURE_YOUTUBE_DOWNLOAD"),
         youtube_allowed_video_ids=frozenset(
             v.strip() for v in (os.getenv("YOUTUBE_ALLOWED_VIDEO_IDS") or "").split(",") if v.strip()
