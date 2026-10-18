@@ -491,7 +491,7 @@
         "userDescription": {
           "anyOf": [
             {
-              "maxLength": 200,
+              "maxLength": 800,
               "type": "string"
             },
             {
@@ -1086,6 +1086,43 @@
       "title": "OutboundLink",
       "type": "object"
     },
+    "OwnedItem": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "brand": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "enum": [
+            "user_confirmed_purchase",
+            "verified_order"
+          ],
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "brand",
+        "source",
+        "at"
+      ],
+      "title": "OwnedItem",
+      "type": "object"
+    },
     "PreferencePatch": {
       "additionalProperties": false,
       "description": "Partial update. Only fields present in the request are applied (FR14).",
@@ -1248,6 +1285,40 @@
       "title": "Preferences",
       "type": "object"
     },
+    "ProfileEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "evidenceCount": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "memoryId": {
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "stated",
+            "inferred"
+          ],
+          "type": "string"
+        },
+        "value": {}
+      },
+      "required": [
+        "value",
+        "origin",
+        "memoryId"
+      ],
+      "title": "ProfileEntry",
+      "type": "object"
+    },
     "Recommendation": {
       "additionalProperties": false,
       "properties": {
@@ -1298,6 +1369,12 @@
         },
         "listingId": {
           "type": "string"
+        },
+        "personalization": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "rank": {
           "type": "integer"
@@ -1399,6 +1476,425 @@
         "occurredAt"
       ],
       "title": "ReferralEvent",
+      "type": "object"
+    },
+    "RejectedItem": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "index": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "reason"
+      ],
+      "title": "RejectedItem",
+      "type": "object"
+    },
+    "ResearchGarmentContext": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "colors": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cropAssetId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cut": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "details": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "garmentId": {
+          "type": "string"
+        },
+        "garmentSource": {
+          "enum": [
+            "media",
+            "gemini_youtube"
+          ],
+          "type": "string"
+        },
+        "pattern": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "timestampMs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "visibleText": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "garmentId",
+        "garmentSource",
+        "category"
+      ],
+      "title": "ResearchGarmentContext",
+      "type": "object"
+    },
+    "ResearchJob": {
+      "additionalProperties": false,
+      "properties": {
+        "agentNotes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "finishedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "garment": {
+          "$ref": "#/$defs/ResearchGarmentContext"
+        },
+        "id": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "live",
+            "fixture"
+          ],
+          "type": "string"
+        },
+        "preferences": {
+          "$ref": "#/$defs/Preferences"
+        },
+        "products": {
+          "items": {
+            "$ref": "#/$defs/ResearchProduct"
+          },
+          "type": "array"
+        },
+        "provider": {
+          "const": "fixture",
+          "type": "string"
+        },
+        "rejected": {
+          "items": {
+            "$ref": "#/$defs/RejectedItem"
+          },
+          "type": "array"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "completed",
+            "failed",
+            "expired"
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "provider",
+        "mode",
+        "status",
+        "garment",
+        "preferences",
+        "createdAt",
+        "expiresAt"
+      ],
+      "title": "ResearchJob",
+      "type": "object"
+    },
+    "ResearchProduct": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "enum": [
+            "in_stock",
+            "out_of_stock",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "constraintChecks": {
+          "items": {
+            "$ref": "#/$defs/ConstraintCheck"
+          },
+          "type": "array"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "identityTier": {
+          "enum": [
+            "likely",
+            "similar"
+          ],
+          "type": "string"
+        },
+        "jobId": {
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/OutboundLink"
+          },
+          "type": "array"
+        },
+        "matchClaim": {
+          "enum": [
+            "exact",
+            "similar"
+          ],
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "live",
+            "fixture"
+          ],
+          "type": "string"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "priceBasis": {
+          "enum": [
+            "agent_observed",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "priceExcerpt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retailer": {
+          "type": "string"
+        },
+        "section": {
+          "enum": [
+            "primary",
+            "needs_checking",
+            "excluded"
+          ],
+          "type": "string"
+        },
+        "sizesAvailable": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "validatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "verification": {
+          "const": "url_checked_page_not_fetched",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "jobId",
+        "section",
+        "retailer",
+        "domain",
+        "title",
+        "matchClaim",
+        "identityTier",
+        "price",
+        "priceBasis",
+        "priceExcerpt",
+        "availability",
+        "sizesAvailable",
+        "constraintChecks",
+        "observedAt",
+        "validatedAt",
+        "verification",
+        "uncertainty",
+        "warnings",
+        "links",
+        "mode"
+      ],
+      "title": "ResearchProduct",
+      "type": "object"
+    },
+    "ResearchSubmission": {
+      "additionalProperties": false,
+      "properties": {
+        "jobId": {
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "products": {
+          "items": {
+            "$ref": "#/$defs/SubmittedProduct"
+          },
+          "maxItems": 20,
+          "type": "array"
+        }
+      },
+      "required": [
+        "jobId",
+        "products"
+      ],
+      "title": "ResearchSubmission",
       "type": "object"
     },
     "SearchBudget": {
@@ -1725,6 +2221,734 @@
         "price"
       ],
       "title": "StoreOffer",
+      "type": "object"
+    },
+    "StyleEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "item": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StyleItem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "linkKind": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "memoryId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurredAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "orderId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "origin": {
+          "enum": [
+            "stated",
+            "inferred"
+          ],
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "explicit_preference",
+            "saved_item",
+            "rejected_item",
+            "retailer_click",
+            "user_confirmed_purchase",
+            "verified_order"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "origin",
+        "source",
+        "occurredAt"
+      ],
+      "title": "StyleEvent",
+      "type": "object"
+    },
+    "StyleItem": {
+      "additionalProperties": false,
+      "description": "Listing facts copied server-side from stored records; never client-supplied.",
+      "properties": {
+        "brand": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "listingId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "offerKey": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "productKey": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "recommendationId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "StyleItem",
+      "type": "object"
+    },
+    "StyleMemory": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "evidenceCount": {
+          "default": 1,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "size",
+            "fit",
+            "budget_max",
+            "color_like",
+            "color_avoid",
+            "material_like",
+            "material_avoid",
+            "brand_like",
+            "brand_avoid"
+          ],
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "stated",
+            "inferred"
+          ],
+          "type": "string"
+        },
+        "overriddenBy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "enum": [
+            "preferences_form",
+            "style_panel",
+            "style_note",
+            "chat_refinement",
+            "saved_items",
+            "rejected_items",
+            "purchases"
+          ],
+          "type": "string"
+        },
+        "sourceEventIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "overridden",
+            "removed"
+          ],
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "value": {}
+      },
+      "required": [
+        "id",
+        "kind",
+        "value",
+        "origin",
+        "source",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "title": "StyleMemory",
+      "type": "object"
+    },
+    "StyleModelInfo": {
+      "additionalProperties": false,
+      "description": "Which reader handles style notes. Never claims local processing for a hosted model.\n\nmode: unavailable (feature or provider off), unverified (configured, no successful call yet),\nlive (a real call succeeded since startup).",
+      "properties": {
+        "hosting": {
+          "anyOf": [
+            {
+              "enum": [
+                "local",
+                "remote"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mode": {
+          "enum": [
+            "unavailable",
+            "unverified",
+            "live"
+          ],
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "enum": [
+                "none",
+                "ollama",
+                "openai_compatible"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "StyleModelInfo",
+      "type": "object"
+    },
+    "StyleNoteResult": {
+      "additionalProperties": false,
+      "description": "What POST /api/style/notes returns. Proposals only; nothing is saved.",
+      "properties": {
+        "hosting": {
+          "anyOf": [
+            {
+              "enum": [
+                "local",
+                "remote"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mode": {
+          "enum": [
+            "model",
+            "rule_based"
+          ],
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "proposals": {
+          "items": {
+            "$ref": "#/$defs/StyleProposal"
+          },
+          "type": "array"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "rejectedProposals": {
+          "default": 0,
+          "type": "integer"
+        },
+        "usage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StyleNoteUsage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "mode",
+        "provider"
+      ],
+      "title": "StyleNoteResult",
+      "type": "object"
+    },
+    "StyleNoteUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "completionTokens": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "promptTokens": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "wallMs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "StyleNoteUsage",
+      "type": "object"
+    },
+    "StyleProfileView": {
+      "additionalProperties": false,
+      "description": "What GET /api/style/profile returns: the profile without internal product keys.",
+      "properties": {
+        "brandsAvoid": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "brandsLike": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "budgetMax": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProfileEntry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "colorsAvoid": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "colorsLike": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "fit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProfileEntry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "materialsAvoid": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "materialsLike": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "recentlyOwned": {
+          "items": {
+            "$ref": "#/$defs/OwnedItem"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "rejectedOfferCount": {
+          "default": 0,
+          "type": "integer"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProfileEntry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "updatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "StyleProfileView",
+      "type": "object"
+    },
+    "StyleProposal": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "add",
+            "set",
+            "remove"
+          ],
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "size",
+            "fit",
+            "budget_max",
+            "color_like",
+            "color_avoid",
+            "material_like",
+            "material_avoid",
+            "brand_like",
+            "brand_avoid"
+          ],
+          "type": "string"
+        },
+        "quote": {
+          "type": "string"
+        },
+        "value": {}
+      },
+      "required": [
+        "kind",
+        "value",
+        "action",
+        "quote"
+      ],
+      "title": "StyleProposal",
+      "type": "object"
+    },
+    "SubmittedPrice": {
+      "additionalProperties": false,
+      "properties": {
+        "amountMinor": {
+          "maximum": 10000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amountMinor",
+        "currency"
+      ],
+      "title": "SubmittedPrice",
+      "type": "object"
+    },
+    "SubmittedProduct": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "default": "unknown",
+          "enum": [
+            "in_stock",
+            "out_of_stock",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "matchType": {
+          "enum": [
+            "exact",
+            "similar"
+          ],
+          "type": "string"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "observedPrice": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SubmittedPrice"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "priceExcerpt": {
+          "anyOf": [
+            {
+              "maxLength": 160,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "productUrl": {
+          "maxLength": 2048,
+          "minLength": 8,
+          "type": "string"
+        },
+        "retailer": {
+          "maxLength": 80,
+          "minLength": 1,
+          "type": "string"
+        },
+        "sizesAvailable": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "type": "array"
+        },
+        "sourceUrl": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "retailer",
+        "productUrl",
+        "title",
+        "matchType",
+        "observedAt"
+      ],
+      "title": "SubmittedProduct",
       "type": "object"
     }
   },
