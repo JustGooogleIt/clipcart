@@ -59,7 +59,7 @@ class Settings:
     style_remote_base_url: str | None
     style_remote_api_key: str | None
     style_remote_model: str | None
-    style_remote_label: str
+    style_remote_label: str | None
     style_remote_json_mode: str
     style_remote_max_tokens: int
     feature_photon: bool
@@ -136,7 +136,7 @@ def load_settings() -> Settings:
         style_remote_base_url=(os.getenv("STYLE_REMOTE_BASE_URL") or "").rstrip("/") or None,
         style_remote_api_key=os.getenv("STYLE_REMOTE_API_KEY") or None,
         style_remote_model=os.getenv("STYLE_REMOTE_MODEL") or None,
-        style_remote_label=os.getenv("STYLE_REMOTE_LABEL", "Gemma hosted on Lambda (not local)"),
+        style_remote_label=os.getenv("STYLE_REMOTE_LABEL") or None,  # default is derived from the model id
         style_remote_json_mode=(os.getenv("STYLE_REMOTE_JSON_MODE") or "prompt").lower(),
         style_remote_max_tokens=int(os.getenv("STYLE_REMOTE_MAX_TOKENS", "300")),
         feature_photon=_flag("FEATURE_PHOTON"),

@@ -76,7 +76,7 @@ def test_health_labels_hosted_model_remote_and_unverified_until_a_call(app_facto
                STYLE_MODEL_TIMEOUT_S="1")
     c = new_client(app)
     sm = c.get("/api/health").json()["providers"]["styleModel"]
-    assert sm["hosting"] == "remote" and sm["label"] == "Gemma hosted on Lambda (not local)"
+    assert sm["hosting"] == "remote" and sm["label"] == "gemma-12b · hosted endpoint (not local)"
     assert sm["provider"] == "openai_compatible" and sm["model"] == "gemma-12b" and sm["mode"] != "live"
     c.post("/api/sessions", headers=H)
     r = c.post("/api/style/notes", headers=H, json={"text": TEXT}).json()  # nothing listens on :9
@@ -91,3 +91,21 @@ def test_hosted_provider_without_key_is_not_configured(app_factory, monkeypatch)
                STYLE_REMOTE_BASE_URL="http://127.0.0.1:9/v1", STYLE_REMOTE_MODEL="gemma-12b")
     st = app.state.clipcart
     assert st.style_model() is None and st.status["style_model"].mode == "unavailable"
+
+
+def test_live_reflects_the_latest_call_not_any_past_success(app_factory, monkeypatch):
+    app = _app(app_factory, monkeypatch, STYLE_MODEL_PROVIDER="openai_compatible",
+               STYLE_REMOTE_BASE_URL="http://127.0.0.1:9/v1", STYLE_REMOTE_API_KEY="k", STYLE_REMOTE_MODEL="m",
+               STYLE_REMOTE_LABEL="Configured label")
+    st = app.state.clipcart
+    c = new_client(app)
+    status = st.status["style_model"]
+    status.record(True, note="propose")
+    assert c.get("/api/health").json()["providers"]["styleModel"]["mode"] == "live"
+    assert c.get("/api/health").json()["providers"]["styleModel"]["label"] == "Configured label"
+    status.record(False, code="unavailable", note="down")
+    c.post("/api/sessions", headers=H)
+    assert c.get("/api/health").json()["providers"]["styleModel"]["mode"] == "unverified"
+    assert c.get("/api/style/profile").json()["styleModel"]["mode"] == "unverified"
+    status.record(True, note="propose")
+    assert c.get("/api/style/profile").json()["styleModel"]["mode"] == "live"

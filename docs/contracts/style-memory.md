@@ -92,7 +92,7 @@ The `profile` object is validated against `StyleProfileView` before it's returne
 }
 ```
 
-Lists are capped at 5 items, and `recentlyOwned` at 5. `styleModel.mode` is one of `unavailable` (feature or provider off), `unverified` (configured, no successful call yet) or `live` (a real call succeeded since startup). The internal list of rejected product keys is never returned; only `rejectedOfferCount` is.
+Lists are capped at 5 items, and `recentlyOwned` at 5. `styleModel.mode` is one of `unavailable` (feature or provider off), `unverified` (configured, but no successful call yet or the most recent call failed) or `live` (the most recent real call succeeded). The internal list of rejected product keys is never returned; only `rejectedOfferCount` is.
 
 ### `GET /api/style/memories?status=active|overridden|removed|all`
 
@@ -173,7 +173,7 @@ Proposes memory updates from text and **saves nothing**.
 
 ## Health
 
-`GET /api/health` adds `features.styleMemory` and `providers.styleModel: {mode, configured, calls, failures, lastError, model, provider, hosting, label}`. `provider` is `ollama`, `openai_compatible`, `none` or `null` (feature off). `hosting` is `local` or `remote`. `mode` turns `live` only after a real call succeeds.
+`GET /api/health` adds `features.styleMemory` and `providers.styleModel: {mode, configured, calls, failures, lastError, model, provider, hosting, label}`. `provider` is `ollama`, `openai_compatible`, `none` or `null` (feature off). `hosting` is `local` or `remote`. `mode` is `live` only while the most recent real call succeeded; after a failure it reads `unverified` until a call succeeds again. `label` comes from configuration: `STYLE_REMOTE_LABEL` if set, otherwise `<model> · hosted endpoint (not local)`.
 
 ## Configuration
 
@@ -188,7 +188,7 @@ Proposes memory updates from text and **saves nothing**.
 | `STYLE_REMOTE_BASE_URL` | unset | OpenAI-compatible base URL ending in `/v1`. Hosted provider only. |
 | `STYLE_REMOTE_API_KEY` | unset | Bearer key for that endpoint. Process environment or untracked `.env` only. Without it the provider is `unavailable`. |
 | `STYLE_REMOTE_MODEL` | unset | Served model id, e.g. `gaunernst/gemma-3-12b-it-int4-awq` |
-| `STYLE_REMOTE_LABEL` | `Gemma hosted on Lambda (not local)` | Display label in health and note responses |
+| `STYLE_REMOTE_LABEL` | `<STYLE_REMOTE_MODEL> · hosted endpoint (not local)` | Display label in health and note responses. Set it only to describe what is actually configured, e.g. "Gemma 3 12B hosted on Lambda (not local)". |
 | `STYLE_REMOTE_JSON_MODE` | `prompt` | `prompt` asks for JSON and extracts it; `schema` sends `response_format` json_schema, for servers whose guided decoding works |
 | `STYLE_REMOTE_MAX_TOKENS` | `300` | Output cap per call. The hosted read timeout is at least 20 s. |
 

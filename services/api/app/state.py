@@ -34,18 +34,19 @@ class AppState:
             self.counters[key] = self.counters.get(key, 0) + 1
 
     def style_model(self):
-        """Ollama-backed Gemma client, or None when style memory or the model provider is off."""
+        """Configured style-note model (local Ollama or a hosted OpenAI-compatible endpoint), or None for the rule parser."""
         s = self.settings
         if not s.feature_style_memory:
             return None
         if s.style_model_provider == "openai_compatible":
             if not (s.style_remote_base_url and s.style_remote_api_key and s.style_remote_model):
                 return None
+            from app.style.labels import remote_style_label
             from app.style.model import OpenAICompatibleStyleModel
 
             return OpenAICompatibleStyleModel(
                 base_url=s.style_remote_base_url, api_key=s.style_remote_api_key, model=s.style_remote_model,
-                label=s.style_remote_label, timeout_s=max(s.style_model_timeout_s, 20.0),
+                label=remote_style_label(s), timeout_s=max(s.style_model_timeout_s, 20.0),
                 json_mode=s.style_remote_json_mode, max_tokens=s.style_remote_max_tokens,
             )
         if s.style_model_provider == "ollama":

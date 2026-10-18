@@ -34,6 +34,7 @@ from app.sessions.service import (
 )
 from app.shopping.refine import apply_patch, parse_refinement
 from app.storage.db import ping
+from app.style.labels import remote_style_label, style_model_mode
 
 from .deps import current_owner, ensure_owner, limiter, require_mutation_header, state_of
 
@@ -102,7 +103,7 @@ def _style_model_info(s) -> dict:
         return {"provider": None, "model": None, "hosting": None, "label": None}
     if s.style_model_provider == "openai_compatible":
         return {"provider": "openai_compatible", "model": s.style_remote_model, "hosting": "remote",
-                "label": s.style_remote_label}
+                "label": remote_style_label(s)}
     if s.style_model_provider == "ollama":
         return {"provider": "ollama", "model": s.style_model, "hosting": "local", "label": f"{s.style_model} via local Ollama"}
     return {"provider": "none", "model": None, "hosting": None, "label": "Rule-based parser only"}
@@ -122,7 +123,8 @@ def health(request: Request) -> dict:
                            "setting": s.perception_provider},
             "grok": {**st.status["grok"].snapshot(), "model": s.xai_model},
             "catalog": {**st.status["catalog"].snapshot(), "provider": s.catalog_provider, "error": st.catalog_error},
-            "styleModel": {**st.status["style_model"].snapshot(), **_style_model_info(s)},
+            "styleModel": {**st.status["style_model"].snapshot(), "mode": style_model_mode(st.status["style_model"]),
+                           **_style_model_info(s)},
         },
         "features": {
             "photon": s.feature_photon,

@@ -45,9 +45,11 @@ def _flag(request: Request):
 def _model_info(st) -> dict:
     from app.contracts import StyleModelInfo
 
+    from app.style.labels import style_model_mode
+
     from .api import _style_model_info
 
-    return StyleModelInfo(mode=st.status["style_model"].mode, **_style_model_info(st.settings)).wire()
+    return StyleModelInfo(mode=style_model_mode(st.status["style_model"]), **_style_model_info(st.settings)).wire()
 
 
 @router.get("/api/style/profile")
