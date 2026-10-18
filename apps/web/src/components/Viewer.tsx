@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { mediaUrl, timestamp } from "../api";
 import type { FrameRef, GarmentDoc, GarmentObservation } from "../types";
+import { cleanLabel } from "./GarmentTray";
 
 type Box = [number, number, number, number];
 
@@ -34,6 +35,7 @@ export default function Viewer({
   const [start, setStart] = useState<[number, number] | null>(null);
   if (!frame) return null;
   const onThis = observations.filter((o) => o.frameAssetId === frame.assetId);
+  const spotlight = !drawing && onThis.some((o) => garmentOf[o.id]?.id === selectedGarmentId);
 
   const pos = (e: React.PointerEvent): [number, number] => {
     const r = area.current!.getBoundingClientRect();
@@ -50,9 +52,9 @@ export default function Viewer({
     <div className="viewer">
       <div
         ref={area}
-        className={`stage ${drawing ? "stage-drawing" : ""}`}
+        className={`stage ${drawing ? "stage-drawing" : ""} ${spotlight ? "stage-spot" : ""}`}
         // Width follows the frame's aspect so percentage boxes stay aligned even when height is capped.
-        style={{ aspectRatio: `${frame.width} / ${frame.height}`, width: `min(100%, calc(70vh * ${frame.width / frame.height}))` }}
+        style={{ aspectRatio: `${frame.width} / ${frame.height}`, width: `min(100%, calc(62vh * ${frame.width / frame.height}))` }}
         onPointerDown={(e) => {
           if (!drawing) return;
           (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -78,13 +80,16 @@ export default function Viewer({
               <button
                 key={o.id}
                 type="button"
-                className={`box ${sel ? "box-selected" : ""} ${o.editedByUser ? "box-user" : ""}`}
+                className={`box ${sel ? "box-selected" : ""} ${o.editedByUser ? "box-user" : ""} ${y0 < 0.08 ? "box-label-in" : ""}`}
                 style={{ left: `${x0 * 100}%`, top: `${y0 * 100}%`, width: `${(x1 - x0) * 100}%`, height: `${(y1 - y0) * 100}%` }}
                 onClick={() => g && onSelectGarment(g.id)}
                 aria-label={`Select ${g?.label ?? o.category}`}
                 aria-pressed={!!sel}
               >
-                <span className="box-label">{g?.label ?? o.category}</span>
+                <span className="box-label">
+                  {sel && <span aria-hidden>● </span>}
+                  {cleanLabel(g?.label ?? o.category)}
+                </span>
               </button>
             );
           })}
@@ -103,19 +108,23 @@ export default function Viewer({
       </div>
       {frames.length > 1 && (
         <ol className="strip" aria-label="Sampled frames">
-          {frames.map((f) => (
+          {frames.map((f) => {
+            const hasSel = observations.some((o) => o.frameAssetId === f.assetId && garmentOf[o.id]?.id === selectedGarmentId);
+            return (
             <li key={f.assetId}>
               <button
                 type="button"
                 className={`thumb ${f.assetId === frame.assetId ? "thumb-on" : ""}`}
                 onClick={() => onFrame(f.assetId)}
-                aria-label={`Frame at ${timestamp(f.timestampMs)}`}
+                aria-label={`Frame at ${timestamp(f.timestampMs)}${hasSel ? ", selected piece visible" : ""}`}
               >
                 <img src={mediaUrl(f.assetId)} alt="" loading="lazy" />
                 <span>{timestamp(f.timestampMs)}</span>
+                {hasSel && <i className="thumb-dot" aria-hidden />}
               </button>
             </li>
-          ))}
+            );
+          })}
         </ol>
       )}
     </div>

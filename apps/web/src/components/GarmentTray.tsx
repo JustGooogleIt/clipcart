@@ -1,13 +1,24 @@
 import { mediaUrl, timestamp } from "../api";
 import type { GarmentDoc, GarmentObservation } from "../types";
 
+export function cleanLabel(label: string) {
+  const t = label.replace(" (your selection)", "").replace(" (edited)", "");
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** Honest label for where a garment's box came from. */
+export function sourceLabel(byUser: boolean, detectionMode: string) {
+  if (byUser) return "Your box";
+  if (detectionMode === "fixture") return "Fixture detection";
+  if (detectionMode === "live") return "Perceptron detection";
+  return "Perceptron (not yet verified live)";
+}
+
 export default function GarmentTray({
   garments,
   observations,
   selectedId,
   onSelect,
-  onRelabel,
-  onRedraw,
   busy,
   detectionMode,
 }: {
@@ -15,57 +26,51 @@ export default function GarmentTray({
   observations: GarmentObservation[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onRelabel: (id: string, category: string) => void;
-  onRedraw: (g: GarmentDoc) => void;
   busy: boolean;
   detectionMode: string;
 }) {
   if (!garments.length) return null;
   const obsById = Object.fromEntries(observations.map((o) => [o.id, o]));
   return (
-    <ul className="tray" aria-label="Garments">
-      {garments.map((g) => {
-        const obs = g.observationIds.map((id) => obsById[id]).filter(Boolean) as GarmentObservation[];
-        const first = obs[0];
-        const sel = g.id === selectedId;
-        const byUser = obs.some((o) => o.editedByUser);
-        const ts = first ? timestamp(first.timestampMs) : null;
-        const attrs = first ? Object.values(first.observedAttributes ?? {}).flat().slice(0, 3) : [];
-        return (
-          <li key={g.id} className={`tray-item ${sel ? "tray-on" : ""}`}>
-            <button type="button" className="tray-pick" onClick={() => onSelect(g.id)} disabled={busy} aria-pressed={sel}>
-              <img src={mediaUrl(g.representativeCropId)} alt={`Crop of ${g.label}`} />
-              <span className="tray-text">
-                <strong>{g.label.replace(" (your selection)", "").replace(" (edited)", "")}</strong>
-                <small>
-                  {byUser ? "Your box" : detectionMode === "fixture" ? "Fixture detection" : "Detected by Perceptron"}
-                  {ts ? ` · ${ts}` : ""}
-                  {obs.length > 1 ? ` · seen in ${obs.length} frames` : ""}
-                </small>
-                {attrs.length > 0 && <small className="muted">{attrs.join(", ")}</small>}
-                {g.userDescription && <small className="muted">“{g.userDescription}”</small>}
-              </span>
-              {sel && <span className="tray-badge">Selected</span>}
-            </button>
-            {sel && (
-              <div className="tray-tools">
-                <label>
-                  <span className="sr-only">Category</span>
-                  <select value={g.category} onChange={(e) => onRelabel(g.id, e.target.value)} disabled={busy}>
-                    <option value="jacket">Jacket</option>
-                    <option value="top">Top</option>
-                    <option value="pants">Pants</option>
-                    <option value="bag">Bag</option>
-                  </select>
-                </label>
-                <button type="button" className="btn btn-quiet btn-sm" onClick={() => onRedraw(g)} disabled={busy}>
-                  Adjust crop
-                </button>
-              </div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+    <div className="tray-wrap">
+      <p className="tray-head">
+        <span>Pieces in this scene</span>
+        <small>{garments.length} found · tap one to shop it</small>
+      </p>
+      <ul className="tray" aria-label="Garments">
+        {garments.map((g) => {
+          const obs = g.observationIds.map((id) => obsById[id]).filter(Boolean) as GarmentObservation[];
+          const first = obs[0];
+          const sel = g.id === selectedId;
+          const byUser = obs.some((o) => o.editedByUser);
+          const ts = first ? timestamp(first.timestampMs) : null;
+          return (
+            <li key={g.id} className={`tray-item ${sel ? "tray-on" : ""}`}>
+              <button
+                type="button"
+                className="tray-pick"
+                data-garment={g.id}
+                onClick={() => onSelect(g.id)}
+                disabled={busy && !sel}
+                aria-pressed={sel}
+              >
+                <span className="tray-img">
+                  <img src={mediaUrl(g.representativeCropId)} alt="" />
+                  {sel && <span className="tray-badge">Shopping</span>}
+                </span>
+                <span className="tray-text">
+                  <strong>{cleanLabel(g.label)}</strong>
+                  <small>
+                    {sourceLabel(byUser, detectionMode)}
+                    {ts ? ` · ${ts}` : ""}
+                    {obs.length > 1 ? ` · ${obs.length} frames` : ""}
+                  </small>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

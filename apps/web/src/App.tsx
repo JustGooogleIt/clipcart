@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, ApiError, upload } from "./api";
-import Constraints, { draftFrom, patchFrom, type PrefsDraft } from "./components/Constraints";
+import { api, ApiError, timestamp, upload } from "./api";
+import Constraints, { draftFrom, findLabel, patchFrom, type PrefsDraft } from "./components/Constraints";
 import Diagnostics from "./components/Diagnostics";
-import GarmentTray from "./components/GarmentTray";
+import GarmentTray, { cleanLabel } from "./components/GarmentTray";
+import Landing, { LinkInput, linkErrorText } from "./components/Landing";
 import ModeChips from "./components/ModeChips";
 import Refine from "./components/Refine";
 import Results from "./components/Results";
+import SelectedPiece from "./components/SelectedPiece";
 import Upload from "./components/Upload";
 import Viewer from "./components/Viewer";
 import type { GarmentDoc, Health, SearchView, SessionView } from "./types";
@@ -41,7 +43,9 @@ export default function App() {
   const [searchId, setSearchId] = useState<string | null>(null);
   const [search, setSearch] = useState<SearchView | null>(null);
   const [reply, setReply] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const seqRef = useRef(0);
+  const resultsRef = useRef<HTMLElement>(null);
 
   const s = view?.session ?? null;
   const analysis = view?.analysis ?? null;
@@ -94,9 +98,11 @@ export default function App() {
     return () => clearInterval(t);
   }, [s?.id, analysis?.id, analysis?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When analysis finishes with nothing to pick, open manual drawing.
+  // When analysis finishes: refresh provider modes (the detection chip flips to Live here, not after a search)
+  // and, with nothing to pick, open manual drawing.
   useEffect(() => {
     if (!analysis || ["queued", "running"].includes(analysis.status)) return;
+    refreshHealth();
     if (!frameId && frames.length) setFrameId(frames[Math.floor(frames.length / 2)].assetId);
     if ((view?.garments.length ?? 0) === 0 && !drawing) setDrawing({ mode: "new" });
   }, [analysis?.status, analysis?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -143,6 +149,12 @@ export default function App() {
     );
   }
 
+  // Bring the results area into view once a search starts so the hand-off from piece to results is visible.
+  const showResults = () =>
+    requestAnimationFrame(() =>
+      resultsRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }),
+    );
+
   const onFile = async (f: File) => {
     if (!s) return;
     if (f.size > 150 * 1024 * 1024) return setNotice({ kind: "error", text: "That file is over 150 MB. Trim the clip and try again." });
@@ -164,29 +176,23 @@ export default function App() {
     }
   };
 
-  const onYoutube = async (youtubeUrl: string) => {
+  // YouTube clips are downloaded server-side and analyzed like an upload, but only for permitted video IDs.
+  const analyzeLink = async (url: string) => {
     if (!s) return;
-    setNotice({
-      kind: "info",
-      text: "Downloading a temporary copy of the YouTube clip, then scanning for clothes…",
-    });
+    setNotice(null);
+    setLinkError(null);
     setBusy(true);
-    setProgress(null);
     setSearch(null);
     setSearchId(null);
     setFrameId(null);
     setDrawing(null);
     setDraft(null);
     try {
-      const v = await api.youtubeAnalyze(s.id, youtubeUrl, s.revision);
-      setView(v);
-      const title = v.youtube?.title ? `“${v.youtube.title}”` : "YouTube clip";
-      setNotice({
-        kind: "info",
-        text: `${title} ${v.youtube?.cacheHit ? "(cache hit)" : "downloaded"} — analyzing the best frames now.`,
-      });
+      setView(await api.youtubeAnalyze(s.id, url, s.revision));
     } catch (e) {
-      fail(e);
+      const err = e instanceof ApiError ? e : new ApiError(0, "error", String(e));
+      if (err.status === 409) fail(err);
+      else setLinkError(linkErrorText(err.code, err.message));
     } finally {
       setBusy(false);
     }
@@ -241,6 +247,7 @@ export default function App() {
       const r = await api.startSearch(s.id, v.session.revision);
       setView(r);
       setSearchId(r.searchId);
+      showResults();
     } catch (e) {
       fail(e);
     } finally {
@@ -255,7 +262,10 @@ export default function App() {
       const r = await api.message(s.id, text, s.revision);
       setView(r);
       setReply(r.reply);
-      if (r.searchId) setSearchId(r.searchId);
+      if (r.searchId) {
+        setSearchId(r.searchId);
+        showResults();
+      }
     } catch (e) {
       fail(e);
     } finally {
@@ -264,18 +274,43 @@ export default function App() {
   };
 
   const analyzing = analysis && ["queued", "running"].includes(analysis.status);
+  const detectionMode = analysis?.detectionMode ?? "unavailable";
+  const pieceLabel = selected ? cleanLabel(selected.label) : null;
+  const searching = !!search && ["queued", "running"].includes(search.job.status);
+  const step = !view?.media ? 0 : !selected ? 1 : !searchId ? 2 : 3;
+  const youtubeEnabled = !!health?.features?.youtubeDownload;
+  const fromYouTube = view?.media?.sourceType === "youtube_download";
+  const mediaMeta = view?.media
+    ? fromYouTube
+      ? `YouTube clip${view.media.durationMs ? ` · ${timestamp(view.media.durationMs)}` : ""} · ${frames.length} frame${frames.length === 1 ? "" : "s"} sampled`
+      : isVideo
+      ? `Video${view.media.durationMs ? ` · ${timestamp(view.media.durationMs)}` : ""} · ${frames.length} frame${frames.length === 1 ? "" : "s"} sampled`
+      : "Photo"
+    : null;
 
   return (
-    <div className="shell">
+    <div className={`shell ${view?.media ? "" : "shell-landing"}`}>
       <header className="top">
-        <div>
-          <h1 className="wordmark">ClipCart</h1>
-          <p className="tagline">
-            Drop a fit check, photo, or YouTube Short. We find the clothes, then search real listings that match your budget.
-          </p>
-        </div>
+        <a className="brand" href="#/" aria-label="ClipCart home">
+          <span className="brand-mark" aria-hidden>
+            ▶
+          </span>
+          <span className="wordmark">ClipCart</span>
+        </a>
+        <p className="tagline">Shop the look from any photo or clip.</p>
         <ModeChips health={health} />
       </header>
+
+      {view?.media && (
+        <ol className="steps" aria-label="Progress">
+          {["Upload", "Pick a piece", "Set rules", "Shop results"].map((label, i) => (
+            <li key={label} className={i < step ? "step-done" : i === step ? "step-now" : ""} aria-current={i === step ? "step" : undefined}>
+              <span className="step-n">{i < step ? "✓" : i + 1}</span>
+              {label}
+            </li>
+          ))}
+        </ol>
+      )}
 
       {bootError && (
         <div className="banner banner-error" role="alert">
@@ -292,46 +327,36 @@ export default function App() {
       )}
 
       {!view?.media ? (
-        <main className="empty">
-          <Upload
-            busy={busy || !s}
-            progress={progress}
-            onFile={onFile}
-            onYoutube={health?.features?.youtubeDownload ? onYoutube : undefined}
-          />
-          <ol className="how">
-            <li>
-              <strong>Send a look.</strong> Photo, short clip, or YouTube URL — we scan for jackets, tops, pants and bags.
-            </li>
-            <li>
-              <strong>Pick the piece</strong> in the tray (or draw a box if we missed it).
-            </li>
-            <li>
-              <strong>Set your rules</strong> — budget, size, materials to avoid — then shop sourced options.
-            </li>
-          </ol>
-        </main>
+        <Landing
+          busy={busy || !s}
+          progress={progress}
+          onFile={onFile}
+          youtubeEnabled={youtubeEnabled}
+          onYouTube={analyzeLink}
+          linkError={linkError}
+        />
       ) : (
-        <main className="grid">
-          <section className="col-look" aria-label="Your look">
-            <div className="section-head">
-              <h2>1 · Pick the garment</h2>
-              <Upload
-                busy={busy}
-                progress={progress}
-                onFile={onFile}
-                onYoutube={health?.features?.youtubeDownload ? onYoutube : undefined}
-                compact
-              />
+        <main className="studio">
+          <section className="scene" aria-label="Your scene">
+            <div className="scene-head">
+              <div>
+                <h2>Your scene</h2>
+                {mediaMeta && <p>{mediaMeta}</p>}
+              </div>
+              <Upload busy={busy} progress={progress} onFile={onFile} compact />
             </div>
+            {youtubeEnabled && (
+              <div className="yt-again">
+                <LinkInput busy={busy} onSubmit={analyzeLink} error={linkError} compact />
+              </div>
+            )}
             {analyzing && (
-              <div className="banner" role="status">
-                <span className="spinner" aria-hidden />{" "}
-                {analysis?.frameIds?.length ? "Looking for jackets, tops, pants and bags…" : "Scanning the best frames…"}
+              <div className="scene-status" role="status">
+                <span className="spinner" aria-hidden /> {analysis?.frameIds?.length ? "Looking for jackets, tops, pants and bags…" : "Reading frames…"}
               </div>
             )}
             {analysis?.message && !analyzing && (
-              <div className={`banner ${analysis.status === "failed" ? "banner-error" : ""}`}>{analysis.message}</div>
+              <div className={`scene-status ${analysis.status === "failed" ? "scene-status-error" : ""}`}>{analysis.message}</div>
             )}
             {frames.length > 0 && (
               <Viewer
@@ -351,8 +376,8 @@ export default function App() {
             {frames.length > 0 && !analyzing && (
               <div className="draw">
                 {!drawing ? (
-                  <button type="button" className="btn btn-quiet btn-sm" onClick={() => setDrawing({ mode: "new" })} disabled={busy}>
-                    Draw a box around a garment
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDrawing({ mode: "new" })} disabled={busy}>
+                    <span aria-hidden>⬚</span> Draw a box around a garment
                   </button>
                 ) : (
                   <div className="draw-panel">
@@ -377,7 +402,13 @@ export default function App() {
                         </label>
                         <label>
                           Describe it (optional)
-                          <input value={manualDesc} maxLength={120} placeholder="e.g. black nylon bomber" onChange={(e) => setManualDesc(e.target.value)} />
+                          <input
+                            id="manual-desc"
+                            value={manualDesc}
+                            maxLength={120}
+                            placeholder="e.g. black nylon bomber"
+                            onChange={(e) => setManualDesc(e.target.value)}
+                          />
                         </label>
                       </div>
                     )}
@@ -387,7 +418,7 @@ export default function App() {
                       </button>
                       <button
                         type="button"
-                        className="btn btn-quiet btn-sm"
+                        className="btn btn-ghost btn-sm"
                         onClick={() => {
                           setDrawing(null);
                           setDraft(null);
@@ -405,6 +436,17 @@ export default function App() {
               observations={view.observations}
               selectedId={s?.selectedGarmentId ?? null}
               onSelect={selectGarment}
+              busy={busy}
+              detectionMode={detectionMode}
+            />
+          </section>
+
+          <aside className="panel" aria-label="Selected piece and your rules">
+            <SelectedPiece
+              garment={selected}
+              observations={view.observations}
+              detectionMode={detectionMode}
+              busy={busy}
               onRelabel={async (gid, category) => {
                 try {
                   await api.patchGarment(gid, { category });
@@ -419,22 +461,18 @@ export default function App() {
                 setDraft(null);
                 setDrawing({ mode: "edit", garmentId: g.id });
               }}
-              busy={busy}
-              detectionMode={analysis?.detectionMode ?? "unavailable"}
             />
-          </section>
+            <h2 className="panel-title">Your rules</h2>
+            {s && <Constraints session={s} canSearch={!!selected} pieceLabel={pieceLabel} busy={busy} onSubmit={findIt} />}
+          </aside>
 
-          <section className="col-rules" aria-label="Your constraints">
-            <h2>2 · Set your rules</h2>
-            {s && <Constraints session={s} canSearch={!!selected} busy={busy} onSubmit={findIt} />}
-          </section>
-
-          <section className="col-results" aria-label="Results">
+          <section className="col-results" aria-label="Results" ref={resultsRef}>
             {search ? (
               <>
                 <Results
                   view={search}
                   cropId={selected?.representativeCropId ?? null}
+                  garmentLabel={pieceLabel}
                   onRetry={() => s && findIt(draftFrom(s))}
                   onCancel={async () => {
                     if (searchId) await api.cancel(searchId).catch(fail);
@@ -444,22 +482,41 @@ export default function App() {
               </>
             ) : (
               <div className="placeholder">
-                <h2>3 · Results</h2>
-                <p className="muted">
-                  {selected ? "Set your rules and press Find it." : "Select or draw the garment you want first. Only that garment is searched."}
-                </p>
+                <span className="placeholder-icon" aria-hidden>
+                  ◎
+                </span>
+                <div>
+                  <h2>Shopping results land here</h2>
+                  <p className="muted">
+                    {selected
+                      ? `Set your rules, then press “${findLabel(false, true, pieceLabel)}”.`
+                      : "Select or draw the garment you want first. Only that garment is searched."}
+                  </p>
+                </div>
               </div>
             )}
           </section>
+
+          {selected && !drawing && (
+            <div className="dock" aria-label="Quick actions">
+              {search && !searching ? (
+                <button type="button" className="btn btn-quiet" onClick={() => resultsRef.current?.scrollIntoView({ behavior: "smooth" })}>
+                  See results
+                </button>
+              ) : null}
+              <button className="btn btn-primary" type="submit" form="rules-form" disabled={busy || searching}>
+                {searching ? "Searching…" : findLabel(busy, true, pieceLabel)}
+              </button>
+            </div>
+          )}
         </main>
       )}
       <footer className="foot">
         <p>
-          ClipCart doesn't sell anything. Prices come from the listed sources and change often; confirm on the destination site. Links are not
-          affiliate links.
+          ClipCart doesn't sell anything and has no checkout. Prices come from the listed sources and change often; confirm on the destination site.
+          Links are not affiliate links.
         </p>
       </footer>
     </div>
   );
 }
-

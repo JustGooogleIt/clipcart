@@ -112,7 +112,7 @@ export function timestamp(ms: number | null | undefined): string | null {
 export function ago(iso: string): string {
   const d = (Date.now() - new Date(iso).getTime()) / 1000;
   if (d < 60) return "just now";
-  if (d < 3600) return `${Math.round(d / 60)} min ago`;
-  if (d < 86400) return `${Math.round(d / 3600)} h ago`;
+  if (d < 3600) return `${Math.round(d / 60)}\u00a0min ago`;
+  if (d < 86400) return `${Math.round(d / 3600)}\u00a0h ago`;
   return new Date(iso).toLocaleDateString();
 }
