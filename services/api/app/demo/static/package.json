@@ -1,0 +1,15 @@
+{
+  "name": "clipcart-solana-checkout",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@solana/web3.js": "1.95.8",
+    "buffer": "6.0.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0"
+  }
+}
