@@ -2,9 +2,9 @@
 
 export const DEFAULT_CLIPCART_URL = "http://127.0.0.1:8000";
 
-// The upload contract on `integration` has no provenance fields yet (see HANDOFF.md, change B).
-// Flip this once the backend accepts sourceUrl/sourceTitle on POST /api/media/uploads.
-export const SEND_PROVENANCE = false;
+// POST /api/media/uploads accepts sourceUrl/sourceTitle (HANDOFF.md, change B), so the page address
+// and title travel with the frame and the media is typed "browser_capture". The preview says so.
+export const SEND_PROVENANCE = true;
 
 /** Normalize a user-typed ClipCart URL to its origin, or throw with a readable message. */
 export function normalizeBaseUrl(raw) {

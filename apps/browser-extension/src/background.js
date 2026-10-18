@@ -73,20 +73,25 @@ async function discard({ captureId }, sender) {
 
 /** Preview → "Open in ClipCart". One upload per capture, however many times it's clicked. */
 async function send({ captureId, imageDataUrl }) {
-  const { [sendKey(captureId)]: prior } = await chrome.storage.session.get(sendKey(captureId));
-  if (prior?.status === "sent") {
-    await focusTab(prior.clipcartTabId);
-    return { ok: true, already: true, ...prior };
-  }
-  const stillSending = prior?.status === "sending" && Date.now() - prior.at < 60_000; // a worker restart can orphan this
-  if (sending.has(captureId) || stillSending) return { ok: false, code: "in_progress", message: "Already sending this frame." };
-  const { [captureKey(captureId)]: cap } = await chrome.storage.session.get(captureKey(captureId));
-  if (!cap) return { ok: false, code: "capture_missing", message: "This capture expired. Capture the frame again." };
-
+  // Claim synchronously, before any await: two messages for the same capture (a duplicated preview
+  // tab, a retry racing a slow send) must not both get past the checks below.
+  if (sending.has(captureId)) return { ok: false, code: "in_progress", message: "Already sending this frame." };
   sending.add(captureId);
-  await chrome.storage.session.set({ [sendKey(captureId)]: { status: "sending", at: Date.now() } });
+  let claimed = false; // true once this call owns the "sending" record
   let helperTab = null;
   try {
+    const { [sendKey(captureId)]: prior } = await chrome.storage.session.get(sendKey(captureId));
+    if (prior?.status === "sent") {
+      await focusTab(prior.clipcartTabId);
+      return { ok: true, already: true, ...prior };
+    }
+    const stillSending = prior?.status === "sending" && Date.now() - prior.at < 60_000; // a worker restart can orphan this
+    if (stillSending) return { ok: false, code: "in_progress", message: "Already sending this frame." };
+    const { [captureKey(captureId)]: cap } = await chrome.storage.session.get(captureKey(captureId));
+    if (!cap) return { ok: false, code: "capture_missing", message: "This capture expired. Capture the frame again." };
+
+    await chrome.storage.session.set({ [sendKey(captureId)]: { status: "sending", at: Date.now() } });
+    claimed = true;
     const base = await getBaseUrl();
     if (!(await chrome.permissions.contains({ origins: [originPattern(base)] })))
       return { ok: false, code: "needs_permission", base, message: `ClipCart needs your OK to open ${base}.` };
@@ -106,18 +111,29 @@ async function send({ captureId, imageDataUrl }) {
       await closeQuietly(helperTab.id);
       return { ok: false, code: result?.code ?? "upload_failed", status: result?.status, message: uploadMessage(result) };
     }
-    // Now load the studio; it resumes the newest session, which holds this frame.
-    await chrome.tabs.update(helperTab.id, { url: `${base}/`, active: true });
+    // The upload is done: record it before anything else can fail, so a retry never uploads twice.
     const done = { status: "sent", clipcartTabId: helperTab.id, sessionId: result.sessionId, mediaId: result.mediaId, analysisId: result.analysisId };
     await chrome.storage.session.set({ [sendKey(captureId)]: done });
+    helperTab = null; // from here on the tab is the user's ClipCart tab; never close it
+    // Now load the studio; it resumes the newest session, which holds this frame.
+    try {
+      await chrome.tabs.update(done.clipcartTabId, { url: `${base}/`, active: true });
+    } catch {
+      // The helper tab was closed mid-handoff. The frame is already in ClipCart; open the studio fresh.
+      const t = await chrome.tabs.create({ url: `${base}/`, active: true });
+      done.clipcartTabId = t.id;
+      await chrome.storage.session.set({ [sendKey(captureId)]: done });
+    }
     return { ok: true, ...done };
   } catch (err) {
     if (helperTab) await closeQuietly(helperTab.id);
     return { ok: false, code: "handoff_failed", message: `Couldn't hand the frame to ClipCart: ${err?.message ?? err}` };
   } finally {
     sending.delete(captureId);
-    const { [sendKey(captureId)]: now } = await chrome.storage.session.get(sendKey(captureId));
-    if (now?.status === "sending") await chrome.storage.session.remove(sendKey(captureId));
+    if (claimed) {
+      const { [sendKey(captureId)]: now } = await chrome.storage.session.get(sendKey(captureId));
+      if (now?.status === "sending") await chrome.storage.session.remove(sendKey(captureId));
+    }
   }
 }
 

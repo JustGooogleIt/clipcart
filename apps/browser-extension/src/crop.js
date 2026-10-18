@@ -1,7 +1,7 @@
 // Extension-owned preview. The screenshot was taken before this page opened, so the
 // selection overlay lives only here and never appears in the captured image.
 
-import { looksBlank, selectionToSourceRect } from "./config.js";
+import { SEND_PROVENANCE, looksBlank, selectionToSourceRect } from "./config.js";
 
 const $ = (id) => document.getElementById(id);
 const stage = $("stage");
@@ -32,6 +32,7 @@ if (!cap) {
     $("source-text").textContent = cap.sourceTitle ? `${cap.sourceTitle} · ${host}` : host;
     $("source").title = cap.sourceUrl;
     $("source").hidden = false;
+    $("prov-note").hidden = !SEND_PROVENANCE;
   }
   checkBlank();
 }

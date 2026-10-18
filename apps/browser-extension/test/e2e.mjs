@@ -255,7 +255,10 @@ await step("Open in ClipCart: double click uploads once, opens the studio with t
   assert.notEqual(latest.session.id, priorSession);
   assert.equal(latest.media.id, sent.mediaId);
   assert.equal(latest.media.kind, "image");
-  assert.equal(latest.media.sourceType, "upload_image");
+  // Provenance (HANDOFF.md change B): the page the frame came from travels with it.
+  assert.equal(latest.media.sourceType, "browser_capture");
+  assert.equal(latest.media.canonicalSourceUrl, VIDEO_URL);
+  assert.equal(latest.media.sourceTitle, await video.title());
   // Same owner: the earlier session is still readable with this browser's cookie.
   const ok = await clipcart.evaluate(async (id) => (await fetch(`/api/sessions/${id}`)).status, priorSession);
   assert.equal(ok, 200, "capture landed under the same cc_owner as the user's earlier session");
@@ -270,6 +273,8 @@ await step("studio shows the uploaded frame", async () => {
   await clipcart.waitForLoadState("networkidle");
   await clipcart.waitForFunction(() => !document.querySelector(".shell-landing"), null, { timeout: 15000 });
   await sleep(2500); // let fixture analysis finish and boxes draw
+  const meta = await clipcart.locator("body").innerText();
+  assert.match(meta, new RegExp(`Browser capture · ${(await video.title()).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
   await clipcart.screenshot({ path: path.join(out, "08-clipcart-studio.png") });
 });
 
@@ -306,6 +311,36 @@ await step("protected-video style black frame shows a warning", async () => {
   await c3.close();
   await pop.close();
   await blank.close();
+});
+
+await step("two simultaneous sends for one capture upload once", async () => {
+  const pv = await ctx.newPage();
+  await pv.goto(VIDEO_URL);
+  await pv.waitForLoadState("networkidle");
+  const tabId = await sw.evaluate(async () => (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0].id);
+  const pop = await popupWindow(ctx, sw, id, pv);
+  const opened = ctx.waitForEvent("page", (p) => p.url().includes("/src/crop.html"));
+  const reply = await pop.evaluate((tabId) => chrome.runtime.sendMessage({ type: "capture", tabId }), tabId);
+  const c3 = await opened;
+  await c3.waitForLoadState("load");
+  const before = await counts();
+  // Bypasses the preview's own button lock: two messages land in the worker at the same time,
+  // as from a duplicated preview tab.
+  const replies = await pop.evaluate(
+    (captureId) => Promise.all([chrome.runtime.sendMessage({ type: "send", captureId }), chrome.runtime.sendMessage({ type: "send", captureId })]),
+    reply.captureId,
+  );
+  const again = await pop.evaluate((captureId) => chrome.runtime.sendMessage({ type: "send", captureId }), reply.captureId);
+  await pop.close();
+  const after = await counts();
+  assert.equal(replies.filter((r) => r.ok).length, 1, JSON.stringify(replies));
+  assert.equal(replies.filter((r) => r.code === "in_progress").length, 1, JSON.stringify(replies));
+  assert.equal(again.ok && again.already, true, "a later send only focuses the ClipCart tab");
+  assert.equal(after.analyses, before.analyses + 1, "exactly one upload for two simultaneous sends");
+  const opened2 = replies.find((r) => r.ok).clipcartTabId;
+  await sw.evaluate((t) => chrome.tabs.remove(t), opened2);
+  await c3.close();
+  await pv.close();
 });
 
 console.log("counts at start", start, "at end", await counts());

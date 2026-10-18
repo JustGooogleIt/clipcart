@@ -2,7 +2,7 @@
 
 Owner: browser-extension lane (`apps/browser-extension/` and this file).
 Backend, `apps/web/` and `packages/contracts/` stay with their current owners (Terminal Claude).
-Checked against `integration` at `a1741a8`.
+Checked against `integration` at `60c06d7` (after #15, #16 and #17). Change B below is implemented in this PR.
 
 ## Summary
 
@@ -11,7 +11,7 @@ Checked against `integration` at `a1741a8`.
 | Popup → capture visible tab → extension crop preview | Works, no ClipCart calls |
 | Hand the image to ClipCart under the user's own session | **Works with today's API, no web or backend change** |
 | Studio opens with the frame loaded and analysis queued | Works (existing upload behavior) |
-| Source page URL and title stored with the media | **Not connected.** Needs change B below |
+| Source page URL and title stored with the media | **Works.** Change B is implemented in this PR, and `SEND_PROVENANCE` is on |
 
 ## How the handoff works (no new endpoint)
 
@@ -31,11 +31,17 @@ Why not `fetch` from the service worker: that relies on Chrome treating extensio
 
 Verified in Chromium 141 against a fixture server (`test/e2e.mjs`): the capture lands as a new session owned by the same `cc_owner` as a session the browser created earlier, the studio resumes it, one analysis job is created per capture.
 
-## Requested change B: provenance (backend + shared contract)
+## Change B: provenance (backend + shared contract) — implemented
 
-Today `POST /api/media/uploads` takes only `sessionId` and `expectedRevision`; unknown query parameters are silently ignored, so the extension does **not** send provenance yet (`SEND_PROVENANCE = false` in `src/config.js`). The URL and title are kept in the extension and shown on the crop preview only.
+`POST /api/media/uploads` now takes optional `sourceUrl` and `sourceTitle`, and the extension sends them (`SEND_PROVENANCE = true`). The crop preview tells the user that the page address and title are saved with the frame. What landed, as originally requested:
 
-Smallest change, all inside existing code paths:
+- **URL:** `sourceUrl` must be `http(s)`, have a host, have no credentials and a valid port, and be at most 2048 characters. Anything else returns `422 invalid_request` before the body is read.
+- **Title:** control characters become spaces, whitespace is collapsed, and the result is capped at 300 characters. A `sourceTitle` without a `sourceUrl` returns `422`.
+- **Source type:** `sourceType` is `browser_capture` only when `sourceUrl` is sent. Plain uploads are unchanged.
+- **Studio label:** the scene card reads "Browser capture · {title}", or the URL's host if there is no title.
+- **Tests:** `services/api/tests/api/test_capture_provenance.py`.
+
+The original request, kept for reference:
 
 1. `services/api/app/contracts/media.py`
    - `SourceType = Literal["upload_image", "upload_video", "youtube_download", "browser_capture"]`

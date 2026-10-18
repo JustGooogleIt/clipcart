@@ -3,7 +3,7 @@
 Pause a video → click ClipCart → **Shop this frame** → crop the piece → **Open in ClipCart**.
 The studio opens with the cropped frame uploaded and garment detection queued, exactly as if it had been uploaded in the app.
 
-Manifest V3, plain JavaScript, no build step. How the image reaches ClipCart and what the backend still needs: [HANDOFF.md](HANDOFF.md).
+Manifest V3, plain JavaScript, no build step. How the image reaches ClipCart, and the provenance fields it sends (page address and title, stored as a `browser_capture`): [HANDOFF.md](HANDOFF.md).
 
 ## Install (unpacked)
 
@@ -37,6 +37,8 @@ What the extension handles:
 | ClipCart not running / wrong address | "Can't reach ClipCart at …" with Retry and **Change address**; nothing opens |
 | No permission for a custom address | **Allow** button on the preview |
 | Double clicks / repeated clicks | One upload per capture; afterwards the button only switches to the ClipCart tab |
+| Two sends for one capture at once (e.g. a duplicated preview tab) | The worker claims the capture synchronously; the second gets "Already sending this frame" |
+| Upload succeeded but the ClipCart tab was closed mid-handoff | Recorded as sent first, then the studio opens in a new tab; never re-uploaded |
 | Upload rejected (size, rate limit, session) | ClipCart's message, with Retry |
 
 ## Files
@@ -81,5 +83,9 @@ Substituted, because automation can't click Chrome's toolbar:
 - The capture request is the same message the popup's button sends, sent from an extension page. The real action popup is opened once with `chrome.action.openPopup()` to confirm the wiring.
 - The popup screenshot is the popup document rendered in a tab, with the "this is an extension page" error hidden.
 - The video is a static test page showing a real frame from `downloads/fit-checks/fc01` at 0:22, not a playing video (headless Chromium here can't play H.264).
+
+### Re-run (2026-10-17, Chrome for Testing 155 headless, macOS, fixture ClipCart server on `integration` 60c06d7 + this PR)
+
+12/12 end-to-end steps pass. The added step is "two simultaneous sends for one capture upload once". The upload step now also checks the provenance: `browser_capture`, the page URL and the page title, plus the studio's "Browser capture · …" label. Sending two messages at once to the original service worker produced 2 uploads and 2 sessions. The fixed worker produced 1 upload and 1 session, with the second message refused as "in progress".
 
 Not tested yet: a real toolbar click in desktop Chrome on macOS, real YouTube / TikTok / Instagram players, DRM sites, live Perceptron, an `https` ClipCart deployment.
