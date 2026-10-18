@@ -4,79 +4,22 @@
  *
  * The server prices the order and verifies payment on devnet. Nothing the browser sends is proof: the signature and
  * wallet passed to verify are hints. Only the one controlled demo catalog item can be ordered; retailer listings
- * cannot. These types mirror the contract docs until the generated contracts carry them.
+ * cannot.
  */
+import type { DemoCatalogItem, DemoMerchantOrder, DemoReceipt, DemoTransferRequest } from "@contracts";
 import { ApiError } from "./api";
 
 export const DEVNET_RPC = "https://api.devnet.solana.com";
 export const DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 export const DEMO_LABEL = "Devnet · Test funds · No retailer fulfillment";
 
-export type DemoOrderStatus = "created" | "awaiting_payment" | "verifying" | "paid" | "expired" | "failed";
-export type ReceiptStatus = "ineligible" | "eligible" | "minting" | "confirmed" | "failed" | "needs_reconciliation";
-
-export interface DemoCatalogItem {
-  id: string;
-  merchantId: string;
-  merchantLabel: string;
-  title: string;
-  description: string;
-  amountAtomic: string;
-  amountDisplay: string;
-  assetMint: string | null;
-  network: "devnet";
-  fulfillmentTerms: string;
-  eligibleForCheckout: boolean;
-}
-
-export interface DemoOrder {
-  id: string;
-  catalogItemId: string;
-  merchantId: string;
-  merchantLabel: string;
-  recipientWallet: string;
-  buyerWallet: string | null;
-  network: "devnet";
-  assetMint: string | null;
-  amountAtomic: string;
-  paymentReference: string;
-  expiresAt: string;
-  status: DemoOrderStatus;
-  paymentSignature: string | null;
-  receiptStatus: ReceiptStatus;
-  receiptAssetId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  fulfillmentTerms: string;
-  uiLabel: string;
-  explorerPaymentUrl: string | null;
-}
-
-export interface TransferRequest {
-  recipient: string;
-  amount: string;
-  splToken: string | null;
-  reference: string;
-  label: string;
-  message: string;
-  memo: string | null;
-}
-
-export interface DemoReceipt {
-  status: ReceiptStatus;
-  assetId: string | null;
-  mintSignature: string | null;
-  explorerMintUrl: string | null;
-  buyerWallet: string;
-  merkleTree: string | null;
-  indexingStatus: "pending" | "ready" | "unavailable";
-  metadataUri: string | null;
-  label: string;
-}
+export type DemoOrder = DemoMerchantOrder;
+export type ReceiptStatus = DemoMerchantOrder["receiptStatus"];
+export type { DemoCatalogItem, DemoReceipt };
 
 export interface OrderView {
   order: DemoOrder;
-  transferRequest?: TransferRequest;
+  transferRequest?: DemoTransferRequest;
   receipt?: DemoReceipt;
 }
 
@@ -158,7 +101,7 @@ export async function devnetBalance(wallet: string): Promise<number> {
  * The blockhash comes from devnet after a genesis check, so a wallet on another cluster can't land it.
  * Resolves once Phantom returns a signature; rejects if the person cancels.
  */
-export async function payWithPhantom(p: Phantom, order: DemoOrder, transfer: TransferRequest): Promise<string> {
+export async function payWithPhantom(p: Phantom, order: DemoOrder, transfer: DemoTransferRequest): Promise<string> {
   const { Connection, PublicKey, SystemProgram, Transaction } = await web3();
   if (!p.publicKey) throw new Error("Connect Phantom first.");
   if (transfer.splToken) throw new Error("This order asks for a token transfer, which the demo checkout doesn't support.");

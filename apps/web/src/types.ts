@@ -70,6 +70,8 @@ export interface Health {
     photon: boolean;
     voice: boolean;
     solana: boolean;
+    /** True only when both FEATURE_SOLANA and FEATURE_SOLANA_CNFT_RECEIPTS are on: mint controls show only then. */
+    solanaCnftReceipts?: boolean;
     agentResearch?: boolean;
     youtubeDownload?: boolean;
     styleMemory?: boolean;
@@ -83,8 +85,8 @@ export interface Health {
   research?: {
     provider: string | null;
     mode: "fixture" | "manual" | "live" | null;
-    /** Proposed for grok_bot: true only once a real Bot callback has been accepted. Absent reads as not proven. */
-    callbackProven?: boolean;
+    /** operational only after a job from this provider completed with its own results (not a manual import). */
+    status?: "unavailable" | "unverified" | "operational" | null;
   };
 }
 

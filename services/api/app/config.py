@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -49,6 +50,10 @@ class Settings:
     research_provider: str
     research_job_ttl_s: int
     research_resolve_dns: bool
+    grok_bot_webhook_url: str | None
+    grok_bot_webhook_key: str | None = field(repr=False)
+    public_base_url: str | None  # public HTTPS origin the Bot can reach (tunnel), for callbacks and crop URLs
+    research_url_secret: str = field(repr=False)  # HMAC key for signed crop URLs
     feature_youtube_download: bool
     youtube_allowed_video_ids: frozenset[str]
     feature_style_memory: bool
@@ -69,6 +74,18 @@ class Settings:
     feature_photon: bool
     feature_voice: bool
     feature_solana: bool
+    feature_solana_cnft_receipts: bool
+    solana_network: str
+    solana_rpc_url: str
+    solana_demo_merchant_wallet: str
+    solana_demo_amount_lamports: int
+    solana_demo_order_ttl_s: int
+    solana_cnft_tree_address: str
+    solana_cnft_receipt_authority: str
+    solana_cnft_authority_keypair_path: str
+    solana_das_rpc_url: str
+    solana_cnft_metadata_base_url: str
+    solana_cnft_worker_dir: str
     cookie_secure: bool
     search_deadline_s: float
     analysis_deadline_s: float
@@ -128,6 +145,10 @@ def load_settings() -> Settings:
         research_provider=(os.getenv("RESEARCH_PROVIDER") or "fixture").lower(),
         research_job_ttl_s=int(os.getenv("RESEARCH_JOB_TTL_S", "900")),
         research_resolve_dns=_flag("RESEARCH_RESOLVE_DNS", True),
+        grok_bot_webhook_url=os.getenv("GROK_BOT_WEBHOOK_URL") or None,
+        grok_bot_webhook_key=os.getenv("GROK_BOT_WEBHOOK_KEY") or None,
+        public_base_url=(os.getenv("CLIPCART_PUBLIC_BASE_URL") or "").rstrip("/") or None,
+        research_url_secret=os.getenv("RESEARCH_URL_SECRET") or secrets.token_urlsafe(32),
         feature_youtube_download=_flag("FEATURE_YOUTUBE_DOWNLOAD"),
         youtube_allowed_video_ids=frozenset(
             v.strip() for v in (os.getenv("YOUTUBE_ALLOWED_VIDEO_IDS") or "").split(",") if v.strip()
@@ -150,6 +171,18 @@ def load_settings() -> Settings:
         feature_photon=_flag("FEATURE_PHOTON"),
         feature_voice=_flag("FEATURE_VOICE"),
         feature_solana=_flag("FEATURE_SOLANA"),
+        feature_solana_cnft_receipts=_flag("FEATURE_SOLANA_CNFT_RECEIPTS"),
+        solana_network=(os.getenv("SOLANA_NETWORK") or "devnet").strip().lower(),
+        solana_rpc_url=(os.getenv("SOLANA_RPC_URL") or "https://api.devnet.solana.com").rstrip("/"),
+        solana_demo_merchant_wallet=(os.getenv("SOLANA_DEMO_MERCHANT_WALLET") or "").strip(),
+        solana_demo_amount_lamports=int(os.getenv("SOLANA_DEMO_AMOUNT_LAMPORTS", "10000000")),
+        solana_demo_order_ttl_s=int(os.getenv("SOLANA_DEMO_ORDER_TTL_S", "900")),
+        solana_cnft_tree_address=(os.getenv("SOLANA_CNFT_TREE_ADDRESS") or "").strip(),
+        solana_cnft_receipt_authority=(os.getenv("SOLANA_CNFT_RECEIPT_AUTHORITY") or "").strip(),
+        solana_cnft_authority_keypair_path=(os.getenv("SOLANA_CNFT_AUTHORITY_KEYPAIR_PATH") or "").strip(),
+        solana_das_rpc_url=(os.getenv("SOLANA_DAS_RPC_URL") or "").strip(),
+        solana_cnft_metadata_base_url=(os.getenv("SOLANA_CNFT_METADATA_BASE_URL") or "").strip(),
+        solana_cnft_worker_dir=(os.getenv("SOLANA_CNFT_WORKER_DIR") or "").strip(),
         cookie_secure=_flag("COOKIE_SECURE"),
         search_deadline_s=float(os.getenv("SEARCH_DEADLINE_S", "60")),
         analysis_deadline_s=float(os.getenv("ANALYSIS_DEADLINE_S", "60")),

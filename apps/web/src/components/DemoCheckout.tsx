@@ -116,7 +116,7 @@ function Field({ label, value, href, mono = true }: { label: string; value: stri
   );
 }
 
-export default function DemoCheckout({ orderId: routeOrderId }: { orderId: string | null }) {
+export default function DemoCheckout({ orderId: routeOrderId, receiptsEnabled }: { orderId: string | null; receiptsEnabled: boolean }) {
   const [item, setItem] = useState<DemoCatalogItem | null>(null);
   const [off, setOff] = useState<string | null>(null);
   const [view, setView] = useState<OrderView | null>(null);
@@ -448,7 +448,11 @@ export default function DemoCheckout({ orderId: routeOrderId }: { orderId: strin
               <h2 id="co-receipt-title">Receipt</h2>
               <p className={`co-receipt-state co-receipt-${receiptStatus}`}>
                 {(receiptStatus === "minting" || busy === "mint") && <span className="co-spin" aria-hidden />}
-                {busy === "mint" ? "Minting the compressed receipt on devnet." : receiptStatus && RECEIPT_TEXT[receiptStatus]}
+                {busy === "mint"
+                  ? "Minting the compressed receipt on devnet."
+                  : receiptStatus === "eligible" && !receiptsEnabled
+                    ? "Payment verified. Receipt minting is turned off on this server."
+                    : receiptStatus && RECEIPT_TEXT[receiptStatus]}
               </p>
               {receipt?.status === "confirmed" && <p className="muted">{INDEXING_TEXT[receipt.indexingStatus]}</p>}
               <dl className="co-fields">
@@ -456,9 +460,9 @@ export default function DemoCheckout({ orderId: routeOrderId }: { orderId: strin
                 <Field label="Asset ID" value={receipt?.assetId ?? order.receiptAssetId} href={receipt?.assetId ? explorerAddress(receipt.assetId) : null} />
                 <Field label="Mint tx" value={receipt?.mintSignature ?? null} href={receipt?.explorerMintUrl ?? (receipt?.mintSignature ? explorerTx(receipt.mintSignature) : null)} />
                 {receipt?.merkleTree && <Field label="Tree" value={receipt.merkleTree} href={explorerAddress(receipt.merkleTree)} />}
-                {receipt && <Field label="Owner" value={receipt.buyerWallet} href={explorerAddress(receipt.buyerWallet)} />}
+                {receipt?.buyerWallet && <Field label="Owner" value={receipt.buyerWallet} href={explorerAddress(receipt.buyerWallet)} />}
               </dl>
-              {receiptStatus === "eligible" && !receipt && (
+              {receiptsEnabled && receiptStatus === "eligible" && !receipt && (
                 <button type="button" className="btn co-cta-2" onClick={mint} disabled={busy === "mint"}>
                   {busy === "mint" ? "Minting…" : "Mint demo receipt"}
                 </button>

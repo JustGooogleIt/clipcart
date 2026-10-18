@@ -24,6 +24,7 @@ def test_health_reports_honest_modes(app_factory):
         "photon": False,
         "voice": False,
         "solana": False,
+        "solanaCnftReceipts": False,
         "agentResearch": False,
         "youtubeDownload": False,
         "styleMemory": False,

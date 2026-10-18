@@ -72,15 +72,15 @@ export function researchProvider(health: Health | null): { id: string; name: str
         mode,
       };
     case "grok_bot": {
-      // Configured is not proven: the label drops "callback not proven" only once the server reports an accepted real
-      // callback (docs/grok-bot-bridge.md). Results, if any, arrive as agent submissions.
-      const proven = r.callbackProven === true;
+      // Results arrive as agent submissions and are validated like any agent's claims (docs/grok-bot-bridge.md).
+      // "operational" means a grok_bot job completed through the authenticated callback; until then it isn't proven here.
+      const proven = health.research?.status === "operational";
       return {
         id: "grok_bot",
-        name: proven ? "Grok Bot research" : "Grok Bot research · configured, callback not proven",
-        about: proven
-          ? "Sends this piece to a Grok Bot routine, which posts the offers it found back to ClipCart. If nothing arrives, you can import offers by hand."
-          : "Sends this piece to a Grok Bot routine. Offers appear only if the Bot posts them back, which hasn't been proven yet. If nothing arrives, you can import offers by hand.",
+        name: proven ? "Grok Bot research agent" : "Grok Bot research · configured, not yet verified here",
+        about: `Sends this piece's description to a Grok Bot routine, which browses stores and posts offers back. ClipCart checks every link and keeps only prices shown with the page's own text; nothing the Bot says is treated as verified.${
+          proven ? "" : " Offers appear only if the Bot posts them back, which this server hasn't seen yet."
+        } If nothing arrives, you can import offers by hand.`,
         mode,
       };
     }
@@ -199,6 +199,11 @@ export default function Research({
               These offers were imported by hand. ClipCart checked each link but didn't run any research or open the pages.
             </p>
           )}
+          {isBot(job) && job.status === "completed" && !manualResults && (
+            <p className="research-banner">
+              Grok Bot matched these on the piece's description, not the image: it hasn't been shown to open the crop.
+            </p>
+          )}
           {job.agentNotes && <p className="muted small">{job.agentNotes}</p>}
           {job.styleHints && <StyleHintsLine hints={job.styleHints} />}
           {job.status === "failed" && err?.retryable && (
@@ -239,8 +244,7 @@ export default function Research({
   );
 }
 
-// The generated ResearchJob provider union gains "grok_bot" with PR #28; until then compare as a string.
-const isBot = (job: ResearchJob) => (job.provider as string) === "grok_bot";
+const isBot = (job: ResearchJob) => job.provider === "grok_bot";
 
 function modeTag(job: ResearchJob, manualResults: boolean): string {
   if (job.mode === "fixture") return "Development data";

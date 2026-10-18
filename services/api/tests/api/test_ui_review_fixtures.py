@@ -116,7 +116,7 @@ def test_accessory_research_offers_through_manual_import_are_coded(fx, tmp_path,
     monkeypatch.setenv("RESEARCH_PROVIDER", "manual")
     monkeypatch.setenv("RESEARCH_RESOLVE_DNS", "0")
     c = fx()
-    assert c.get("/api/health").json()["research"] == {"provider": "manual", "mode": "manual"}
+    assert c.get("/api/health").json()["research"] == {"provider": "manual", "mode": "manual", "status": "unverified"}
     view = _analyzed(c, tmp_path)
     s, _ = _select(c, view, "watch")
     job = c.post(f"/api/sessions/{s['id']}/research-jobs", headers=H, json={"idempotencyKey": "w1"}).json()["job"]

@@ -101,7 +101,7 @@ function ModeList({ health: hp }: { health: Health }) {
   );
 }
 
-/** Research jobs: off, or which provider runs them. Grok Bot reads unverified until a real callback is accepted. */
+/** Research jobs: off, or which provider runs them. A bridge provider reads Live only once a job of its completed. */
 function ResearchChip({ health: hp, catalogMode }: { health: Health; catalogMode: string }) {
   const r = researchProvider(hp);
   if (!r) return <Chip name="More offers" mode="unavailable" note="Off" />;
@@ -114,7 +114,7 @@ function ResearchChip({ health: hp, catalogMode }: { health: Health; catalogMode
       : r.mode === "live"
         ? r.id === "solescout"
           ? catalogMode
-          : r.id === "grok_bot" && hp.research?.callbackProven === true
+          : hp.research?.status === "operational"
             ? "live"
             : "unverified"
         : (r.mode ?? "unavailable");

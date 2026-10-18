@@ -35,7 +35,7 @@ from app.sessions.service import (
 )
 from app.shopping.refine import apply_patch, parse_refinement
 from app.storage.db import ping
-from app.research.providers import research_mode
+from app.research.providers import research_mode, research_status
 from app.style.labels import remote_style_label, style_model_mode
 
 from .deps import current_owner, ensure_owner, limiter, require_mutation_header, state_of
@@ -143,6 +143,7 @@ def health(request: Request) -> dict:
             "photon": s.feature_photon,
             "voice": s.feature_voice,
             "solana": s.feature_solana,
+            "solanaCnftReceipts": s.feature_solana and s.feature_solana_cnft_receipts,  # mint controls only when true
             "agentResearch": s.feature_agent_research,
             "accessoryDetection": s.feature_accessory_detection,
             "youtubeDownload": s.feature_youtube_download,
@@ -154,7 +155,8 @@ def health(request: Request) -> dict:
             "maxDurationS": 90,
         },
         "research": {"provider": s.research_provider if s.feature_agent_research else None,
-                     "mode": research_mode(s.research_provider, st) if s.feature_agent_research else None},
+                     "mode": research_mode(s.research_provider, st) if s.feature_agent_research else None,
+                     "status": research_status(s.research_provider, st) if s.feature_agent_research else None},
     }
 
 

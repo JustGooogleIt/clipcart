@@ -211,7 +211,7 @@ export default function App() {
   if (route.startsWith("#/demo-checkout")) {
     return (
       <div className="shell">
-        <DemoCheckout orderId={route.split("/")[2] || null} />
+        <DemoCheckout orderId={route.split("/")[2] || null} receiptsEnabled={health?.features.solanaCnftReceipts === true} />
       </div>
     );
   }

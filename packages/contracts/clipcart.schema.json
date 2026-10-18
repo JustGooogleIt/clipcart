@@ -363,6 +363,409 @@
       "title": "ConstraintCheck",
       "type": "object"
     },
+    "DemoCatalogItem": {
+      "additionalProperties": false,
+      "description": "Server-defined participating merchant inventory. Never derived from SoleScout listings.",
+      "properties": {
+        "amountAtomic": {
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "amountDisplay": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "assetMint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "description": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "eligibleForCheckout": {
+          "default": true,
+          "type": "boolean"
+        },
+        "fulfillmentTerms": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "type": "string"
+        },
+        "merchantId": {
+          "maxLength": 80,
+          "minLength": 1,
+          "type": "string"
+        },
+        "merchantLabel": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "network": {
+          "const": "devnet",
+          "default": "devnet",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "merchantId",
+        "merchantLabel",
+        "title",
+        "description",
+        "amountAtomic",
+        "amountDisplay",
+        "fulfillmentTerms"
+      ],
+      "title": "DemoCatalogItem",
+      "type": "object"
+    },
+    "DemoMerchantOrder": {
+      "additionalProperties": false,
+      "properties": {
+        "amountAtomic": {
+          "type": "string"
+        },
+        "assetMint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "buyerWallet": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "catalogItemId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "explorerPaymentUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fulfillmentTerms": {
+          "default": "",
+          "maxLength": 500,
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "merchantId": {
+          "type": "string"
+        },
+        "merchantLabel": {
+          "default": "ClipCart demo merchant",
+          "maxLength": 120,
+          "type": "string"
+        },
+        "network": {
+          "const": "devnet",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "paymentReference": {
+          "type": "string"
+        },
+        "paymentSignature": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receiptAssetId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receiptMintSignature": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "receiptStatus": {
+          "enum": [
+            "ineligible",
+            "eligible",
+            "minting",
+            "confirmed",
+            "failed",
+            "needs_reconciliation"
+          ],
+          "type": "string"
+        },
+        "recipientWallet": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "created",
+            "awaiting_payment",
+            "verifying",
+            "paid",
+            "expired",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "uiLabel": {
+          "default": "Demo purchase on Solana devnet",
+          "maxLength": 120,
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "verificationError": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "catalogItemId",
+        "merchantId",
+        "recipientWallet",
+        "buyerWallet",
+        "network",
+        "assetMint",
+        "amountAtomic",
+        "paymentReference",
+        "expiresAt",
+        "status",
+        "paymentSignature",
+        "receiptStatus",
+        "receiptAssetId",
+        "createdAt",
+        "updatedAt"
+      ],
+      "title": "DemoMerchantOrder",
+      "type": "object"
+    },
+    "DemoReceipt": {
+      "additionalProperties": false,
+      "description": "The order's demo cNFT receipt (``receipt`` on GET /api/demo-orders/{id} and POST \u2026/receipt/mint).\n\nOwnership is shown only when ``status`` is ``confirmed``. Devnet only; no retailer fulfillment.",
+      "properties": {
+        "assetId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "buyerWallet": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "explorerMintUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "indexingStatus": {
+          "enum": [
+            "unavailable",
+            "pending",
+            "ready"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "merkleTree": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "metadataUri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mintSignature": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "ineligible",
+            "eligible",
+            "minting",
+            "confirmed",
+            "failed",
+            "needs_reconciliation"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "indexingStatus",
+        "label"
+      ],
+      "title": "DemoReceipt",
+      "type": "object"
+    },
+    "DemoTransferRequest": {
+      "additionalProperties": false,
+      "description": "Solana Pay-style transfer the wallet must send. ``reference`` goes on the transfer as a read-only non-signer key.",
+      "properties": {
+        "amount": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "memo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "message": {
+          "type": "string"
+        },
+        "recipient": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        },
+        "splToken": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "recipient",
+        "amount",
+        "reference",
+        "label",
+        "message"
+      ],
+      "title": "DemoTransferRequest",
+      "type": "object"
+    },
     "Evidence": {
       "additionalProperties": false,
       "properties": {
@@ -2244,7 +2647,8 @@
           "enum": [
             "fixture",
             "solescout",
-            "manual"
+            "manual",
+            "grok_bot"
           ],
           "type": "string"
         },
