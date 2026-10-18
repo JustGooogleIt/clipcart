@@ -188,11 +188,16 @@ export default function Research({
           <p className="research-status">
             {pending && job.provider !== "manual" && <span className="spinner" aria-hidden />}
             <strong>{statusLine(job, err)}</strong>
-            {(job.status === "completed" || job.status === "pending") && <span className={`research-mode rm-${job.mode}`}>{job.mode === "fixture" ? "Development data" : job.mode === "manual" ? (manualResults ? "Imported manually" : "Manual job · nothing runs") : "Live"}</span>}
+            {(job.status === "completed" || job.status === "pending") && <span className={`research-mode rm-${job.mode}`}>{modeTag(job, manualResults)}</span>}
           </p>
           {manualResults && (
             <p className="research-banner">
               These offers were imported by hand. ClipCart checked each link but didn't run any research or open the pages.
+            </p>
+          )}
+          {isBot(job) && job.status === "completed" && !manualResults && (
+            <p className="research-banner">
+              Grok Bot matched these on the piece's description, not the image: it hasn't been shown to open the crop.
             </p>
           )}
           {job.agentNotes && <p className="muted small">{job.agentNotes}</p>}
@@ -235,11 +240,26 @@ export default function Research({
   );
 }
 
+const isBot = (job: ResearchJob) => job.provider === "grok_bot";
+
+function modeTag(job: ResearchJob, manualResults: boolean): string {
+  if (job.mode === "fixture") return "Development data";
+  if (job.mode === "manual" || manualResults) return manualResults ? "Imported manually" : "Manual job · nothing runs";
+  if (isBot(job)) return job.status === "pending" ? "Running" : "Returned by Grok Bot";
+  return "Live";
+}
+
 function statusLine(job: ResearchJob, err: JobError | null): string {
-  if (job.status === "pending") return job.provider === "manual" ? "Waiting for your manual import" : "Researching…";
-  if (job.status === "expired") return job.summary ?? "No research results arrived before the job expired.";
+  const bot = isBot(job);
+  if (job.status === "pending") {
+    if (job.provider === "manual") return "Waiting for your manual import";
+    return bot ? "Sent to Grok Bot. Waiting for it to post results back…" : "Researching…";
+  }
+  if (job.status === "expired")
+    return job.summary ?? (bot ? "Grok Bot didn't post results before the job expired." : "No research results arrived before the job expired.");
   if (job.status === "failed") {
     if (err?.code === "catalog_unavailable") return "SoleScout didn't respond, so research stopped. Nothing was guessed.";
+    if (bot && err?.code === "dispatch_failed") return "Grok Bot didn't accept the job, so no research ran.";
     return `Research failed${err?.message ? `: ${err.message}` : ""}.`;
   }
   return job.summary ?? "Research finished.";
