@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from media_factory import HAVE_FFMPEG, moving_box_video
 from shopping.fakes import FakeCatalog, item
