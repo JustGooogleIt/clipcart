@@ -25,6 +25,8 @@ def test_parse_video_id_accepts_watch_and_shorts():
 @pytest.mark.skipif(not HAVE_FFMPEG, reason="ffmpeg needed")
 def test_youtube_analyze_uses_ranked_path_and_groups(app_factory, tmp_path, monkeypatch):
     monkeypatch.setenv("PERCEPTION_PROVIDER", "fixture")
+    monkeypatch.setenv("FEATURE_YOUTUBE_DOWNLOAD", "1")
+    monkeypatch.setenv("YOUTUBE_ALLOWED_VIDEO_IDS", "7-etsr5-Z8A")
     clip = moving_box_video(tmp_path / "yt.mp4", seconds=3.0)
 
     class FakeCached:
@@ -66,7 +68,8 @@ def test_youtube_analyze_uses_ranked_path_and_groups(app_factory, tmp_path, monk
     assert all(o.get("timestampMs") is not None for o in v["observations"])
 
 
-def test_youtube_analyze_rejects_bad_url(app_factory):
+def test_youtube_analyze_rejects_bad_url(app_factory, monkeypatch):
+    monkeypatch.setenv("FEATURE_YOUTUBE_DOWNLOAD", "1")
     c = new_client(app_factory(FakeCatalog([])))
     s = c.post("/api/sessions", headers=H).json()["session"]
     resp = c.post(
@@ -76,3 +79,52 @@ def test_youtube_analyze_rejects_bad_url(app_factory):
     )
     assert resp.status_code == 400
     assert resp.json()["code"] == "invalid_url"
+
+
+def _start(c, url):
+    s = c.post("/api/sessions", headers=H).json()["session"]
+    return c.post(f"/api/sessions/{s['id']}/youtube-analyze", headers=H,
+                  json={"youtubeUrl": url, "expectedRevision": s["revision"]})
+
+
+def test_flag_off_refuses_before_download(app_factory, monkeypatch):
+    calls = []
+    monkeypatch.setattr("app.routes.api.download_youtube", lambda *a: calls.append(a))
+    r = _start(new_client(app_factory(FakeCatalog([]))), "https://www.youtube.com/watch?v=7-etsr5-Z8A")
+    assert r.status_code == 404 and r.json()["code"] == "feature_disabled" and calls == []
+
+
+def test_unpermitted_video_refused_before_download(app_factory, monkeypatch):
+    monkeypatch.setenv("FEATURE_YOUTUBE_DOWNLOAD", "1")
+    monkeypatch.setenv("YOUTUBE_ALLOWED_VIDEO_IDS", "aqz-KE-bpKQ")
+    calls = []
+    monkeypatch.setattr("app.routes.api.download_youtube", lambda *a: calls.append(a))
+    r = _start(new_client(app_factory(FakeCatalog([]))), "https://www.youtube.com/watch?v=7-etsr5-Z8A")
+    assert r.status_code == 403 and r.json()["code"] == "video_not_permitted" and calls == []
+
+
+def test_ytdlp_command_never_uses_cookies_or_client_overrides(monkeypatch):
+    from app.media.youtube_cache import _yt_dlp_cmd
+
+    monkeypatch.setenv("YOUTUBE_COOKIES_FROM_BROWSER", "chrome")
+    monkeypatch.setenv("YOUTUBE_COOKIES_FILE", "/tmp/cookies.txt")
+    monkeypatch.setenv("YOUTUBE_PLAYER_CLIENT", "android")
+    cmd = " ".join(_yt_dlp_cmd("https://www.youtube.com/watch?v=aqz-KE-bpKQ", "/tmp/x.%(ext)s"))
+    assert "cookies" not in cmd and "player_client" not in cmd and "--ignore-config" in cmd
+
+
+def test_blocked_download_is_single_attempt_and_honest(tmp_path, monkeypatch):
+    import subprocess
+
+    from app.media import youtube_cache as yc
+
+    runs = []
+
+    def fake_run(cmd, **kw):
+        runs.append(cmd)
+        return subprocess.CompletedProcess(cmd, 1, "", "ERROR: Sign in to confirm you're not a bot")
+
+    monkeypatch.setattr(yc.subprocess, "run", fake_run)
+    with pytest.raises(yc.YoutubeCacheError) as e:
+        yc.download_youtube(tmp_path, "https://www.youtube.com/watch?v=aqz-KE-bpKQ")
+    assert e.value.code == "youtube_blocked" and "Upload" in e.value.message and len(runs) == 1

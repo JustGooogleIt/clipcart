@@ -17,7 +17,7 @@ from app.contracts.base import from_doc
 from app.jobs.analysis import create_analysis
 from app.jobs.search import create_search, dispatch
 from app.media.errors import AssetNotFoundError, MediaError
-from app.media.youtube_cache import YoutubeCacheError, download_youtube
+from app.media.youtube_cache import YoutubeCacheError, download_youtube, parse_video_id
 from app.providers.perceptron.adapter import correct_observation, manual_observation
 from app.sessions.service import (
     ApiProblem,
@@ -102,7 +102,8 @@ def health(request: Request) -> dict:
             "grok": {**st.status["grok"].snapshot(), "model": s.xai_model},
             "catalog": {**st.status["catalog"].snapshot(), "provider": s.catalog_provider, "error": st.catalog_error},
         },
-        "features": {"photon": s.feature_photon, "voice": s.feature_voice, "solana": s.feature_solana},
+        "features": {"photon": s.feature_photon, "voice": s.feature_voice, "solana": s.feature_solana,
+                     "youtubeDownload": s.feature_youtube_download},
     }
 
 
@@ -264,23 +265,36 @@ async def upload(request: Request, sessionId: str, expectedRevision: int) -> dic
 
 @router.post("/api/sessions/{session_id}/youtube-analyze")
 async def youtube_analyze(session_id: str, body: YoutubeAnalyzeIn, request: Request) -> dict:
-    """Temporary YouTube download → ingest as media → queue analysis (CONTRACT)."""
+    """Temporary YouTube download → ingest as media → queue analysis (CONTRACT).
+
+    Scoped to videos the team owns or has permission to process: the flag must be on
+    and the video ID must be in YOUTUBE_ALLOWED_VIDEO_IDS. Anything else is refused
+    before any download.
+    """
     require_mutation_header(request)
     owner = current_owner(request)
     st = state_of(request)
-    limiter.check(owner, "youtube", 10)
+    if not st.settings.feature_youtube_download:
+        raise ApiProblem(404, "feature_disabled", "YouTube clip analysis is turned off. Upload the clip instead.")
     get_owned(st.db, session_id, owner)
+    try:
+        vid = parse_video_id(body.youtube_url.strip())
+    except YoutubeCacheError as exc:
+        raise ApiProblem(400, exc.code, exc.message) from None
+    if vid not in st.settings.youtube_allowed_video_ids:
+        raise ApiProblem(
+            403,
+            "video_not_permitted",
+            "This demo only analyzes YouTube videos the team owns or has permission to use. Upload your clip instead.",
+        )
+    limiter.check(owner, "youtube", 10)
 
     cache_dir = st.media.store.root / "youtube-cache"
     try:
         cached = await run_in_threadpool(download_youtube, cache_dir, body.youtube_url.strip())
     except YoutubeCacheError as exc:
-        status = 400 if exc.code == "invalid_url" else 502
-        if exc.code == "yt_dlp_missing":
-            status = 503
-        if exc.code == "timeout":
-            status = 504
-        raise ApiProblem(status, exc.code, exc.message, retryable=exc.code in {"timeout", "download_failed"}) from None
+        status = {"invalid_url": 400, "youtube_blocked": 422, "yt_dlp_missing": 503, "timeout": 504}.get(exc.code, 502)
+        raise ApiProblem(status, exc.code, exc.message, retryable=exc.code == "timeout") from None
 
     def _ingest_cached() -> Any:
         with cached.path.open("rb") as fh:

@@ -44,6 +44,8 @@ class Settings:
     xai_key_present: bool
     xai_model: str
     xai_base_url: str
+    feature_youtube_download: bool
+    youtube_allowed_video_ids: frozenset
     feature_photon: bool
     feature_voice: bool
     feature_solana: bool
@@ -101,6 +103,10 @@ def load_settings() -> Settings:
         xai_key_present=bool(os.getenv("XAI_API_KEY")),
         xai_model=os.getenv("XAI_MODEL", "grok-4.3"),
         xai_base_url=os.getenv("XAI_BASE_URL", "https://api.x.ai/v1").rstrip("/"),
+        feature_youtube_download=_flag("FEATURE_YOUTUBE_DOWNLOAD"),
+        youtube_allowed_video_ids=frozenset(
+            v.strip() for v in (os.getenv("YOUTUBE_ALLOWED_VIDEO_IDS") or "").split(",") if v.strip()
+        ),
         feature_photon=_flag("FEATURE_PHOTON"),
         feature_voice=_flag("FEATURE_VOICE"),
         feature_solana=_flag("FEATURE_SOLANA"),

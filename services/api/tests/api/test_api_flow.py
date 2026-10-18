@@ -15,7 +15,7 @@ def test_health_reports_honest_modes(app_factory):
     assert h["database"]["mode"] == "local_memory" and "not MongoDB Atlas" in h["database"]["note"]
     assert h["providers"]["perceptron"]["mode"] == "unavailable"
     assert h["providers"]["grok"]["mode"] == "unavailable"
-    assert h["features"] == {"photon": False, "voice": False, "solana": False}
+    assert h["features"] == {"photon": False, "voice": False, "solana": False, "youtubeDownload": False}
 
 
 def test_full_journey_with_detection_unavailable(app_factory):
