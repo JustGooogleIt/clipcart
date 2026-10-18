@@ -70,6 +70,8 @@ export interface Health {
     photon: boolean;
     voice: boolean;
     solana: boolean;
+    /** True only when both FEATURE_SOLANA and FEATURE_SOLANA_CNFT_RECEIPTS are on: mint controls show only then. */
+    solanaCnftReceipts?: boolean;
     agentResearch?: boolean;
     youtubeDownload?: boolean;
     styleMemory?: boolean;

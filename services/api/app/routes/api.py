@@ -143,6 +143,7 @@ def health(request: Request) -> dict:
             "photon": s.feature_photon,
             "voice": s.feature_voice,
             "solana": s.feature_solana,
+            "solanaCnftReceipts": s.feature_solana and s.feature_solana_cnft_receipts,  # mint controls only when true
             "agentResearch": s.feature_agent_research,
             "accessoryDetection": s.feature_accessory_detection,
             "youtubeDownload": s.feature_youtube_download,

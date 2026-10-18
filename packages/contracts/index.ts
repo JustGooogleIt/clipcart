@@ -107,6 +107,88 @@ export interface ConstraintCheck {
   state: "satisfied" | "violated" | "unknown";
 }
 /**
+ * Server-defined participating merchant inventory. Never derived from SoleScout listings.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "DemoCatalogItem".
+ */
+export interface DemoCatalogItem {
+  amountAtomic: string;
+  amountDisplay: string;
+  assetMint?: string | null;
+  description: string;
+  eligibleForCheckout?: boolean;
+  fulfillmentTerms: string;
+  id: string;
+  merchantId: string;
+  merchantLabel: string;
+  network?: "devnet";
+  title: string;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "DemoMerchantOrder".
+ */
+export interface DemoMerchantOrder {
+  amountAtomic: string;
+  assetMint: string | null;
+  buyerWallet: string | null;
+  catalogItemId: string;
+  createdAt: string;
+  expiresAt: string;
+  explorerPaymentUrl?: string | null;
+  fulfillmentTerms?: string;
+  id: string;
+  merchantId: string;
+  merchantLabel?: string;
+  network: "devnet";
+  ownerId: string;
+  paymentReference: string;
+  paymentSignature: string | null;
+  receiptAssetId: string | null;
+  receiptMintSignature?: string | null;
+  receiptStatus: "ineligible" | "eligible" | "minting" | "confirmed" | "failed" | "needs_reconciliation";
+  recipientWallet: string;
+  status: "created" | "awaiting_payment" | "verifying" | "paid" | "expired" | "failed";
+  uiLabel?: string;
+  updatedAt: string;
+  verificationError?: string | null;
+}
+/**
+ * The order's demo cNFT receipt (``receipt`` on GET /api/demo-orders/{id} and POST …/receipt/mint).
+ *
+ * Ownership is shown only when ``status`` is ``confirmed``. Devnet only; no retailer fulfillment.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "DemoReceipt".
+ */
+export interface DemoReceipt {
+  assetId?: string | null;
+  buyerWallet?: string | null;
+  explorerMintUrl?: string | null;
+  indexingStatus: "unavailable" | "pending" | "ready";
+  label: string;
+  merkleTree?: string | null;
+  metadataUri?: string | null;
+  mintSignature?: string | null;
+  status: "ineligible" | "eligible" | "minting" | "confirmed" | "failed" | "needs_reconciliation";
+}
+/**
+ * Solana Pay-style transfer the wallet must send. ``reference`` goes on the transfer as a read-only non-signer key.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "DemoTransferRequest".
+ */
+export interface DemoTransferRequest {
+  amount: string;
+  label: string;
+  memo?: string | null;
+  message: string;
+  recipient: string;
+  reference: string;
+  splToken?: string | null;
+}
+/**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
  * via the `definition` "Evidence".
  */
