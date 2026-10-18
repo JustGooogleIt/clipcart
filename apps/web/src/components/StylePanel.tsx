@@ -24,12 +24,16 @@ const KIND: Record<MemoryKind, string> = {
   material_avoid: "Avoids",
   brand_like: "Likes",
   brand_avoid: "Avoids",
+  // Accessory kinds (docs/contracts/accessories.md). Type-compat labels only; the UI lane owns their presentation.
+  tone_like: "Likes",
+  tone_avoid: "Avoids",
+  ring_size: "Ring size",
 };
 const FIT: Record<string, string> = { womens: "Women's", mens: "Men's", unisex: "Unisex" };
 
 /** Display text for a memory value, from the contract's shapes. */
 export function valueText(kind: MemoryKind, v: unknown): string {
-  if (kind === "size" && v && typeof v === "object") return String((v as { raw?: string }).raw ?? "");
+  if ((kind === "size" || kind === "ring_size") && v && typeof v === "object") return String((v as { raw?: string }).raw ?? "");
   if (kind === "budget_max" && v && typeof v === "object") {
     const b = v as { amountMinor?: number; currency?: string };
     return `Up to ${money(b.amountMinor, b.currency ?? "USD")} per item`;

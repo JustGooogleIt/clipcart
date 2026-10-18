@@ -36,7 +36,8 @@ MAX_PRIMARY = 3
 MAX_NEEDS = 3
 
 
-def _checks(sp: SubmittedProduct, price: Money | None, prefs: Preferences, url: str) -> list[ConstraintCheck]:
+def _checks(sp: SubmittedProduct, price: Money | None, prefs: Preferences, url: str,
+            category: str | None = None) -> list[ConstraintCheck]:
     """Reuse the catalog rules on a transient Listing, then relabel price wording as agent-observed."""
     sizes = None
     if sp.availability == "in_stock" and sp.sizes_available:
@@ -52,7 +53,7 @@ def _checks(sp: SubmittedProduct, price: Money | None, prefs: Preferences, url: 
         mode="live",
     )
     out = []
-    for c in check_constraints(transient, prefs):
+    for c in check_constraints(transient, prefs, category):
         detail = c.detail.replace("Listed price", "Agent-observed price").replace("listed in stock", "shown as available by the agent")
         if c.constraint == "size" and c.state == "unknown" and sizes == []:
             detail = "Agent reported the item out of stock"
@@ -121,7 +122,7 @@ def verify_submission(
         tier = "likely" if sp.match_type == "exact" else "similar"
         if sp.match_type == "exact":
             warnings.append("Agent reported an exact match; not independently confirmed.")
-        checks = _checks(sp, price, prefs, chk.canonical)
+        checks = _checks(sp, price, prefs, chk.canonical, category)
         section = section_for(checks)
         pid = "rp_" + hashlib.sha256(f"{job_id}|{chk.canonical}".encode()).hexdigest()[:20]
         links: list[OutboundLink] = []

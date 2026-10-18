@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.categories import is_accessory
 from app.contracts import Listing, StyleProfile
 
 from .vocab import colors_in
@@ -10,8 +11,22 @@ W_STATED_LIKE, W_INFERRED_LIKE = 2.0, 1.0
 W_STATED_AVOID, W_INFERRED_AVOID = -3.0, -1.5
 
 
-def style_score(listing: Listing, profile: StyleProfile | None) -> tuple[float, list[str]]:
-    """Ranking nudge plus human-readable, fact-based reasons."""
+def _listing_tones(listing: Listing) -> set[str]:
+    t = f"{listing.title} {listing.color_text or ''}".lower()
+    out = set()
+    if "rose gold" in t or "rose-gold" in t:
+        out.add("rose-gold-tone")
+    elif "gold" in t:
+        out.add("gold-tone")
+    if "silver" in t or "stainless" in t or "sterling" in t:
+        out.add("silver-tone")
+    if "two-tone" in t or "two tone" in t:
+        out.add("two-tone")
+    return out
+
+
+def style_score(listing: Listing, profile: StyleProfile | None, category: str | None = None) -> tuple[float, list[str]]:
+    """Ranking nudge plus human-readable, fact-based reasons. Tone preferences apply to watches and jewelry only."""
     if profile is None:
         return 0.0, []
     score = 0.0
@@ -38,6 +53,17 @@ def style_score(listing: Listing, profile: StyleProfile | None) -> tuple[float, 
             score += W_STATED_AVOID if e.origin == "stated" else W_INFERRED_AVOID
             reasons.append(f"Ranked lower: you said you avoid {e.value}" if e.origin == "stated"
                            else f"Ranked lower: a color you often reject ({e.value})")
+    if category and is_accessory(category):
+        tones = _listing_tones(listing)
+        for e in profile.tones_like:
+            if e.value in tones:
+                score += W_STATED_LIKE if e.origin == "stated" else W_INFERRED_LIKE
+                reasons.append(f"You said you like {e.value}" if e.origin == "stated" else f"In a tone you often save ({e.value})")
+        for e in profile.tones_avoid:
+            if e.value in tones:
+                score += W_STATED_AVOID if e.origin == "stated" else W_INFERRED_AVOID
+                reasons.append(f"Ranked lower: you said you avoid {e.value}" if e.origin == "stated"
+                               else f"Ranked lower: a tone you often reject ({e.value})")
     return score, reasons[:3]
 
 

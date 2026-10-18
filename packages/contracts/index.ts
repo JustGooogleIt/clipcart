@@ -158,7 +158,7 @@ export interface GarmentObservation {
    * @maxItems 4
    */
   box01: [unknown, unknown, unknown, unknown];
-  category: "jacket" | "top" | "pants" | "bag" | "other";
+  category: "jacket" | "top" | "pants" | "bag" | "watch" | "necklace" | "bracelet" | "ring" | "earrings" | "other";
   cropAssetId: string;
   editedByUser: boolean;
   frameAssetId: string;
@@ -332,6 +332,7 @@ export interface PreferencePatch {
     | [string, string, string, string, string, string, string, string]
     | null;
   maxItemPriceMinor?: number | null;
+  ringSize?: SizePref | null;
   size?: SizePref | null;
 }
 /**
@@ -367,6 +368,7 @@ export interface Preferences {
     | [string, string, string, string, string, string, string]
     | [string, string, string, string, string, string, string, string];
   maxItemPriceMinor?: number | null;
+  ringSize?: SizePref | null;
   size?: SizePref | null;
 }
 /**
@@ -860,7 +862,10 @@ export interface StyleMemory {
     | "material_like"
     | "material_avoid"
     | "brand_like"
-    | "brand_avoid";
+    | "brand_avoid"
+    | "tone_like"
+    | "tone_avoid"
+    | "ring_size";
   origin: "stated" | "inferred";
   overriddenBy?: string | null;
   source:
@@ -923,7 +928,10 @@ export interface StyleProposal {
     | "material_like"
     | "material_avoid"
     | "brand_like"
-    | "brand_avoid";
+    | "brand_avoid"
+    | "tone_like"
+    | "tone_avoid"
+    | "ring_size";
   quote: string;
   value: unknown;
 }
@@ -1016,6 +1024,27 @@ export interface StyleProfileView {
     | [OwnedItem, OwnedItem, OwnedItem, OwnedItem]
     | [OwnedItem, OwnedItem, OwnedItem, OwnedItem, OwnedItem];
   rejectedOfferCount?: number;
+  ringSize?: ProfileEntry | null;
   size?: ProfileEntry | null;
+  /**
+   * @maxItems 5
+   */
+  tonesAvoid?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  /**
+   * @maxItems 5
+   */
+  tonesLike?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
   updatedAt?: string | null;
 }

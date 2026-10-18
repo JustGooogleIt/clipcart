@@ -63,13 +63,13 @@ class SessionPatchIn(In):
 class ManualGarmentIn(In):
     frame_asset_id: str
     box01: tuple[float, float, float, float]
-    category: str = Field(pattern="^(jacket|top|pants|bag)$")
+    category: str = Field(pattern="^(jacket|top|pants|bag|watch|necklace|bracelet|ring|earrings)$")
     description: str | None = Field(default=None, max_length=200)
 
 
 class GarmentPatchIn(In):
     box01: tuple[float, float, float, float] | None = None
-    category: str | None = Field(default=None, pattern="^(jacket|top|pants|bag|other)$")
+    category: str | None = Field(default=None, pattern="^(jacket|top|pants|bag|watch|necklace|bracelet|ring|earrings|other)$")
     description: str | None = Field(default=None, max_length=800)
 
 
@@ -109,6 +109,14 @@ def _style_model_info(s) -> dict:
     return {"provider": "none", "model": None, "hosting": None, "label": "Rule-based parser only"}
 
 
+@router.get("/api/categories")
+def categories() -> dict:
+    """Category families, size rules and attribute keys (docs/contracts/accessories.md). Static; no auth."""
+    from app.categories import public_categories
+
+    return {"categories": public_categories()}
+
+
 @router.get("/api/health")
 def health(request: Request) -> dict:
     st = state_of(request)
@@ -131,6 +139,7 @@ def health(request: Request) -> dict:
             "voice": s.feature_voice,
             "solana": s.feature_solana,
             "agentResearch": s.feature_agent_research,
+            "accessoryDetection": s.feature_accessory_detection,
             "youtubeDownload": s.feature_youtube_download,
             "styleMemory": s.feature_style_memory,
         },

@@ -9,7 +9,7 @@ Status: **published for UI review before any frontend work** on `feat/accessorie
 | `category` | Label | Family | Size rule |
 | --- | --- | --- | --- |
 | `jacket`, `top`, `pants` | Jacket, Top, Pants | `apparel` | Clothing `preferences.size` |
-| `bag` | Bag | `bag` | None |
+| `bag` | Bag | `bag` | Clothing `preferences.size`, unchanged from today's behavior |
 | `watch` | Watch | `watch` | None. Clothing size never applies. |
 | `necklace` | Necklace | `jewelry` | None. Clothing size never applies. |
 | `bracelet` | Bracelet | `jewelry` | None. Clothing size never applies. |

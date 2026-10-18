@@ -41,14 +41,29 @@ class SizePref(Record):
     system: str | None = Field(default=None, max_length=20)
 
 
+def _ring_size_pref(v: SizePref | None) -> SizePref | None:
+    """US ring sizes only (3–15, halves/quarters), stored as {raw, system: "us"}."""
+    if v is None:
+        return v
+    from app.categories import norm_ring_size
+
+    n = norm_ring_size(v.raw)
+    if n is None:
+        raise ValueError("ring size must be a US size from 3 to 15, e.g. 7 or 6.5")
+    return SizePref(raw=n, system="us")
+
+
 class Preferences(Record):
     country: str = "US"
     currency: str = "USD"
     max_item_price_minor: int | None = Field(default=None, ge=0, le=10_000_000)
-    size: SizePref | None = None
+    size: SizePref | None = None  # clothing size; never applied to watches or jewelry
+    ring_size: SizePref | None = None  # US ring size; applied to rings only
     colors: list[str] = Field(default_factory=list, max_length=6)
     excluded_materials: list[str] = Field(default_factory=list, max_length=8)
     condition: Condition = "any"
+
+    _ring_size = field_validator("ring_size")(classmethod(lambda cls, v: _ring_size_pref(v)))
 
     @field_validator("colors", "excluded_materials")
     @classmethod
@@ -68,7 +83,10 @@ class PreferencePatch(Record):
     currency: str | None = None
     max_item_price_minor: int | None = Field(default=None, ge=0, le=10_000_000)
     size: SizePref | None = None
+    ring_size: SizePref | None = None
     colors: list[str] | None = Field(default=None, max_length=6)
+
+    _ring_size = field_validator("ring_size")(classmethod(lambda cls, v: _ring_size_pref(v)))
     excluded_materials: list[str] | None = Field(default=None, max_length=8)
     condition: Condition | None = None
 

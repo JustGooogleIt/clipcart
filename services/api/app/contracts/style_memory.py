@@ -26,6 +26,7 @@ Origin = Literal["stated", "inferred"]
 MemoryKind = Literal[
     "size", "fit", "budget_max",
     "color_like", "color_avoid", "material_like", "material_avoid", "brand_like", "brand_avoid",
+    "tone_like", "tone_avoid", "ring_size",  # accessories (docs/contracts/accessories.md)
 ]
 MemorySource = Literal[
     "preferences_form", "style_panel", "style_note", "chat_refinement", "saved_items", "rejected_items", "purchases",
@@ -96,6 +97,9 @@ class StyleProfile(Record):
     materials_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
     brands_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
     brands_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    tones_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    tones_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    ring_size: ProfileEntry | None = None
     recently_owned: list[OwnedItem] = Field(default_factory=list, max_length=5)
     rejected_product_keys: list[str] = Field(default_factory=list, max_length=200)  # internal to search; count is exposed
     updated_at: datetime | None = None
@@ -153,6 +157,9 @@ class StyleProfileView(Record):
     materials_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
     brands_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
     brands_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    tones_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    tones_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    ring_size: ProfileEntry | None = None
     recently_owned: list[OwnedItem] = Field(default_factory=list, max_length=5)
     rejected_offer_count: int = 0
     updated_at: datetime | None = None
