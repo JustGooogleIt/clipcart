@@ -1,0 +1,74 @@
+{
+  "recordedAt": "2026-10-18T07:59:01.926818Z",
+  "signature": "3KjLMeXJUjidmxgbsvqWZQVCfHeBAupHnTk8rdc2EkNjr12A7iCCRXsgkbYqyjLVsioAPmsoDGPtA2Psz51HkbJh",
+  "explorerUrl": "https://explorer.solana.com/tx/3KjLMeXJUjidmxgbsvqWZQVCfHeBAupHnTk8rdc2EkNjr12A7iCCRXsgkbYqyjLVsioAPmsoDGPtA2Psz51HkbJh?cluster=devnet",
+  "reference": "HDKkghtD6ZYWBPEPPwFQrY1BL9TfVLM3H4J1ffFy8WyL",
+  "recipient": "3yVVaxvuDpXBJWFGetwdCAC3bRXoo4d7bjXeX5Xn8y73",
+  "buyer": "8W3Rgm2MFFkA3SP1TcUuvVaHMAPhJshZ4rdgJw2QSwjo",
+  "amountLamports": 10000000,
+  "rpcUrl": "https://api.devnet.solana.com",
+  "devnetGenesisHash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "allDirectLiveChecksPassed": true,
+  "checks": [
+    {
+      "check": "getGenesisHash",
+      "source": "direct_live_rpc",
+      "rpcUrl": "https://api.devnet.solana.com",
+      "ok": true,
+      "value": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+      "expected": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
+    },
+    {
+      "check": "getSignatureStatuses",
+      "source": "direct_live_rpc",
+      "ok": true,
+      "value": {
+        "confirmationStatus": "finalized",
+        "confirmations": null,
+        "err": null,
+        "slot": 512353918,
+        "status": {
+          "Ok": null
+        }
+      }
+    },
+    {
+      "check": "getTransaction",
+      "source": "direct_live_rpc",
+      "ok": true,
+      "blockTime": 1792306975
+    },
+    {
+      "check": "inspect_transaction",
+      "source": "direct_live_rpc_body",
+      "ok": true,
+      "detail": "ok",
+      "buyer": "8W3Rgm2MFFkA3SP1TcUuvVaHMAPhJshZ4rdgJw2QSwjo",
+      "window": {
+        "createdAt": "2026-10-18T06:57:55Z",
+        "expiresAt": "2026-10-18T07:12:55Z",
+        "blockTime": 1792306975
+      }
+    },
+    {
+      "check": "verify_payment",
+      "source": "direct_live_rpc",
+      "ok": true,
+      "outcome": "paid",
+      "signature": "3KjLMeXJUjidmxgbsvqWZQVCfHeBAupHnTk8rdc2EkNjr12A7iCCRXsgkbYqyjLVsioAPmsoDGPtA2Psz51HkbJh",
+      "buyer": "8W3Rgm2MFFkA3SP1TcUuvVaHMAPhJshZ4rdgJw2QSwjo"
+    },
+    {
+      "check": "already_paid_idempotent_http",
+      "source": "not_rpc",
+      "ok": true,
+      "note": "HTTP replay of paid orders sets rpc_invoked=False; not counted as RPC verification"
+    },
+    {
+      "check": "fixture_rpc",
+      "source": "removed_from_tree",
+      "ok": true,
+      "note": "Local fixture RPC smoke scripts deleted; FakeRpc remains unit-test only"
+    }
+  ]
+}

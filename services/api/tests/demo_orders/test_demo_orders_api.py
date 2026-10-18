@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from api.conftest import H, new_client
+from app.demo.verify import parse_order_unix
 from app.sessions.service import now
 from demo_orders.conftest import (
     BUYER,
@@ -16,6 +17,13 @@ from demo_orders.conftest import (
     create_session,
     transfer_tx,
 )
+
+
+def _mid_window(order: dict) -> int:
+    """blockTime inside the order's [createdAt, expiresAt] for FakeRpc fixtures."""
+    start = parse_order_unix(order["createdAt"]) or 0
+    end = parse_order_unix(order["expiresAt"]) or (start + 900)
+    return (start + end) // 2
 
 
 def test_flag_off_disables_all_demo_routes(solana_app):
@@ -83,7 +91,9 @@ def test_verify_paid_unconfirmed_mismatch_and_replay(solana_app, monkeypatch):
     create_session(c)
     order = create_demo_order(c).json()["order"]
     ref = order["paymentReference"]
-    tx = transfer_tx(source=BUYER, dest=MERCHANT, lamports=10_000_000, reference=ref)
+    tx = transfer_tx(
+        source=BUYER, dest=MERCHANT, lamports=10_000_000, reference=ref, block_time=_mid_window(order)
+    )
     fake = FakeRpc(
         statuses={SIG_OK: {"confirmationStatus": "confirmed", "err": None}},
         transactions={SIG_OK: tx},
@@ -105,7 +115,10 @@ def test_verify_paid_unconfirmed_mismatch_and_replay(solana_app, monkeypatch):
     assert body["explorerPaymentUrl"].endswith("?cluster=devnet")
     assert "ownerId" not in body
 
-    # Idempotent replay
+    # Idempotent replay — already-paid short-circuit; must not require RPC.
+    fake.transactions.clear()
+    fake.statuses.clear()
+    fake.by_address.clear()
     again = c.post(
         f"/api/demo-orders/{order['id']}/verify",
         headers=H,
@@ -169,7 +182,13 @@ def test_signature_cannot_pay_two_orders(solana_app, monkeypatch):
 
     def rpc_for(order):
         ref = order["paymentReference"]
-        tx = transfer_tx(source=BUYER, dest=MERCHANT, lamports=10_000_000, reference=ref)
+        tx = transfer_tx(
+            source=BUYER,
+            dest=MERCHANT,
+            lamports=10_000_000,
+            reference=ref,
+            block_time=_mid_window(order),
+        )
         return FakeRpc(
             statuses={SIG_OK: {"confirmationStatus": "confirmed", "err": None}},
             transactions={SIG_OK: tx},

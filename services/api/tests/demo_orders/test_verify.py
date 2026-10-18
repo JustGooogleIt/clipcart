@@ -144,3 +144,60 @@ def test_bad_hint_still_finds_good_reference_payment():
     )
     # Hint mismatches; reference scan still locates the correct transfer.
     assert r.outcome == "paid" and r.payment_signature == SIG_OK
+
+
+def test_inspect_enforces_order_time_window():
+    ref = OTHER
+    bt = 1_700_000_100
+    tx = transfer_tx(source=BUYER, dest=MERCHANT, lamports=10_000_000, reference=ref, block_time=bt)
+    assert (
+        inspect_transaction(
+            tx,
+            recipient=MERCHANT,
+            amount_lamports=10_000_000,
+            payment_reference=ref,
+            buyer_hint=None,
+            paid_not_before=bt - 10,
+            paid_not_after=bt + 10,
+        ).outcome
+        == "paid"
+    )
+    assert (
+        inspect_transaction(
+            tx,
+            recipient=MERCHANT,
+            amount_lamports=10_000_000,
+            payment_reference=ref,
+            buyer_hint=None,
+            paid_not_before=bt + 1,
+            paid_not_after=bt + 10,
+        ).detail
+        == "transaction blockTime before order createdAt"
+    )
+    assert (
+        inspect_transaction(
+            tx,
+            recipient=MERCHANT,
+            amount_lamports=10_000_000,
+            payment_reference=ref,
+            buyer_hint=None,
+            paid_not_before=bt - 10,
+            paid_not_after=bt - 1,
+        ).detail
+        == "transaction blockTime after order expiresAt"
+    )
+    missing_bt = transfer_tx(
+        source=BUYER, dest=MERCHANT, lamports=10_000_000, reference=ref, block_time=None
+    )
+    assert (
+        inspect_transaction(
+            missing_bt,
+            recipient=MERCHANT,
+            amount_lamports=10_000_000,
+            payment_reference=ref,
+            buyer_hint=None,
+            paid_not_before=bt - 10,
+            paid_not_after=bt + 10,
+        ).detail
+        == "transaction blockTime missing"
+    )

@@ -61,7 +61,16 @@ class FakeRpc:
         return rows[:limit]
 
 
-def transfer_tx(*, source: str, dest: str, lamports: int, reference: str, err=None) -> dict:
+def transfer_tx(
+    *,
+    source: str,
+    dest: str,
+    lamports: int,
+    reference: str,
+    err=None,
+    block_time: int | None = None,
+) -> dict:
+    """In-memory jsonParsed transfer. Used only by unit tests (never live RPC)."""
     keys = [
         {"pubkey": source, "signer": True, "writable": True},
         {"pubkey": dest, "signer": False, "writable": True},
@@ -69,6 +78,7 @@ def transfer_tx(*, source: str, dest: str, lamports: int, reference: str, err=No
         {"pubkey": "11111111111111111111111111111111", "signer": False, "writable": False},
     ]
     return {
+        "blockTime": block_time,
         "meta": {"err": err},
         "transaction": {
             "message": {

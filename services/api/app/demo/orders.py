@@ -19,16 +19,26 @@ from app.demo.catalog import (
     get_catalog_item,
 )
 from app.demo.rpc import SolanaRpc
-from app.demo.verify import explorer_tx_url, verify_payment
+from app.demo.verify import explorer_tx_url, parse_order_unix, verify_payment
 from app.sessions.service import ApiProblem, new_id, now
 
 
 class VerifyMeta:
-    def __init__(self, http_status: int, code: str | None, message: str | None, retryable: bool):
+    def __init__(
+        self,
+        http_status: int,
+        code: str | None,
+        message: str | None,
+        retryable: bool,
+        *,
+        rpc_invoked: bool = False,
+    ):
         self.http_status = http_status
         self.code = code
         self.message = message
         self.retryable = retryable
+        # False when returning an already-paid order without calling Solana RPC.
+        self.rpc_invoked = rpc_invoked
 
 
 def _new_reference() -> str:
@@ -212,7 +222,10 @@ def verify_order(
 ) -> tuple[dict, VerifyMeta]:
     doc = get_owned_order(st.db, order_id, owner_id)
     if doc["status"] == "paid":
-        return doc, VerifyMeta(http_status=200, code=None, message=None, retryable=False)
+        # Idempotent replay — must not be counted as a fresh Solana RPC verification.
+        return doc, VerifyMeta(
+            http_status=200, code=None, message=None, retryable=False, rpc_invoked=False
+        )
     if doc["status"] == "expired":
         raise ApiProblem(410, "order_expired", "This demo order expired; create a new one")
     if doc["status"] == "failed":
@@ -224,6 +237,8 @@ def verify_order(
         raise ApiProblem(422, "invalid_signature", "paymentSignature looks invalid")
 
     recipient, amount, rpc_url = require_solana_config(st.settings)
+    paid_not_before = parse_order_unix(doc.get("createdAt"))
+    paid_not_after = parse_order_unix(doc.get("expiresAt"))
     st.db.demo_orders.update_one(
         {"_id": order_id, "status": {"$in": ["awaiting_payment", "created"]}},
         {"$set": {"status": "verifying", "updatedAt": now().isoformat()}},
@@ -239,6 +254,8 @@ def verify_order(
             payment_reference=doc["paymentReference"],
             signature_hint=payment_signature,
             buyer_hint=buyer_wallet,
+            paid_not_before=paid_not_before,
+            paid_not_after=paid_not_after,
         )
     finally:
         if owned_rpc:
@@ -260,7 +277,9 @@ def verify_order(
                     {"$set": {"status": "awaiting_payment", "updatedAt": now().isoformat()}},
                 )
             raise
-        return paid, VerifyMeta(http_status=200, code=None, message=None, retryable=False)
+        return paid, VerifyMeta(
+            http_status=200, code=None, message=None, retryable=False, rpc_invoked=True
+        )
 
     if result.outcome in ("unconfirmed", "missing", "rpc_error"):
         st.db.demo_orders.update_one(
@@ -284,6 +303,7 @@ def verify_order(
             code=code,
             message=result.detail or "Payment not yet verifiable",
             retryable=True,
+            rpc_invoked=True,
         )
 
     # mismatch — definitive rejection of this verification attempt
@@ -303,4 +323,5 @@ def verify_order(
         code="payment_mismatch",
         message=result.detail or "Payment does not match this order",
         retryable=False,
+        rpc_invoked=True,
     )

@@ -144,7 +144,7 @@ Headers: `X-ClipCart-Request: 1`. Body fields are optional hints:
 { "paymentSignature": "<base58>", "buyerWallet": "<base58>" }
 ```
 
-Server checks `getGenesisHash` against Solana **devnet**, finds transactions by Solana Pay `paymentReference` (and optional signature hint), and independently confirms: successful confirmed/finalized tx, exact native SOL lamports, configured merchant recipient, reference account present, buyer source wallet, and order not expired. Client values are never treated as proof.
+Server checks `getGenesisHash` against Solana **devnet** via the configured `SOLANA_RPC_URL`, finds transactions by Solana Pay `paymentReference` (and optional signature hint), and independently confirms: successful confirmed/finalized tx, exact native SOL lamports, configured merchant recipient, reference account present, buyer source wallet, on-chain `blockTime` within the order’s `[createdAt, expiresAt]` window, and that the order is not already expired server-side. Client signature/buyer values and any browser-supplied transaction body are **hints only — never proof**. Fixture/FakeRpc clients are restricted to unit tests; production verification never accepts injected transaction evidence.
 
 ### Paid
 

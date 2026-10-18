@@ -6,8 +6,8 @@ from typing import Any
 
 import httpx
 
-# https://docs.solana.com/clusters — getGenesisHash for official Solana Devnet
-DEVNET_GENESIS_HASH = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWafPvuok"
+# https://docs.anza.xyz/clusters/available — getGenesisHash for official Solana Devnet
+DEVNET_GENESIS_HASH = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
 SYSTEM_PROGRAM_ID = "11111111111111111111111111111111"
 
 
@@ -18,10 +18,24 @@ class RpcError(Exception):
 
 
 class SolanaRpc:
-    def __init__(self, url: str, client: httpx.Client | None = None, timeout_s: float = 20.0):
+    def __init__(
+        self,
+        url: str,
+        client: httpx.Client | None = None,
+        timeout_s: float = 20.0,
+        *,
+        trust_env: bool = False,
+    ):
+        """JSON-RPC client for Solana verification.
+
+        ``trust_env`` defaults to False so this client alone ignores process
+        ``HTTP(S)_PROXY`` settings. Agent/sandbox proxies often 403 Solana
+        CONNECT tunnels; verification must hit ``url`` directly. Callers that
+        inject a custom ``client`` keep that client's proxy policy unchanged.
+        """
         self.url = url
         self._owned = client is None
-        self.client = client or httpx.Client(timeout=timeout_s)
+        self.client = client or httpx.Client(timeout=timeout_s, trust_env=trust_env)
 
     def close(self) -> None:
         if self._owned:

@@ -1,8 +1,14 @@
-"""Independent Solana Pay transfer verification. Client signature/buyer are hints only."""
+"""Independent Solana Pay transfer verification. Client signature/buyer are hints only.
+
+Production verification always fetches genesis + transactions from the configured
+Solana RPC URL via :class:`SolanaRpc`. Browser-supplied transaction bodies and
+local fixture RPC servers are never accepted as proof outside unit tests.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from app.demo.rpc import SYSTEM_PROGRAM_ID, SolanaRpc
@@ -70,6 +76,23 @@ def _native_transfers(tx: dict) -> list[tuple[str, str, int]]:
     return found
 
 
+def parse_order_unix(value: Any) -> int | None:
+    """Parse order createdAt/expiresAt (ISO string or datetime) to unix seconds."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, datetime):
+        dt = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp())
+    if isinstance(value, str):
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp())
+    return None
+
+
 def inspect_transaction(
     tx: dict,
     *,
@@ -77,6 +100,8 @@ def inspect_transaction(
     amount_lamports: int,
     payment_reference: str,
     buyer_hint: str | None,
+    paid_not_before: int | None = None,
+    paid_not_after: int | None = None,
 ) -> VerifyResult:
     meta = tx.get("meta") or {}
     if meta.get("err") is not None:
@@ -102,6 +127,28 @@ def inspect_transaction(
             detail="buyer wallet does not match transfer source",
             retryable=False,
         )
+
+    if paid_not_before is not None or paid_not_after is not None:
+        block_time = tx.get("blockTime")
+        if block_time is None:
+            return VerifyResult("mismatch", detail="transaction blockTime missing", retryable=False)
+        try:
+            bt = int(block_time)
+        except (TypeError, ValueError):
+            return VerifyResult("mismatch", detail="transaction blockTime invalid", retryable=False)
+        if paid_not_before is not None and bt < int(paid_not_before):
+            return VerifyResult(
+                "mismatch",
+                detail="transaction blockTime before order createdAt",
+                retryable=False,
+            )
+        if paid_not_after is not None and bt > int(paid_not_after):
+            return VerifyResult(
+                "mismatch",
+                detail="transaction blockTime after order expiresAt",
+                retryable=False,
+            )
+
     return VerifyResult("paid", buyer_wallet=source, detail="ok", retryable=False)
 
 
@@ -149,6 +196,8 @@ def verify_payment(
     payment_reference: str,
     signature_hint: str | None = None,
     buyer_hint: str | None = None,
+    paid_not_before: int | None = None,
+    paid_not_after: int | None = None,
 ) -> VerifyResult:
     try:
         rpc.require_devnet()
@@ -197,6 +246,8 @@ def verify_payment(
                 amount_lamports=amount_lamports,
                 payment_reference=payment_reference,
                 buyer_hint=buyer_hint,
+                paid_not_before=paid_not_before,
+                paid_not_after=paid_not_after,
             )
             if checked.outcome == "paid":
                 return VerifyResult(
