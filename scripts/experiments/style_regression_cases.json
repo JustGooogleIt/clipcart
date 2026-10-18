@@ -1,0 +1,318 @@
+{
+  "$comment": "Regression cases for the style-note model's action interpretation (add vs remove) and purchase-vs-preference. a10-* failed on the hosted Gemma 12B run (raw output recorded); new-* are unrun variants of the same patterns. Labels are [kind, value, action] and were written before any run. Use: style_model_bench.py --set regression.",
+  "cases": [
+    {
+      "id": "a10-01",
+      "text": "I'm a medium and I never wear leather",
+      "failure": "avoid_read_as_remove",
+      "expected": [
+        [
+          "material_avoid",
+          "leather",
+          "add"
+        ],
+        [
+          "size",
+          "M",
+          "set"
+        ]
+      ],
+      "observed": {
+        "model": "gaunernst/gemma-3-12b-it-int4-awq@3b0c67b9",
+        "run": "2026-10-18 A10",
+        "validatedProposals": [
+          [
+            "material_avoid",
+            "leather",
+            "remove"
+          ],
+          [
+            "size",
+            "M",
+            "set"
+          ]
+        ],
+        "raw": {
+          "updates": [
+            {
+              "kind": "size",
+              "value": "M",
+              "action": "set",
+              "quote": "I'm a medium"
+            },
+            {
+              "kind": "material_avoid",
+              "value": "leather",
+              "action": "remove",
+              "quote": "I never wear leather"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a10-02",
+      "text": "No orange please, I hate it",
+      "failure": "avoid_read_as_remove",
+      "expected": [
+        [
+          "color_avoid",
+          "orange",
+          "add"
+        ]
+      ],
+      "observed": {
+        "model": "gaunernst/gemma-3-12b-it-int4-awq@3b0c67b9",
+        "run": "2026-10-18 A10",
+        "validatedProposals": [
+          [
+            "color_avoid",
+            "orange",
+            "remove"
+          ]
+        ],
+        "raw": {
+          "updates": [
+            {
+              "kind": "size",
+              "value": "M",
+              "action": "set",
+              "quote": "size M"
+            },
+            {
+              "kind": "fit",
+              "value": "womens",
+              "action": "set",
+              "quote": "womens"
+            },
+            {
+              "kind": "budget_max",
+              "value": "120",
+              "action": "set",
+              "quote": "up to $120"
+            },
+            {
+              "kind": "color_avoid",
+              "value": "orange",
+              "action": "remove",
+              "quote": "no orange"
+            },
+            {
+              "kind": "material_like",
+              "value": "cotton",
+              "action": "add",
+              "quote": "cotton"
+            },
+            {
+              "kind": "brand_like",
+              "value": "Levi's",
+              "action": "add",
+              "quote": "Levi's"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a10-15",
+      "text": "Not a fan of black, but navy is great",
+      "failure": "avoid_read_as_remove",
+      "expected": [
+        [
+          "color_avoid",
+          "black",
+          "add"
+        ],
+        [
+          "color_like",
+          "navy",
+          "add"
+        ]
+      ],
+      "observed": {
+        "model": "gaunernst/gemma-3-12b-it-int4-awq@3b0c67b9",
+        "run": "2026-10-18 A10",
+        "validatedProposals": [
+          [
+            "color_avoid",
+            "black",
+            "remove"
+          ],
+          [
+            "color_like",
+            "navy",
+            "add"
+          ]
+        ],
+        "raw": {
+          "updates": [
+            {
+              "kind": "color_avoid",
+              "value": "black",
+              "action": "remove",
+              "quote": "Not a fan of black"
+            },
+            {
+              "kind": "color_like",
+              "value": "navy",
+              "action": "add",
+              "quote": "navy"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a10-05",
+      "text": "Actually leather is fine now",
+      "failure": "take_back_read_as_like",
+      "expected": [
+        [
+          "material_avoid",
+          "leather",
+          "remove"
+        ]
+      ],
+      "observed": {
+        "model": "gaunernst/gemma-3-12b-it-int4-awq@3b0c67b9",
+        "run": "2026-10-18 A10",
+        "validatedProposals": [
+          [
+            "material_like",
+            "leather",
+            "add"
+          ]
+        ],
+        "raw": {
+          "updates": [
+            {
+              "kind": "material_like",
+              "value": "leather",
+              "action": "add",
+              "quote": "Actually leather is fine now"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a10-18",
+      "text": "Please forget that I avoid orange",
+      "failure": "take_back_missed",
+      "expected": [
+        [
+          "color_avoid",
+          "orange",
+          "remove"
+        ]
+      ],
+      "observed": {
+        "model": "gaunernst/gemma-3-12b-it-int4-awq@3b0c67b9",
+        "run": "2026-10-18 A10",
+        "validatedProposals": [],
+        "raw": {
+          "updates": []
+        }
+      }
+    },
+    {
+      "id": "a10-16",
+      "text": "I bought a Patagonia fleece last month for my dad",
+      "failure": "purchase_read_as_preference",
+      "expected": [],
+      "observed": {
+        "model": "gaunernst/gemma-3-12b-it-int4-awq@3b0c67b9",
+        "run": "2026-10-18 A10",
+        "validatedProposals": [
+          [
+            "brand_like",
+            "Patagonia",
+            "add"
+          ]
+        ],
+        "raw": {
+          "updates": [
+            {
+              "kind": "brand_like",
+              "value": "Patagonia",
+              "action": "add",
+              "quote": "Patagonia"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "new-01",
+      "text": "I don't wear wool",
+      "failure": "avoid_read_as_remove",
+      "expected": [
+        [
+          "material_avoid",
+          "wool",
+          "add"
+        ]
+      ],
+      "observed": null
+    },
+    {
+      "id": "new-02",
+      "text": "Never yellow for me",
+      "failure": "avoid_read_as_remove",
+      "expected": [
+        [
+          "color_avoid",
+          "yellow",
+          "add"
+        ]
+      ],
+      "observed": null
+    },
+    {
+      "id": "new-03",
+      "text": "Stop avoiding leather, I wear it now",
+      "failure": "take_back",
+      "expected": [
+        [
+          "material_avoid",
+          "leather",
+          "remove"
+        ]
+      ],
+      "observed": null
+    },
+    {
+      "id": "new-04",
+      "text": "I no longer dislike green",
+      "failure": "take_back",
+      "expected": [
+        [
+          "color_avoid",
+          "green",
+          "remove"
+        ]
+      ],
+      "observed": null
+    },
+    {
+      "id": "new-05",
+      "text": "I bought Gucci loafers as a gift",
+      "failure": "purchase_read_as_preference",
+      "expected": [],
+      "observed": null
+    },
+    {
+      "id": "new-06",
+      "text": "I own a Patagonia jacket and I like Patagonia",
+      "failure": "purchase_read_as_preference",
+      "expected": [
+        [
+          "brand_like",
+          "Patagonia",
+          "add"
+        ]
+      ],
+      "observed": null
+    }
+  ]
+}

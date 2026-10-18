@@ -51,9 +51,7 @@ def item_from_recommendation(db, owner: str, recommendation_id: str) -> StyleIte
         raise ApiProblem(404, "not_found", "Result not found")
     L = db.listings.find_one({"id": rec["listingId"]}) or {}
     g = db.garments.find_one({"id": rec.get("garmentId"), "ownerId": owner}) or {}
-    from urllib.parse import urlparse
-
-    host = (urlparse(L.get("canonicalUrl") or "").hostname or "").removeprefix("www.") or None
+    host = _host(L.get("canonicalUrl"))
     pk = f"{L.get('provider')}:{L.get('providerListingId')}" if L.get("providerListingId") else None
     return StyleItem(
         recommendation_id=recommendation_id, listing_id=rec["listingId"], offer_key=L.get("offerKey"), product_key=pk,
@@ -79,12 +77,23 @@ def record_api_event(db, owner: str, etype: str, recommendation_id: str) -> tupl
     return ev, rebuild_inferred(db, owner)
 
 
-def record_retailer_click(db, owner: str, listing_id: str, recommendation_id: str | None, link_kind: str) -> StyleEvent:
-    """Server-side only, from /go. A click is interest, never a purchase, and creates no memory."""
+def _host(url: str | None) -> str | None:
+    from urllib.parse import urlparse
+
+    return (urlparse(url or "").hostname or "").removeprefix("www.") or None
+
+
+def record_retailer_click(db, owner: str, listing_id: str, recommendation_id: str | None, link_kind: str,
+                          target_url: str | None = None) -> StyleEvent:
+    """Server-side only, from /go. A click is interest, never a purchase, and creates no memory.
+
+    ``domain`` is the host the shopper was sent to (the redirect target), falling back to the listing's URL.
+    """
     L = db.listings.find_one({"id": listing_id}) or {}
     pk = f"{L.get('provider')}:{L.get('providerListingId')}" if L.get("providerListingId") else None
     item = StyleItem(recommendation_id=recommendation_id, listing_id=listing_id, offer_key=L.get("offerKey"),
-                     product_key=pk, title=str(L.get("title") or "Untitled")[:200], brand=L.get("brand"))
+                     product_key=pk, title=str(L.get("title") or "Untitled")[:200], brand=L.get("brand"),
+                     domain=_host(target_url) or _host(L.get("canonicalUrl")))
     return add_event(db, owner, "retailer_click", origin="inferred", source="outbound_link", item=item, link_kind=link_kind)
 
 

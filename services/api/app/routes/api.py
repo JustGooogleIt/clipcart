@@ -99,7 +99,7 @@ class YoutubeAnalyzeIn(In):
 def _style_model_info(s) -> dict:
     """Never claims local processing for a hosted model."""
     if not s.feature_style_memory:
-        return {"provider": None, "model": s.style_model, "hosting": None, "label": None}
+        return {"provider": None, "model": None, "hosting": None, "label": None}
     if s.style_model_provider == "openai_compatible":
         return {"provider": "openai_compatible", "model": s.style_remote_model, "hosting": "remote",
                 "label": s.style_remote_label}
@@ -677,7 +677,8 @@ def go(token: str, request: Request):
         try:  # a click is interest only: never a purchase, never a memory
             from app.style.service import record_retailer_click
 
-            record_retailer_click(st.db, link["ownerId"], link["listingId"], link.get("recommendationId"), link["kind"])
+            record_retailer_click(st.db, link["ownerId"], link["listingId"], link.get("recommendationId"), link["kind"],
+                                  target_url=link["url"])
         except Exception:  # noqa: BLE001 - must never block the redirect
             log.exception("style click logging failed")
     return RedirectResponse(link["url"], status_code=302, headers={"Referrer-Policy": "no-referrer"})

@@ -61,6 +61,15 @@ CASES = [
 ]
 
 
+REGRESSION_FILE = Path(__file__).with_name("style_regression_cases.json")
+
+
+def regression_cases() -> list[tuple[str, set]]:
+    """Known action-interpretation failures (add vs remove, purchase vs preference). See the JSON's $comment."""
+    data = json.loads(REGRESSION_FILE.read_text())
+    return [(c["text"], {tuple(x) for x in c["expected"]}) for c in data["cases"]]
+
+
 def key(p) -> tuple[str, str, str]:
     v = p.value
     if isinstance(v, dict):
@@ -72,7 +81,7 @@ def score(pred: set, exp: set) -> tuple[int, int, int]:
     return len(pred & exp), len(pred - exp), len(exp - pred)
 
 
-def run_remote(max_calls: int, out_path: str | None) -> dict:
+def run_remote(max_calls: int, out_path: str | None, cases: list | None = None) -> dict:
     """Hosted OpenAI-compatible model. Endpoint, key and model come from env and are never printed.
 
     No warm-up call: every request counts against ``max_calls``.
@@ -84,7 +93,7 @@ def run_remote(max_calls: int, out_path: str | None) -> dict:
                                    max_tokens=int(os.getenv("STYLE_REMOTE_MAX_TOKENS", "300")))
     tp = fp = fn = invalid = rejected = errors = 0
     walls, ptoks, ctoks, rows = [], [], [], []
-    for i, (text, exp) in enumerate(CASES[:max_calls], 1):
+    for i, (text, exp) in enumerate((cases or CASES)[:max_calls], 1):
         row = {"case": i, "text": text, "expected": sorted(map(list, exp))}
         try:
             raw, t = m.chat_json(_SYSTEM, text, PROPOSAL_SCHEMA)
@@ -123,10 +132,10 @@ def run_remote(max_calls: int, out_path: str | None) -> dict:
     return res
 
 
-def run_rules() -> dict:
+def run_rules(cases: list | None = None) -> dict:
     tp = fp = fn = 0
     lat = []
-    for text, exp in CASES:
+    for text, exp in cases or CASES:
         t0 = time.perf_counter()
         pred = {key(p) for p in rule_based_proposals(text)}
         lat.append((time.perf_counter() - t0) * 1000)
@@ -136,12 +145,12 @@ def run_rules() -> dict:
             "fp": fp, "fn": fn, "medianMs": round(statistics.median(lat), 2)}
 
 
-def run_model(base: str, tag: str, timeout: float) -> dict:
+def run_model(base: str, tag: str, timeout: float, cases: list | None = None) -> dict:
     m = OllamaStyleModel(base_url=base, model=tag, timeout_s=timeout)
     tp = fp = fn = invalid = rejected = 0
     walls, evals, loads = [], [], []
     m.chat_json(_SYSTEM, "warm up: I'm a medium", PROPOSAL_SCHEMA)  # first call loads weights; reported separately
-    for text, exp in CASES:
+    for text, exp in cases or CASES:
         raw, t = m.chat_json(_SYSTEM, text, PROPOSAL_SCHEMA)
         walls.append(t["wallMs"])
         evals.append(t.get("evalMs", 0))
@@ -167,11 +176,14 @@ def main() -> int:
     ap.add_argument("--timeout", type=float, default=60)
     ap.add_argument("--remote", action="store_true", help="use STYLE_REMOTE_* env (OpenAI-compatible); skips Ollama")
     ap.add_argument("--max-calls", type=int, default=18)
+    ap.add_argument("--set", choices=["base", "regression", "all"], default="base",
+                    help="base: the 18 labelled cases; regression: known action-interpretation failures")
     ap.add_argument("--out", help="write per-case JSON here (remote mode)")
     a = ap.parse_args()
-    report = {"cases": len(CASES), "results": [run_rules()]}
+    cases = {"base": CASES, "regression": regression_cases(), "all": CASES + regression_cases()}[a.set]
+    report = {"set": a.set, "cases": len(cases), "results": [run_rules(cases)]}
     if a.remote:
-        report["results"].append(run_remote(a.max_calls, a.out))
+        report["results"].append(run_remote(a.max_calls, a.out, cases))
         print(json.dumps(report, indent=2))
         return 0
     try:
@@ -184,7 +196,7 @@ def main() -> int:
             report["results"].append({"mode": "model", "model": tag, "skipped": "not installed or Ollama unreachable"})
             continue
         try:
-            report["results"].append(run_model(a.base, tag, a.timeout))
+            report["results"].append(run_model(a.base, tag, a.timeout, cases))
         except Exception as exc:  # noqa: BLE001
             report["results"].append({"mode": "model", "model": tag, "error": f"{type(exc).__name__}: {exc}"[:200]})
     print(json.dumps(report, indent=2))

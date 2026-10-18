@@ -20,6 +20,7 @@ def style_app(app_factory, monkeypatch):
     def make(flag=True):
         if flag:
             monkeypatch.setenv("FEATURE_STYLE_MEMORY", "1")
+        monkeypatch.setenv("STYLE_MODEL_PROVIDER", "ollama")
         monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:9")  # nothing listens: model unavailable
         monkeypatch.setenv("STYLE_MODEL_TIMEOUT_S", "1")
         app = app_factory(FakeCatalog(ITEMS, {s: {"sizes": ["M"], "hidden": 1, "carrying": 2} for s in "abcde"}))
@@ -107,6 +108,7 @@ def test_click_is_never_a_purchase(style_app):
     assert c.get(f"/go/{tok}", follow_redirects=False).status_code == 302
     events = c.get("/api/style/events").json()["events"]
     assert [e["type"] for e in events] == ["retailer_click"] and events[0]["origin"] == "inferred"
+    assert events[0]["item"]["domain"] == "solescout.ai"  # host the shopper was sent to
     prof = c.get("/api/style/profile").json()["profile"]
     assert prof["recentlyOwned"] == [] and c.get("/api/style/memories").json()["memories"] == []
     rid = out["results"][0]["recommendation"]["id"]
@@ -175,6 +177,27 @@ def test_notes_fall_back_when_model_unavailable_and_save_nothing(style_app):
     assert c.get("/api/style/memories?status=all").json()["memories"] == []  # proposals are never saved
     h = c.get("/api/health").json()["providers"]["styleModel"]
     assert h["mode"] == "unverified" and h["failures"] >= 1
+
+
+def test_rule_parser_is_the_default_provider(app_factory, monkeypatch):
+    monkeypatch.setenv("FEATURE_STYLE_MEMORY", "1")
+    monkeypatch.delenv("STYLE_MODEL_PROVIDER", raising=False)
+    c = new_client(app_factory())
+    sm = c.get("/api/health").json()["providers"]["styleModel"]
+    assert sm["provider"] == "none" and sm["mode"] == "unavailable" and sm["label"] == "Rule-based parser only"
+    c.post("/api/sessions", headers=H)
+    r = c.post("/api/style/notes", headers=H, json={"text": "I love brown, I hate orange"}).json()
+    assert r["mode"] == "rule_based" and r["hosting"] is None and "off" in r["note"]
+    assert {(p["kind"], p["quote"]) for p in r["proposals"]} == {("color_like", "love brown"), ("color_avoid", "hate orange")}
+    assert c.get("/api/style/profile").json()["styleModel"]["mode"] == "unavailable"
+
+
+def test_style_panel_source_is_accepted(style_app):
+    c, _ = style_app()
+    c.post("/api/sessions", headers=H)
+    r = c.post("/api/style/memories", headers=H, json={"kind": "color_like", "value": "purple", "source": "style_panel"})
+    assert r.status_code == 201 and r.json()["memory"]["source"] == "style_panel" and r.json()["memory"]["origin"] == "stated"
+    assert c.post("/api/style/memories", headers=H, json={"kind": "color_like", "value": "red", "source": "saved_items"}).status_code == 422
 
 
 def test_personalization_is_soft_and_respects_hard_constraints(style_app):

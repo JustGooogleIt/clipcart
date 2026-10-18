@@ -93,6 +93,13 @@ def test_rule_parser_explicit_sizes(text, size):
     assert got == [size]
 
 
+def test_rule_parser_like_quote_stops_at_last_color():
+    text = "I'm a medium, I love brown, I hate orange and I never wear leather"
+    likes = [p for p in rule_based_proposals(text) if p.kind == "color_like"]
+    assert [(p.value, p.quote) for p in likes] == [("brown", "love brown")]
+    assert [p.quote for p in rule_based_proposals("I love black and navy, or green")] == ["love black and navy, or green"] * 3
+
+
 def test_rule_parser_color_lists():
     got = {p.value for p in rule_based_proposals("I love black and navy, or green") if p.kind == "color_like"}
     assert got == {"black", "navy", "green"}

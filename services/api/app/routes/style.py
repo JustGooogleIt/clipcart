@@ -21,7 +21,7 @@ class MemoryIn(In):
     kind: Literal["size", "fit", "budget_max", "color_like", "color_avoid", "material_like", "material_avoid",
                   "brand_like", "brand_avoid"]
     value: Any
-    source: Literal["preferences_form", "style_note", "chat_refinement"] = "preferences_form"
+    source: Literal["preferences_form", "style_panel", "style_note", "chat_refinement"] = "preferences_form"
     idempotency_key: str | None = Field(default=None, max_length=100)
 
 
@@ -43,9 +43,11 @@ def _flag(request: Request):
 
 
 def _model_info(st) -> dict:
+    from app.contracts import StyleModelInfo
+
     from .api import _style_model_info
 
-    return {"mode": st.status["style_model"].mode, **_style_model_info(st.settings)}
+    return StyleModelInfo(mode=st.status["style_model"].mode, **_style_model_info(st.settings)).wire()
 
 
 @router.get("/api/style/profile")
@@ -126,8 +128,15 @@ def post_note(body: NoteIn, request: Request) -> dict:
     owner = current_owner(request)
     limiter.check(owner, "style_note", 30)
     res = propose(body.text, st.style_model(), st.status["style_model"])
+    from app.contracts import StyleNoteResult, StyleNoteUsage
+
     info = _model_info(st)
-    return {"mode": res.mode, "model": res.model, "hosting": info["hosting"] if res.mode == "model" else None,
-            "provider": info["label"] if res.mode == "model" else "Rule-based parser",
-            "proposals": [p.wire() for p in res.proposals], "rejectedProposals": res.rejected, "note": res.note,
-            "usage": {k: v for k, v in res.timings.items() if k in ("promptTokens", "completionTokens", "wallMs")} or None}
+    used = res.mode == "model"
+    t = res.timings or {}
+    return StyleNoteResult(
+        mode=res.mode, model=res.model, hosting=info["hosting"] if used else None,
+        provider=(info["label"] or res.model or "Style model") if used else "Rule-based parser",
+        proposals=res.proposals, rejected_proposals=res.rejected, note=res.note,
+        usage=StyleNoteUsage(wall_ms=t.get("wallMs"), prompt_tokens=t.get("promptTokens"),
+                             completion_tokens=t.get("completionTokens")) if used and t else None,
+    ).wire()

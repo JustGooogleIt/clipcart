@@ -247,9 +247,11 @@ def rule_based_proposals(text: str) -> list[StyleProposal]:
             add("material_avoid", w, "add", m.group(0))
     sep = r"\s*(?:,\s*(?:and|or)\b|,|\band\b|\bor\b|&)\s*"
     for m in re.finditer(rf"\b{_LIKE}\s+([a-z]+(?:{sep}[a-z]+)*)", t, re.I):
-        for w in re.split(sep, m.group(1).lower()):
-            if w in COLORS:
-                add("color_like", w, "add", m.group(0))
+        words = [w for w in re.finditer(r"[a-z]+", m.group(1), re.I) if w.group(0).lower() in COLORS]
+        if words:  # quote stops at the last color, so "love brown, I hate…" quotes "love brown"
+            quote = t[m.start():m.start(1) + words[-1].end()]
+            for w in words:
+                add("color_like", w.group(0).lower(), "add", quote)
     # Sizes only from explicit wording; never from heights, weights or body descriptions.
     not_body = r"(?!\s*(?:'|\"|ft\b|foot\b|feet\b|in\b|inch|cm\b|kg\b|lb|pounds\b|tall\b|years?\b|yo\b))"
     m = re.search(rf"\b(?:i'?m|i am|i wear)\s+(?:a\s+|an\s+|size\s+)?(xxs|xs|small|medium|large|xl|xxl|s|m|l|\d{{1,2}}){not_body}\b",

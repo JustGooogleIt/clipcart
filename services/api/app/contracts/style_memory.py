@@ -28,7 +28,7 @@ MemoryKind = Literal[
     "color_like", "color_avoid", "material_like", "material_avoid", "brand_like", "brand_avoid",
 ]
 MemorySource = Literal[
-    "preferences_form", "style_note", "chat_refinement", "saved_items", "rejected_items", "purchases",
+    "preferences_form", "style_panel", "style_note", "chat_refinement", "saved_items", "rejected_items", "purchases",
 ]
 MemoryStatus = Literal["active", "overridden", "removed"]
 
@@ -106,6 +106,39 @@ class StyleProposal(Record):
     value: Any
     action: Literal["add", "set", "remove"]
     quote: str
+
+
+class StyleModelInfo(Record):
+    """Which reader handles style notes. Never claims local processing for a hosted model.
+
+    mode: unavailable (feature or provider off), unverified (configured, no successful call yet),
+    live (a real call succeeded since startup).
+    """
+
+    mode: Literal["unavailable", "unverified", "live"]
+    provider: Literal["none", "ollama", "openai_compatible"] | None = None
+    model: str | None = None
+    hosting: Literal["local", "remote"] | None = None
+    label: str | None = None
+
+
+class StyleNoteUsage(Record):
+    wall_ms: int | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+
+
+class StyleNoteResult(Record):
+    """What POST /api/style/notes returns. Proposals only; nothing is saved."""
+
+    mode: Literal["model", "rule_based"]
+    model: str | None = None
+    hosting: Literal["local", "remote"] | None = None  # null when the rule parser answered
+    provider: str  # display label, e.g. "Rule-based parser" or "Gemma hosted on Lambda (not local)"
+    proposals: list[StyleProposal] = Field(default_factory=list)
+    rejected_proposals: int = 0
+    note: str | None = None
+    usage: StyleNoteUsage | None = None
 
 
 class StyleProfileView(Record):

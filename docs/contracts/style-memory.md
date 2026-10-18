@@ -1,6 +1,6 @@
 # Contract: persistent style memory
 
-Status: **implemented on `feat/style-memory` (draft PR #15)**, first published early so the UI lane could build against it. Backend owner: Claude. `apps/web/` is untouched by this branch. Flag: `FEATURE_STYLE_MEMORY`, default **false**. When it's off, every route below returns `404 {code: "feature_disabled"}` and search is unchanged.
+Status: **agreed with the UI lane (PR #16) and implemented on `feat/style-memory` (PR #15)**. Shared types are generated in `packages/contracts`. Backend owner: Claude. `apps/web/` is untouched by this branch. Flag: `FEATURE_STYLE_MEMORY`, default **false**. When it's off, every route below returns `404 {code: "feature_disabled"}` and search is unchanged.
 
 Style memory is **owner-scoped**, keyed to the browser owner cookie like sessions. It persists across sessions for the same owner. One owner can never read, change or delete another owner's events or memories.
 
@@ -14,7 +14,17 @@ Style memory is **owner-scoped**, keyed to the browser owner cookie like session
 | `POST /api/style/notes` proposals | **Ready with the rule-based parser** (precision 0.94, recall 0.68 on the 18 labelled statements) | Optional. Hosted Gemma 12B was measured at precision 0.76, recall 0.73 (see below). |
 | Model-written explanation sentences | Off by default; templates are used | Yes. Not run against hosted Gemma in this PR. |
 
-The UI can ship everything above without Gemma. `styleModel.mode` tells it whether model proposals are in use.
+The UI can ship everything above without Gemma. **The rule-based parser is the default** (`STYLE_MODEL_PROVIDER=none`), because it was more precise than hosted Gemma on the benchmark below. `styleModel` tells the UI which reader is in use.
+
+## Agreed with the UI lane (answers to PR #16's questions)
+
+1. **Panel corrections use `source: "style_panel"`.** It is a new, additive value; `preferences_form` stays valid for the preferences form.
+2. **Correcting a like/avoid value is `POST` the new memory, then `DELETE` the old one.** Post first, so a failed delete leaves both visible rather than neither. For `size`, `fit` and `budget_max`, a `POST` alone is enough, because the newer stated memory overrides the older one (`overridden` lists it).
+3. **`retailer_click` items now carry `domain`.** It is the host the shopper was sent to, falling back to the listing's URL host.
+4. **Rule-parser quotes stop at the last matched word.** "I love brown, I hate orange" now quotes `love brown`, not `love brown, I`.
+5. **`Recommendation.personalization` is in `packages/contracts`,** along with every style record and the two response shapes below. The UI should import these instead of its hand-written copies.
+
+**Model honesty in the UI.** Describe the reader from `styleModel.label` and `styleModel.hosting`, not a hard-coded "local model". A `remote` reader is never "local" or "on-device". With the default configuration, `styleModel` is `{mode: "unavailable", provider: "none", label: "Rule-based parser only"}`.
 
 ## Concepts
 
@@ -29,7 +39,7 @@ The UI can ship everything above without Gemma. `styleModel.mode` tells it wheth
 | `explicit_preference` | `POST /api/style/memories` | Also creates a `stated` memory |
 | `saved_item` | `POST /api/style/events` with a result you saw | Server copies brand, title and domain from the stored listing. The client can't supply them. |
 | `rejected_item` | `POST /api/style/events` | That listing's offer is hidden from your future results |
-| `retailer_click` | **Server only**, recorded when `/go/{token}` redirects | **Never a purchase.** It creates no memory. |
+| `retailer_click` | **Server only**, recorded when `/go/{token}` redirects | **Never a purchase.** It creates no memory. `item.domain` is the host the shopper was sent to. |
 | `user_confirmed_purchase` | `POST /api/style/events`, after the shopper confirms they bought it | A user statement. ClipCart doesn't verify it. |
 | `verified_order` | **Server only**, from a verified ClipCart demo order | Can't be created through the API |
 
@@ -78,7 +88,7 @@ The `profile` object is validated against `StyleProfileView` before it's returne
     "rejectedOfferCount": 3,
     "updatedAt": "2026-10-18T…Z"
   },
-  "styleModel": { "mode": "unavailable", "provider": null, "model": "gemma4:e4b", "hosting": null, "label": null }
+  "styleModel": { "mode": "unavailable", "provider": "none", "model": null, "hosting": null, "label": "Rule-based parser only" }
 }
 ```
 
@@ -96,7 +106,7 @@ Defaults to `active`.
 ] }
 ```
 
-`source` is one of `preferences_form`, `style_note`, `chat_refinement`, `saved_items`, `rejected_items` or `purchases`.
+`source` is one of `preferences_form`, `style_panel`, `style_note`, `chat_refinement`, `saved_items`, `rejected_items` or `purchases`. Clients may post only the first four; the last three belong to inferred memories.
 
 ### `POST /api/style/memories` (explicit preference)
 
@@ -170,7 +180,7 @@ Proposes memory updates from text and **saves nothing**.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `FEATURE_STYLE_MEMORY` | `false` | Turns on every route and personalization |
-| `STYLE_MODEL_PROVIDER` | `ollama` | `ollama` (local), `openai_compatible` (hosted, e.g. vLLM), or `none` for the rule-based parser only |
+| `STYLE_MODEL_PROVIDER` | `none` | `none` (rule-based parser, the default), `ollama` (local) or `openai_compatible` (hosted, e.g. vLLM) |
 | `STYLE_MODEL` | `gemma4:e4b` | Ollama tag. Use `gemma4:e2b` if E4B is too slow (see the benchmark below) |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama |
 | `STYLE_MODEL_TIMEOUT_S` | `8` | Per-call read timeout. Connect timeout is 1.5 s. |
@@ -182,7 +192,7 @@ Proposes memory updates from text and **saves nothing**.
 | `STYLE_REMOTE_JSON_MODE` | `prompt` | `prompt` asks for JSON and extracts it; `schema` sends `response_format` json_schema, for servers whose guided decoding works |
 | `STYLE_REMOTE_MAX_TOKENS` | `300` | Output cap per call. The hosted read timeout is at least 20 s. |
 
-When Ollama is down, `/api/style/notes` falls back to the rule-based parser. Measured with nothing listening on the port, that took 11 ms median and 45 ms max. Every other route never calls the model.
+When a configured model is down, `/api/style/notes` falls back to the rule-based parser. Measured with nothing listening on the port, that took 11 ms median and 45 ms max. Every other route never calls the model.
 
 ## Search personalization (when the flag is on)
 
@@ -210,20 +220,26 @@ Hosted Gemma 3 12B (AWQ int4 on a Lambda A10, vLLM 0.9.2) was measured on 18 lab
 
 The model's main error is reading an avoid ("I never wear leather") as a **remove** of that avoid, in 3 cases. Because notes only propose and the UI saves each accepted proposal explicitly, this cannot change memory on its own. The UI should still show `remove` proposals distinctly. Quote validation caught a prompt-echo answer (5 invented proposals) and an ambiguous size. Recommendation: keep the rule parser as the default; revisit hosted Gemma after rewording the action guidance in the prompt and re-running this benchmark.
 
-## Shared types (codegen plan)
+## Shared types
 
-`packages/contracts` is **not regenerated** on this branch. A preview regeneration (2026-10-18) showed:
+`packages/contracts` was regenerated once on this branch, from `scripts/gen_contracts.py` and `npm run gen:types`. The TypeScript diff is purely additive: 572 lines added, none removed.
 
-- **Already stale on integration, before this PR:** the committed `index.ts` lacks the research types from merged PR #6. That's 7 interfaces and about 338 lines of diff.
-- **Added by this PR, all additive:** `StyleEvent`, `StyleItem`, `StyleMemory`, `StyleProfileView`, `StyleProposal`, `ProfileEntry` and `OwnedItem`, plus optional `Recommendation.personalization?: string[]`. No existing field changes.
+- **Research drift from PR #6:** `ResearchJob`, `ResearchSubmission` and their parts, which were already missing on `integration`.
+- **Style records:** `StyleEvent`, `StyleItem`, `StyleMemory`, `StyleProfileView`, `StyleProposal`, `ProfileEntry`, `OwnedItem`.
+- **Style responses:** `StyleModelInfo` (`profile.styleModel` and the reader fields of health) and `StyleNoteResult` with `StyleNoteUsage` (`POST /api/style/notes`). The routes build these through the Pydantic models, so the wire shape can't drift from the types.
+- **Recommendation:** optional `personalization?: string[]`.
 
-The plan is one regeneration commit on `integration`, after the UI lane confirms this contract, covering both the research drift and the style types:
+To regenerate after a contract change:
 
 ```bash
 services/api/.venv/bin/python scripts/gen_contracts.py && (cd apps/web && npm run gen:types)
 ```
 
-### Hosted Gemma on Lambda (2026-10-18)
+## Regression cases for a later model run
+
+`scripts/experiments/style_regression_cases.json` holds Gemma's action-interpretation failures from the A10 run, with the raw output recorded, plus unrun variants of the same patterns. Run them with `style_model_bench.py --set regression` (or `--set all`). Validation checks grounding, not intent, so a misread `remove` passes it. A test replays the recorded output to keep that visible. The UI must therefore show `remove` proposals distinctly and save nothing without the shopper's choice.
+
+## Hosted Gemma on Lambda (2026-10-18)
 
 The intentgraph endpoint was unreachable, because its tunnel was down and its host key had changed, so it was not used. The owner then created a temporary Lambda A10 (24 GB) instance for this experiment, which the owner terminates after the run.
 

@@ -128,7 +128,7 @@ def load_settings() -> Settings:
             v.strip() for v in (os.getenv("YOUTUBE_ALLOWED_VIDEO_IDS") or "").split(",") if v.strip()
         ),
         feature_style_memory=_flag("FEATURE_STYLE_MEMORY"),
-        style_model_provider=(os.getenv("STYLE_MODEL_PROVIDER") or "ollama").lower(),
+        style_model_provider=(os.getenv("STYLE_MODEL_PROVIDER") or "none").lower(),  # rule parser by default (see benchmark)
         style_model=os.getenv("STYLE_MODEL", "gemma4:e4b"),
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/"),
         style_model_timeout_s=float(os.getenv("STYLE_MODEL_TIMEOUT_S", "8")),
