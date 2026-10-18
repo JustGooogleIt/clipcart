@@ -121,7 +121,7 @@ def load_settings() -> Settings:
         cookie_secure=_flag("COOKIE_SECURE"),
         search_deadline_s=float(os.getenv("SEARCH_DEADLINE_S", "60")),
         analysis_deadline_s=float(os.getenv("ANALYSIS_DEADLINE_S", "60")),
-        max_tool_calls=int(os.getenv("SEARCH_MAX_TOOL_CALLS", "12")),
-        max_detail_calls=int(os.getenv("SEARCH_MAX_DETAIL_CALLS", "6")),
+        max_tool_calls=int(os.getenv("SEARCH_MAX_TOOL_CALLS", "16")),
+        max_detail_calls=int(os.getenv("SEARCH_MAX_DETAIL_CALLS", "8")),
         web_dist=Path(os.getenv("CLIPCART_WEB_DIST") or (REPO_ROOT / "apps" / "web" / "dist")),
     )

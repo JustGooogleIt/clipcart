@@ -11,7 +11,9 @@ Policy:
   and counted, never clamped into a plausible-looking crop.
 * Optional attribute calls on the largest crops, capped by
   ``max_attribute_calls``. Only visible attributes are kept: brand,
-  material, size and identity fields are never requested or stored.
+  fiber composition, size and identity fields are never requested or
+  stored. Fabric *appearance* words (denim weave, leather sheen) may
+  appear in details for shopping search.
 * Transient failures retry once with jitter if the deadline allows.
   Authentication failures stop the whole analysis and are not retried.
 * An empty detection list is a valid ``ok`` result, distinct from failure.
@@ -386,7 +388,8 @@ class PerceptronPerceptionProvider:
                 )
                 continue
             assert isinstance(res, AttributeResponse)
-            attrs = {k: _clean_list(res.attributes.get(k), 6) for k in _ALLOWED_ATTRIBUTE_KEYS}
+            limits = {"color": 5, "pattern": 4, "cut": 6, "details": 10}
+            attrs = {k: _clean_list(res.attributes.get(k), limits.get(k, 6)) for k in _ALLOWED_ATTRIBUTE_KEYS}
             attrs = {k: v for k, v in attrs.items() if v}
             text = _clean_list(res.attributes.get("visible_text"), 6)
             updated[o.id] = o.model_copy(

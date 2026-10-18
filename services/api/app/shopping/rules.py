@@ -8,12 +8,13 @@ from dataclasses import dataclass, field
 
 from app.contracts import ConstraintCheck, Listing, Money, Preferences
 
-RANKING_VERSION = "rules-2026-10-17.1"
+RANKING_VERSION = "rules-2026-10-18.3"
 
 CATEGORY_WORDS: dict[str, tuple[str, ...]] = {
     "jacket": (
         "jacket", "coat", "blazer", "parka", "bomber", "windbreaker", "puffer", "anorak",
         "trucker", "gilet", "vest", "shacket", "overcoat", "trench", "peacoat", "raincoat", "biker",
+        "moto", "varsity", "coach", "chore", "field",
     ),
     "top": (
         "shirt", "t-shirt", "tee", "top", "blouse", "sweater", "hoodie", "sweatshirt", "cardigan",
@@ -33,14 +34,46 @@ _ALPHA_ALIASES = {
     "2XS": "XXS", "2XL": "XXL", "3XL": "XXXL", "SMALL": "S", "MEDIUM": "M", "LARGE": "L",
     "X-SMALL": "XS", "EXTRA SMALL": "XS", "X-LARGE": "XL", "EXTRA LARGE": "XL", "XX-LARGE": "XXL",
 }
+# Hue names only. Fabric words like denim belong in style cues, not color matching.
 _COLOR_WORDS = {
     "black", "white", "gray", "grey", "navy", "blue", "red", "green", "olive", "brown", "tan", "beige",
     "cream", "ivory", "pink", "purple", "yellow", "orange", "khaki", "camel", "burgundy", "maroon",
-    "silver", "gold", "denim", "charcoal",
+    "silver", "gold", "charcoal",
+}
+# Visible fabric / construction cues we use for search queries and ranking.
+_FABRIC_CUES = {
+    "denim", "jeans", "leather", "suede", "shearling", "fleece", "corduroy", "nylon", "satin",
+    "velvet", "wool", "cashmere", "linen", "silk", "knit", "quilted", "down", "tweed", "canvas",
+    "mesh", "sherpa",
+}
+_STYLE_CUES = {
+    "trucker", "bomber", "biker", "moto", "parka", "puffer", "windbreaker", "trench", "peacoat",
+    "anorak", "shacket", "overshirt", "chore", "field", "varsity", "coach", "raincoat", "blazer",
+    "hoodie", "crewneck", "cardigan", "polo", "cargo", "skinny", "wide-leg", "oversized", "cropped",
+}
+# Soft conflicts: if the garment shows one fabric and the listing names another, down-rank.
+_FABRIC_CONFLICTS: dict[str, frozenset[str]] = {
+    "denim": frozenset({"leather", "suede", "shearling", "fleece", "nylon", "puffer", "down", "satin", "velvet"}),
+    "leather": frozenset({"denim", "fleece", "knit", "puffer", "down"}),
+    "fleece": frozenset({"denim", "leather", "satin"}),
+    "puffer": frozenset({"denim", "leather", "trucker"}),
+    "down": frozenset({"denim", "leather"}),
+}
+# Title tokens that count as matching a required fabric cue.
+_FABRIC_SYNONYMS: dict[str, frozenset[str]] = {
+    "denim": frozenset({"denim", "jean", "jeans"}),
+    "leather": frozenset({"leather", "nappa", "lambskin", "calfskin"}),
+    "suede": frozenset({"suede", "nubuck"}),
+    "fleece": frozenset({"fleece", "sherpa"}),
+    "corduroy": frozenset({"corduroy", "cord"}),
+    "quilted": frozenset({"quilted", "quilt"}),
+    "shearling": frozenset({"shearling", "sheepskin"}),
+    "nylon": frozenset({"nylon", "ripstop"}),
 }
 _STOP = {
     "the", "a", "an", "and", "or", "with", "of", "in", "for", "on", "to", "this", "that",
-    "jacket", "top", "pants", "bag",
+    "jacket", "top", "pants", "bag", "as", "seen", "look", "looks", "like", "style", "type",
+    "front", "back", "left", "right", "small", "large", "visible", "appearance",
 }
 
 
@@ -72,6 +105,61 @@ class GarmentProfile:
         for part in [*self.colors, *self.pattern, *self.cut, *self.details, self.description or ""]:
             bag.update(w for w in words(part) if w not in _STOP and len(w) > 2)
         return bag
+
+    def bag_words(self) -> set[str]:
+        return self.keywords() | {w for w in words(self.label) if len(w) > 2}
+
+    def hue_colors(self) -> list[str]:
+        """Hue names only — fabric words like denim are style, not color."""
+        out: list[str] = []
+        for part in self.colors:
+            for w in words(part):
+                if w in _COLOR_WORDS and w not in out:
+                    out.append(w)
+        return out
+
+    def style_cues(self) -> list[str]:
+        """Fabric + silhouette cues used to build catalog queries."""
+        bag = self.bag_words()
+        preferred = (
+            "denim", "leather", "suede", "fleece", "corduroy", "quilted", "shearling",
+            "trucker", "bomber", "biker", "moto", "puffer", "parka", "windbreaker",
+            "trench", "varsity", "chore", "field", "hoodie", "polo", "jeans",
+        )
+        out: list[str] = []
+        for w in preferred:
+            if w in bag and w not in out:
+                out.append(w)
+        for w in sorted(bag & (_FABRIC_CUES | _STYLE_CUES)):
+            if w not in out:
+                out.append(w)
+        return out[:6]
+
+    def descriptors(self) -> list[str]:
+        """Ordered distinctive tokens from every observed field (for queries + ranking)."""
+        preferred = (
+            "denim", "leather", "suede", "fleece", "corduroy", "quilted", "shearling", "nylon",
+            "trucker", "bomber", "biker", "moto", "puffer", "parka", "windbreaker", "trench",
+            "varsity", "chore", "hoodie", "polo", "jeans", "distressed", "faded", "washed",
+            "indigo", "oversized", "cropped", "slim", "boxy", "hooded", "zip", "button",
+            "rivet", "embroidery", "graphic", "plaid", "striped", "check",
+        )
+        bag = self.bag_words()
+        out: list[str] = []
+        for w in preferred:
+            if w in bag and w not in out:
+                out.append(w)
+        for w in self.hue_colors():
+            if w not in out:
+                out.append(w)
+        # Remaining detail/cut/pattern tokens, longest-first so "chest" beats noise.
+        rest = sorted((bag - set(out)) - _STOP, key=lambda x: (-len(x), x))
+        for w in rest:
+            if len(w) >= 3 and w not in out:
+                out.append(w)
+            if len(out) >= 12:
+                break
+        return out
 
 
 def title_matches_category(title: str, category: str) -> bool:
@@ -248,21 +336,88 @@ def identity_tier(listing: Listing, profile: GarmentProfile) -> tuple[str, str]:
     return "similar", "Visual and attribute resemblance only"
 
 
+def _wanted_colors(profile: GarmentProfile, prefs: Preferences) -> set[str]:
+    if prefs.colors:
+        return set(words(" ".join(prefs.colors))) & _COLOR_WORDS
+    return set(profile.hue_colors())
+
+
+def _title_tokens(listing: Listing) -> set[str]:
+    return set(words(f"{listing.title} {listing.color_text or ''} {listing.material_text or ''}"))
+
+
+def required_fabrics(profile: GarmentProfile) -> list[str]:
+    return [s for s in profile.style_cues() if s in _FABRIC_SYNONYMS]
+
+
+def fabric_match(listing: Listing, profile: GarmentProfile) -> bool:
+    """True when every required fabric cue is present (via synonyms) in the title."""
+    title_toks = _title_tokens(listing)
+    req = required_fabrics(profile)
+    if not req:
+        return True
+    return all((_FABRIC_SYNONYMS[f] & title_toks) for f in req)
+
+
+def type_match(listing: Listing, profile: GarmentProfile) -> bool:
+    title_toks = _title_tokens(listing)
+    types = [s for s in profile.style_cues() if s in _STYLE_CUES and s not in _FABRIC_SYNONYMS]
+    if not types:
+        return True
+    return bool(set(types) & title_toks)
+
+
+def clear_mismatch(listing: Listing, profile: GarmentProfile, prefs: Preferences) -> bool:
+    """True only for hard visual conflicts — not 'low similarity'."""
+    title_toks = _title_tokens(listing)
+    wanted = _wanted_colors(profile, prefs)
+    listed_colors = {w for w in title_toks if w in _COLOR_WORDS}
+    gray_ok = {"grey", "gray"} if (wanted & {"grey", "gray"}) else set()
+    if wanted and listed_colors and not (listed_colors & (wanted | gray_ok)):
+        return True
+    styles = set(profile.style_cues())
+    for cue in styles:
+        conflict = _FABRIC_CONFLICTS.get(cue, frozenset())
+        syns = _FABRIC_SYNONYMS.get(cue, frozenset({cue}))
+        if conflict & title_toks and not (syns & title_toks):
+            return True
+    return False
+
+
 def relevance(listing: Listing, profile: GarmentProfile, prefs: Preferences) -> float:
-    title_toks = set(words(f"{listing.title} {listing.color_text or ''}"))
-    kw = profile.keywords()
+    title_toks = _title_tokens(listing)
+    desc = profile.descriptors()
     score = 0.0
-    if kw:
-        score += 0.6 * len(kw & title_toks) / len(kw)
-    garment_colors = {c for c in words(" ".join(profile.colors)) if c in _COLOR_WORDS}
-    if garment_colors & title_toks:
-        score += 0.2
-    wanted = set(words(" ".join(prefs.colors))) if prefs.colors else garment_colors
+    if desc:
+        hit = len(set(desc) & title_toks)
+        score += min(0.55, 0.11 * hit)
+        score += 0.2 * (hit / len(desc))
+    # Fabric + type are the biggest visual signals for "looks like the thing".
+    req = required_fabrics(profile)
+    if req:
+        if fabric_match(listing, profile):
+            score += 0.35
+        else:
+            score -= 0.35
+    styles = set(profile.style_cues())
+    type_hits = (styles & _STYLE_CUES & title_toks) - set(req)
+    if type_hits:
+        score += min(0.25, 0.12 * len(type_hits))
+    elif any(s in _STYLE_CUES and s not in _FABRIC_SYNONYMS for s in styles):
+        score -= 0.08  # known silhouette missing from title
+    for cue in styles:
+        conflict = _FABRIC_CONFLICTS.get(cue, frozenset())
+        syns = _FABRIC_SYNONYMS.get(cue, frozenset({cue}))
+        if conflict & title_toks and not (syns & title_toks):
+            score -= 0.4
+            break
+    wanted = _wanted_colors(profile, prefs)
+    if wanted & title_toks:
+        score += 0.12
     if prefs.colors and wanted & title_toks:
-        score += 0.2
-    listed_colors = {w for w in title_toks if w in _COLOR_WORDS} - {"denim"}
-    if wanted and listed_colors and not (listed_colors & (wanted | {"grey" if "gray" in wanted else "gray"})):
-        score -= 0.25  # the listing names a different color
+        score += 0.08
+    if clear_mismatch(listing, profile, prefs):
+        score -= 0.55
     return round(max(min(score, 1.0), -1.0), 3)
 
 

@@ -105,7 +105,9 @@ export default function Results({
       )}
       {!running && job.status === "no_match" && (
         <div className="banner">
-          No listings met your constraints. Try raising the budget or removing a size or material rule. We don't relax them for you.
+          {job.summary?.toLowerCase().includes("constraint")
+            ? "No listings met your constraints. Try raising the budget or removing a size or material rule. We don't relax them for you."
+            : job.summary || "No close listings found for this garment. Try another piece from the tray, or add a short description (e.g. denim trucker)."}
         </div>
       )}
     </section>
