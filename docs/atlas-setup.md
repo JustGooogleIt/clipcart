@@ -35,14 +35,19 @@ These steps need your Atlas account, so they are yours to do. Claude doesn't cre
    ```
    Expect `status: ok`, `dbMode: atlas`, `tls: true` and a server version. It also lists `indexesPerCollection`. The check writes and deletes one marker document in `_healthcheck`, and creates the app's indexes if they're missing.
 2. **App on Atlas:** restart the server on port 8000. `GET /api/health` should report `database.mode = "atlas"`, `ok: true` and no "not MongoDB Atlas" note.
-3. **Persistence (SRS AT16):** run the restart flow in `scripts/e2e/style-memory/` against a separate verification server that uses Atlas with fixture providers. No paid calls are made, and `FEATURE_STYLE_MEMORY=1` is set only in that process, so `.env` flags stay as they are:
-   - save an item and a preference
-   - restart the server
-   - confirm the same records come back
-   - correct and delete the preference
-   - restart again
+3. **Acceptance (SRS AT16):**
+   ```
+   services/api/.venv/bin/python scripts/atlas_acceptance.py
+   ```
+   This starts its own API server on a free localhost port. That server uses fixture providers, so no paid calls are made. `FEATURE_STYLE_MEMORY=1` is set only in that child process. The script checks:
+   - **Connectivity:** health reports `atlas`.
+   - **Indexes:** every app index exists on the cluster.
+   - **Owner isolation:** two owners can't see each other's session, analysis or style memories.
+   - **Persistence:** the session, preferences, uploaded frame, analysis and style memory survive a server restart.
 
-   Each step also runs owner-isolation checks.
+   It then deletes the two test owners' documents. It refuses a non-Atlas URI unless `--rehearsal` is passed. A rehearsal is reported as **"REHEARSAL (not Atlas)"** and is not Atlas verification.
+
+   Rehearsal on local MongoDB 8.0.4, 2026-10-17: 15 of 15 steps passed. This is not Atlas.
 
 ## Troubleshooting
 
