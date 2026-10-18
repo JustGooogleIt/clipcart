@@ -122,5 +122,5 @@ def test_ownership(research_app):
 def test_health_reports_research_mode(research_app):
     c, _ = research_app()
     h = c.get("/api/health").json()
-    assert h["features"]["agentResearch"] is True and h["research"] == {"provider": "fixture", "mode": "fixture"}
+    assert h["features"]["agentResearch"] is True and h["research"] == {"provider": "fixture", "mode": "fixture", "status": "unverified"}
     assert check_url  # imported for parity with live config

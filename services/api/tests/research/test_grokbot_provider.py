@@ -124,3 +124,22 @@ def test_signed_crop_urls_work_expire_and_reject_tampering(bot):
     asset, owner = grokbot.verify_crop(secret, tok)
     expired = grokbot.sign_crop(secret, asset, owner, time.time() - 1)
     assert other.get(f"/api/research-crops/{expired}").status_code == 410
+
+
+def test_health_says_unverified_until_a_bot_job_completes_then_operational(bot):
+    c, st, hook = bot()
+    assert c.get("/api/health").json()["research"] == {"provider": "grok_bot", "mode": "live", "status": "unverified"}
+    job = _start(c)["job"]
+    token = hook.calls[0]["json"]["callbackAuthorization"]
+    # A labelled manual import never counts as the provider working.
+    st.db.research_jobs.insert_one({"_id": "rsj_manual", "provider": "grok_bot", "status": "completed", "resultSource": "manual_import"})
+    assert c.get("/api/health").json()["research"]["status"] == "unverified"
+    r = c.post(f"/api/research-jobs/{job['id']}/results", headers={"Authorization": token},
+               json={"jobId": job["id"], "products": [_product()]})
+    assert r.status_code == 202, r.text
+    assert c.get("/api/health").json()["research"]["status"] == "operational"
+
+
+def test_health_reports_grok_bot_unavailable_without_its_configuration(bot):
+    c, st, hook = bot(configured=False)
+    assert c.get("/api/health").json()["research"] == {"provider": "grok_bot", "mode": None, "status": "unavailable"}

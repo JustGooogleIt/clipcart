@@ -199,7 +199,9 @@ def research_mode(name: str, state: Any = None) -> str | None:
     """The mode jobs from this provider get, without constructing it (health reports this).
 
     ``fixture`` → fixture; ``manual`` → manual; ``solescout`` → fixture with the fixture catalog, else live.
-    ``None`` when the provider isn't implemented: no job can start, so there is no mode to report.
+    ``grok_bot`` → live only when its webhook and public HTTPS origin are configured (``None`` otherwise).
+    ``None`` when no job can start, so there is no mode to report. A mode is the data source, never a claim
+    that the provider works: see ``research_status``.
     """
     if name in ("fixture", "manual"):
         return name
@@ -208,7 +210,24 @@ def research_mode(name: str, state: Any = None) -> str | None:
         if catalog is None:
             return None
         return "fixture" if getattr(catalog, "name", "") == "fixture" else "live"
+    if name == "grok_bot":
+        return "live" if grok_bot_configured(getattr(state, "settings", None)) else None
     return None
+
+
+def grok_bot_configured(s: Any) -> bool:
+    return bool(s and s.grok_bot_webhook_url and s.grok_bot_webhook_key and s.public_base_url
+                and s.grok_bot_webhook_url.startswith("https://") and s.public_base_url.startswith("https://"))
+
+
+def research_status(name: str, state: Any) -> str:
+    """unavailable (no job can start) | unverified (configured; no job from it has completed on this store) |
+    operational (a job from this provider completed with the provider's own results, not a manual import)."""
+    if research_mode(name, state) is None:
+        return "unavailable"
+    done = state.db.research_jobs.find_one({"provider": name, "status": "completed",
+                                            "resultSource": {"$ne": "manual_import"}}, {"_id": 1})
+    return "operational" if done else "unverified"
 
 
 def get_provider(name: str, state: Any = None) -> ResearchProvider:

@@ -30,7 +30,7 @@ def test_categories_response_is_the_generated_shape_and_carries_the_style_vocabu
         ("manual", None, "manual"),
         ("solescout", "fixture", "fixture"),  # SoleScout fallback over the fixture catalog is fixture data
         ("solescout", "live", "live"),
-        ("grok_bot", None, None),  # not implemented: no job can start, so there is no mode
+        ("grok_bot", None, None),  # webhook not configured: no job can start, so there is no mode
     ],
 )
 def test_health_research_mode_matches_what_jobs_get(app_factory, monkeypatch, provider, catalog, mode):
@@ -39,7 +39,7 @@ def test_health_research_mode_matches_what_jobs_get(app_factory, monkeypatch, pr
     monkeypatch.setenv("CATALOG_PROVIDER", "fixture" if catalog == "fixture" else "solescout")
     app = app_factory(FakeCatalog([item("a", "Black Nylon Bomber Jacket", 70)]) if catalog == "live" else None)
     h = new_client(app).get("/api/health").json()
-    assert h["research"] == {"provider": provider, "mode": mode}
+    assert h["research"] == {"provider": provider, "mode": mode, "status": "unavailable" if mode is None else "unverified"}
     if provider != "grok_bot":
         from app.research.providers import get_provider
 
@@ -48,7 +48,7 @@ def test_health_research_mode_matches_what_jobs_get(app_factory, monkeypatch, pr
 
 def test_health_research_is_null_when_the_flag_is_off(app_factory, monkeypatch):
     monkeypatch.setenv("RESEARCH_PROVIDER", "manual")
-    assert new_client(app_factory()).get("/api/health").json()["research"] == {"provider": None, "mode": None}
+    assert new_client(app_factory()).get("/api/health").json()["research"] == {"provider": None, "mode": None, "status": None}
 
 
 def test_research_job_error_is_a_typed_job_error():
