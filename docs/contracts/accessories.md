@@ -56,7 +56,7 @@ ClipCart never infers authenticity, a luxury brand, precious metal or gemstone c
 | 14k, 18k, 925, sterling, karat, solid gold, plated, genuine, authentic, real, luxury, designer, replica | removed |
 | Luxury brand names in model-written attributes, for example "Rolex-style crown" | removed. Lettering stays only in `visibleText`. |
 
-A garment whose attributes were changed this way gets the note `"appearanceNormalized": true` in `observedAttributes`.
+A garment whose attributes were changed this way gets `"appearanceNormalized": ["true"]` in `observedAttributes`. Values are always string lists.
 
 ## Shopper constraints
 
@@ -87,7 +87,25 @@ There are new memory kinds:
 - **Tone:** `tone_like` and `tone_avoid`, with values `gold-tone`, `silver-tone`, `rose-gold-tone`, `black` and `two-tone`.
 - **Ring size:** `ring_size`, shaped `{raw, system: "us"}`, which is one active value, like `size`.
 
+`StyleProfileView` gains `tonesLike`, `tonesAvoid` and `ringSize`. Tone preferences nudge ranking **only for watch and jewelry searches**. A jacket with gold buttons is never boosted by a gold-tone jewelry preference.
+
 The clothing `size` memory never applies to accessories.
+
+## Health
+
+`features.accessoryDetection` reports the flag. `GET /api/categories` is always available.
+
+## Live Perceptron checks still needed
+
+These are separate from the offline tests, and none has been run. Each one is a single bounded call with `PERCEPTRON_MAX_TOKENS` 1200, run only with the owner's approval:
+
+1. **Wrist (1 detect):** a photo of a wrist with a watch and a bracelet, with the accessory classes requested. Confirm the labels map to `watch` and `bracelet` and the boxes fit the objects.
+2. **Portrait (1 detect):** a close-up showing earrings and a necklace. Confirm small earring boxes are returned and kept.
+3. **Hand (1 detect):** a ring on a hand, a small object possibly cut off at the frame edge.
+4. **Find (1 detect + 1 describe):** Find in video with "gold hoop earring" on a portrait frame where the earring is under 0.4% of the frame.
+5. **Describe (1 call):** one accessory crop. Confirm the JSON follows the schema and the tone wording, and count how often the normalizer has to rewrite the output.
+
+That's at most 7 paid calls in total. Turning on `FEATURE_ACCESSORY_DETECTION` for everyday use should wait until checks 1–3 look right.
 
 ## UI follow-up (Claude app)
 
@@ -95,4 +113,4 @@ The clothing `size` memory never applies to accessories.
 2. **Size inputs:** when the selected item's `sizeRule` is `none`, hide clothing size inputs and chips. When it's `ring`, show a **Ring size (US)** input bound to `preferences.ringSize`.
 3. **Tone chips:** offer Gold-tone, Silver-tone and Rose-gold-tone suggestions for color when the selection is watch or jewelry.
 4. **Labels:** show `visibleText` for accessories as "Text seen on the item", never as a brand. Show the seller-claims warning and the "Similar look" tier as returned.
-5. **Memory panel:** show `tone_like`, `tone_avoid` and `ring_size` with the existing like/avoid and size patterns.
+5. **Memory panel:** show `tone_like`, `tone_avoid` and `ring_size` with the existing like/avoid and size patterns. The backend PR adds only type-compatible labels to `StylePanel.tsx`'s exhaustive `KIND` map ("Likes", "Avoids" and "Ring size") so the build stays green. Their presentation is the UI lane's.
