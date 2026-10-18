@@ -151,3 +151,5 @@
   .attr-list > div { grid-template-columns: 84px 1fr; }
   .research { padding: 14px 12px; }
 }
+.offer-live { color: var(--ok) !important; background: var(--ok-bg) !important; border-color: #c6e0ca !important; }
+.research-empty { margin: 0; font-size: 13px; color: var(--ink-2); background: var(--paper); border-radius: 10px; padding: 8px 10px; }

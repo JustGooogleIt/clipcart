@@ -64,7 +64,7 @@ function editText(kind: MemoryKind, v: unknown): string {
 }
 
 // Every memory says where it came from. Inferred ones say so and how much evidence they rest on.
-function sourceText(m: StyleMemory): string {
+function sourceText(m: StyleMemory, modelRanks = false): string {
   if (m.origin === "stated") {
     if (m.source === "style_note") return "From your style note";
     if (m.source === "style_panel") return "You corrected this";
@@ -75,7 +75,8 @@ function sourceText(m: StyleMemory): string {
   if (m.source === "saved_items") return `Inferred from ${n} saved item${n === 1 ? "" : "s"}`;
   if (m.source === "rejected_items") return `Inferred from ${n} item${n === 1 ? "" : "s"} you hid`;
   if (m.source === "purchases") return `Inferred from ${n} item${n === 1 ? "" : "s"} you said you bought`;
-  if (m.source === "model_interpretation") return "Suggested by the style model from your saves";
+  if (m.source === "model_interpretation")
+    return `Suggested by the style model from your saves${modelRanks ? "" : " (doesn't affect ranking)"}`;
   return "Inferred";
 }
 
@@ -140,7 +141,7 @@ const failText = (e: unknown, fallback: string) =>
     ? "ClipCart doesn't recognize that value. Use a plain color, material, brand, size or amount."
     : fallback;
 
-function MemoryRow({ m, onChanged }: { m: StyleMemory; onChanged: () => void }) {
+function MemoryRow({ m, modelRanks, onChanged }: { m: StyleMemory; modelRanks: boolean; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
   const [why, setWhy] = useState(false);
   const conf = confidenceLabel(m);
@@ -233,7 +234,7 @@ function MemoryRow({ m, onChanged }: { m: StyleMemory; onChanged: () => void }) 
           </strong>
         )}
         <span className="mem-source">
-          <span className={`src src-${m.origin}`}>{sourceText(m)}</span>
+          <span className={`src src-${m.origin}`}>{sourceText(m, modelRanks)}</span>
           {conf && m.origin === "inferred" && <span className={`conf conf-${conf.band}`}>{conf.text}</span>}
           <span className="mem-when"> · {ago(m.updatedAt)}</span>
           {m.origin === "inferred" && (
@@ -468,12 +469,44 @@ function StyleNote({ model, memories, onSaved }: { model: StyleModelInfo; memori
   );
 }
 
-/** Style likes and avoids as chips; each opens to its evidence, confidence and date, with switch and remove. */
-function StyleChips({
+const TONE_VOCAB = ["gold-tone", "silver-tone", "rose-gold-tone", "black", "two-tone"] as const;
+
+interface ChipGroup {
+  like: "style_like" | "tone_like";
+  avoid: "style_avoid" | "tone_avoid";
+  vocab: readonly string[];
+  title: string;
+  note: string;
+  noun: string;
+  empty: string;
+}
+const STYLE_GROUP: ChipGroup = {
+  like: "style_like",
+  avoid: "style_avoid",
+  vocab: STYLE_VOCAB,
+  title: "Style",
+  note: "Styles you like or avoid. They reorder results and never change your rules. Tap one to see why.",
+  noun: "style",
+  empty: "No styles yet. Add one below, or save a few results you like.",
+};
+const TONE_GROUP: ChipGroup = {
+  like: "tone_like",
+  avoid: "tone_avoid",
+  vocab: TONE_VOCAB,
+  title: "Tone for watches and jewelry",
+  note: "How metal-look pieces should look. Used only for watch and jewelry searches; it never says what a piece is made of.",
+  noun: "tone",
+  empty: "No tone preferences.",
+};
+
+/** Likes and avoids as chips; each opens to its evidence, confidence and date, with switch and remove. */
+function PrefChips({
+  group,
   memories,
   interpretations,
   onChanged,
 }: {
+  group: ChipGroup;
   memories: StyleMemory[];
   interpretations: Interpretations | null;
   onChanged: () => void;
@@ -482,7 +515,7 @@ function StyleChips({
   const [add, setAdd] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const styles = memories.filter((m) => m.kind === "style_like" || m.kind === "style_avoid");
+  const styles = memories.filter((m) => m.kind === group.like || m.kind === group.avoid);
   const taken = new Set(styles.map((m) => String(m.value)));
   const fromModel = styles.some((m) => m.source === "model_interpretation");
   const active = styles.find((m) => m.id === open) ?? null;
@@ -509,13 +542,13 @@ function StyleChips({
 
   return (
     <section className="mem-section">
-      <h3>Style</h3>
-      <p className="mem-note">Styles you like or avoid. They reorder results and never change your rules. Tap one to see why.</p>
+      <h3>{group.title}</h3>
+      <p className="mem-note">{group.note}</p>
       {styles.length ? (
         <ul className="style-chips">
           {styles.map((m) => {
             const conf = confidenceLabel(m);
-            const like = m.kind === "style_like";
+            const like = m.kind === group.like;
             return (
               <li key={m.id}>
                 <button
@@ -533,15 +566,15 @@ function StyleChips({
           })}
         </ul>
       ) : (
-        <p className="mem-empty">No styles yet. Add one below, or save a few results you like.</p>
+        <p className="mem-empty">{group.empty}</p>
       )}
       {active && (
         <div className="style-chip-detail" role="region" aria-label={`About ${String(active.value)}`}>
           <p>
             <strong>
-              {active.kind === "style_like" ? "Likes" : "Avoids"} {String(active.value)}
+              {active.kind === group.like ? "Likes" : "Avoids"} {String(active.value)}
             </strong>{" "}
-            <span className={`src src-${active.origin}`}>{active.source === "style_panel" ? "You set this" : sourceText(active)}</span>
+            <span className={`src src-${active.origin}`}>{active.source === "style_panel" ? "You set this" : sourceText(active, !!interpretations?.rankingInfluence)}</span>
             <span className="mem-when"> · {ago(active.updatedAt)}</span>
           </p>
           {active.source === "model_interpretation" && (
@@ -554,7 +587,7 @@ function StyleChips({
           <Evidence m={active} />
           <div className="mem-actions">
             <button type="button" className="btn btn-sm" disabled={busy} onClick={() => flip(active)}>
-              {active.kind === "style_like" ? "Switch to avoid" : "Switch to like"}
+              {active.kind === group.like ? "Switch to avoid" : "Switch to like"}
             </button>
             <button type="button" className="linkish" disabled={busy} onClick={() => run(() => memoryApi.remove(active.id))}>
               Remove
@@ -568,25 +601,25 @@ function StyleChips({
           e.preventDefault();
         }}
       >
-        <label className="sr-only" htmlFor="style-add">
-          Add a style
+        <label className="sr-only" htmlFor={`${group.noun}-add`}>
+          Add a {group.noun}
         </label>
-        <select id="style-add" value={add} onChange={(e) => setAdd(e.target.value)} disabled={busy}>
-          <option value="">Add a style…</option>
-          {STYLE_VOCAB.filter((v) => !taken.has(v)).map((v) => (
+        <select id={`${group.noun}-add`} value={add} onChange={(e) => setAdd(e.target.value)} disabled={busy}>
+          <option value="">Add a {group.noun}…</option>
+          {group.vocab.filter((v) => !taken.has(v)).map((v) => (
             <option key={v} value={v}>
               {v}
             </option>
           ))}
         </select>
-        <button type="button" className="btn btn-sm" disabled={!add || busy} onClick={() => run(async () => (await memoryApi.state("style_like", add), setAdd("")))}>
+        <button type="button" className="btn btn-sm" disabled={!add || busy} onClick={() => run(async () => (await memoryApi.state(group.like, add), setAdd("")))}>
           I like it
         </button>
-        <button type="button" className="btn btn-quiet btn-sm" disabled={!add || busy} onClick={() => run(async () => (await memoryApi.state("style_avoid", add), setAdd("")))}>
+        <button type="button" className="btn btn-quiet btn-sm" disabled={!add || busy} onClick={() => run(async () => (await memoryApi.state(group.avoid, add), setAdd("")))}>
           Not for me
         </button>
       </form>
-      {(fromModel || interpretations) && <ModelLine interpretations={interpretations} />}
+      {group.like === "style_like" && (fromModel || interpretations) && <ModelLine interpretations={interpretations} />}
       {error && (
         <p className="mem-error" role="alert">
           {error}
@@ -674,7 +707,7 @@ export default function StylePanel({
     const evs = (t: StyleEvent["type"]) => memory.events.filter((e) => e.type === t);
     const purchases = [...evs("user_confirmed_purchase"), ...evs("verified_order")];
     const bought = new Set(purchases.map((e) => e.item?.listingId).filter(Boolean));
-    const row = (m: StyleMemory) => <MemoryRow key={`${m.id}:${m.updatedAt}`} m={m} onChanged={onReload} />;
+    const row = (m: StyleMemory) => <MemoryRow key={`${m.id}:${m.updatedAt}`} m={m} modelRanks={!!memory.interpretations?.rankingInfluence} onChanged={onReload} />;
     const evRow = (e: StyleEvent) => <EventRow key={e.id} ev={e} bought={!!e.item?.listingId && bought.has(e.item.listingId)} onChanged={onReload} />;
     body = (
       <>
@@ -690,9 +723,10 @@ export default function StylePanel({
           note="These reorder results. They never add or loosen the rules you set for a search."
           empty="No preferences remembered."
         >
-          {of("color_like", "color_avoid", "tone_like", "tone_avoid", "material_like", "material_avoid", "brand_like", "brand_avoid").map(row)}
+          {of("color_like", "color_avoid", "material_like", "material_avoid", "brand_like", "brand_avoid").map(row)}
         </Section>
-        <StyleChips memories={ms} interpretations={memory.interpretations} onChanged={onReload} />
+        <PrefChips group={STYLE_GROUP} memories={ms} interpretations={memory.interpretations} onChanged={onReload} />
+        <PrefChips group={TONE_GROUP} memories={ms} interpretations={memory.interpretations} onChanged={onReload} />
         <div className="wardrobe">
           <h3 className="wardrobe-title">Wardrobe</h3>
           <Section title="Owned (you said)" note="Items you told ClipCart you own or bought. ClipCart doesn't verify them." empty="Nothing yet. Opening a retailer link doesn't count.">

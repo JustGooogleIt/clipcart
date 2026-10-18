@@ -60,12 +60,19 @@ export function researchProvider(health: Health | null): { id: string; name: str
         name: "Manual import only",
         about: "Nothing is researched automatically. Start a job, then import offers you found yourself. They're labelled Imported manually.",
       };
+    case "grok_bot":
+      // The Grok Bot callback is unproven (docs/grok-bot-bridge.md). Results, if any, arrive as agent submissions.
+      return {
+        id: "grok_bot",
+        name: "Grok Bot research · callback not proven",
+        about:
+          "Sends this piece to a Grok Bot routine. Offers appear only if the Bot posts them back, which hasn't been proven yet. If nothing arrives, you can import offers by hand.",
+      };
     default:
-      // e.g. grok_bot: configured by name, but no bridge is implemented, so it can never produce results here.
       return {
         id: r.provider,
-        name: r.provider === "grok_bot" ? "Grok Bot bridge (not implemented)" : `${r.provider} (not available)`,
-        about: "This server names a research provider that isn't implemented, so research can't run.",
+        name: `${r.provider} (not available)`,
+        about: "This server names a research provider ClipCart doesn't know, so research can't run.",
       };
   }
 }
@@ -168,7 +175,7 @@ export default function Research({
           <p className="research-status">
             {pending && job.provider !== "manual" && <span className="spinner" aria-hidden />}
             <strong>{statusLine(job, err)}</strong>
-            <span className={`research-mode rm-${job.mode}`}>{job.mode === "fixture" ? "Development data" : job.mode === "manual" ? (manualResults ? "Imported manually" : "Manual job · nothing runs") : "Live"}</span>
+            {(job.status === "completed" || job.status === "pending") && <span className={`research-mode rm-${job.mode}`}>{job.mode === "fixture" ? "Development data" : job.mode === "manual" ? (manualResults ? "Imported manually" : "Manual job · nothing runs") : "Live"}</span>}
           </p>
           {manualResults && (
             <p className="research-banner">
@@ -191,6 +198,9 @@ export default function Research({
       )}
 
       {job && !!job.products?.length && <Offers products={job.products} accessory={accessory} />}
+      {job?.status === "completed" && !job.products?.length && (
+        <p className="research-empty">No offers passed ClipCart's checks for this piece. Your main results above are unchanged.</p>
+      )}
       {job && (job.rejected?.length ?? 0) > 0 && (
         <details className="research-rejected">
           <summary>
@@ -358,7 +368,11 @@ function Offer({ p, accessory }: { p: ResearchProduct; accessory: boolean }) {
       <div className="offer-body">
         <p className="offer-tags">
           <span className={`offer-source os-${p.source ?? "agent"}`}>{SOURCE[p.source ?? "agent"] ?? p.source}</span>
-          {p.mode === "fixture" && <span className="offer-fixture">Development fixture</span>}
+          {p.mode === "fixture" ? (
+            <span className="offer-fixture">Development fixture</span>
+          ) : p.mode === "live" ? (
+            <span className="offer-live">Live result</span>
+          ) : null}
           <span className="tier tier-similar">{tier}</span>
           {isLowest && <span className="offer-lowest-tag">Lowest confirmed price</span>}
         </p>
