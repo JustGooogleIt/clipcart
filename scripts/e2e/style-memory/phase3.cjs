@@ -1,0 +1,21 @@
+const L = require('./lib.cjs');
+const fs = require('fs');
+(async () => {
+  const before = JSON.parse(fs.readFileSync(L.S + '/phase2-state.json'));
+  const { b, ctx, p } = await L.open(true);
+  await p.goto(L.BASE + '/', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(1500);
+  const all = (await L.api(p, '/api/style/memories?status=all')).memories;
+  L.step('after 2nd restart: memory history identical (brown and green removed)', JSON.stringify(all.map(m => [m.id, m.status]).sort()) === JSON.stringify(before.all.map(m => [m.id, m.status]).sort()) && all.every(m => m.status === 'removed'), all.map(m => [m.value, m.status]));
+  L.step('after 2nd restart: no active preferences', (await L.api(p, '/api/style/memories')).memories.length === 0);
+  const ev = (await L.api(p, '/api/style/events')).events;
+  L.step('after 2nd restart: saved item still saved', ev.some(e => e.type === 'saved_item' && /Calvin Klein/.test(e.item.title)), ev.map(e => e.type));
+  const c = await L.search(p);
+  L.step('after 2nd restart: search has no personalization and keeps Saved state', c.every(x => !x.personalization) && c.some(x => /Saved/.test(x.save)), c.map(x => [x.title.slice(0, 30), x.personalization, x.save]));
+  await L.openPanel(p);
+  const t = await L.panelText(p);
+  L.step('after 2nd restart: panel shows no brown or green preference', !/(brown|green)/i.test(t.replace(/Jacket Calvin Klein Jeans Faux Leather Moto Brown Cork/g, '')), t.slice(0, 300));
+  await p.screenshot({ path: L.S + '/shots/p3-01-final-panel.png' });
+  await b.close();
+  process.exit(L.save('phase3') ? 0 : 1);
+})();

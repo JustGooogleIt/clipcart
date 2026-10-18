@@ -1,0 +1,89 @@
+[
+  {
+    "step": "baseline search returns results with no personalization",
+    "ok": true,
+    "detail": [
+      {
+        "title": "011 - Ennis Del Mar Denim Jacket",
+        "personalization": null,
+        "save": "Save"
+      },
+      {
+        "title": "Jacket Calvin Klein Jeans Faux Leather Moto Brown Cork",
+        "personalization": null,
+        "save": "Save"
+      }
+    ]
+  },
+  {
+    "step": "brown Calvin Klein moto jacket is among results",
+    "ok": true
+  },
+  {
+    "step": "Save toggles to Saved",
+    "ok": true,
+    "detail": [
+      [
+        "011 - Ennis Del Mar Denim Jack",
+        "Save"
+      ],
+      [
+        "Jacket Calvin Klein Jeans Faux",
+        "Saved \u2713"
+      ]
+    ]
+  },
+  {
+    "step": "panel lists the saved item",
+    "ok": true
+  },
+  {
+    "step": "panel names the rule-based reader honestly",
+    "ok": true,
+    "detail": "Read by: Rule-based parser \u00b7 local model off."
+  },
+  {
+    "step": "rule parser proposes brown like with a clean quote",
+    "ok": true,
+    "detail": "Read by the rule-based parser. Untick anything that's wrong, then save. Avoids orange \u00b7 from \u201chate orange\u201d Likes brown \u00b7 from \u201clove brown\u201d Discard Save selected"
+  },
+  {
+    "step": "proposals are not saved before acceptance",
+    "ok": true,
+    "detail": 0
+  },
+  {
+    "step": "accepted preference saved as a stated style-note memory",
+    "ok": true,
+    "detail": [
+      [
+        "color_like",
+        "brown",
+        "stated",
+        "style_note"
+      ]
+    ]
+  },
+  {
+    "step": "re-search shows the brown reason on the brown jacket",
+    "ok": true,
+    "detail": [
+      [
+        "Jacket Calvin Klein Jeans Faux",
+        "\u2726 Your style You said you like brown"
+      ],
+      [
+        "011 - Ennis Del Mar Denim Jack",
+        null
+      ]
+    ]
+  },
+  {
+    "step": "reason only on the matching item",
+    "ok": true
+  },
+  {
+    "step": "saved state survives re-search",
+    "ok": true
+  }
+]

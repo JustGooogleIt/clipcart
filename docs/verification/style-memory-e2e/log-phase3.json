@@ -1,0 +1,50 @@
+[
+  {
+    "step": "after 2nd restart: memory history identical (brown and green removed)",
+    "ok": true,
+    "detail": [
+      [
+        "green",
+        "removed"
+      ],
+      [
+        "brown",
+        "removed"
+      ]
+    ]
+  },
+  {
+    "step": "after 2nd restart: no active preferences",
+    "ok": true
+  },
+  {
+    "step": "after 2nd restart: saved item still saved",
+    "ok": true,
+    "detail": [
+      "explicit_preference",
+      "explicit_preference",
+      "saved_item"
+    ]
+  },
+  {
+    "step": "after 2nd restart: search has no personalization and keeps Saved state",
+    "ok": true,
+    "detail": [
+      [
+        "011 - Ennis Del Mar Denim Jack",
+        null,
+        "Save"
+      ],
+      [
+        "Jacket Calvin Klein Jeans Faux",
+        null,
+        "Saved \u2713"
+      ]
+    ]
+  },
+  {
+    "step": "after 2nd restart: panel shows no brown or green preference",
+    "ok": true,
+    "detail": "Your style What ClipCart remembers to personalize results, and where each one came from. Close Tell ClipCart your style Nothing is saved until you confirm it. Read by: Rule-based parser \u00b7 local model off. Style note Read it Sizes and fit No size remembered. Say it in a style note above. Budget No bu"
+  }
+]

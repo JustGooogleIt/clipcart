@@ -1,0 +1,58 @@
+const L = require('./lib.cjs');
+const fs = require('fs');
+(async () => {
+  const before = JSON.parse(fs.readFileSync(L.S + '/phase1-state.json'));
+  const { b, ctx, p } = await L.open(true);
+  await p.goto(L.BASE + '/', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(1500);
+  // Persistence after restart
+  const mem = (await L.api(p, '/api/style/memories')).memories;
+  L.step('after restart: same memory, same id', mem.length === 1 && mem[0].id === before.memories[0].id && mem[0].value === 'brown', mem.map(m => [m.id, m.value]));
+  const ev = (await L.api(p, '/api/style/events')).events;
+  L.step('after restart: same events', JSON.stringify(ev.map(e => e.id).sort()) === JSON.stringify(before.events.map(e => e.id).sort()), ev.map(e => e.type));
+  let c = await L.cards(p);
+  L.step('after restart: restored results still show the reason and saved state', c.some(x => /You said you like brown/.test(x.personalization || '') && /Saved/.test(x.save)), c.map(x => [x.title.slice(0, 30), x.personalization, x.save]));
+  await L.openPanel(p);
+  let t = await L.panelText(p);
+  L.step('after restart: panel shows the preference and the saved item', /brown/i.test(t) && /Saved items.*Calvin Klein/.test(t));
+  await p.screenshot({ path: L.S + '/shots/p2-01-after-restart.png' });
+  await L.closePanel(p);
+  c = await L.search(p);
+  L.step('after restart: fresh search still personalizes', c.find(x => /Calvin Klein/.test(x.title))?.personalization?.includes('You said you like brown'), c.map(x => [x.title.slice(0, 30), x.personalization]));
+  // Correct the preference: brown -> green
+  await L.openPanel(p);
+  const brownId = (await L.api(p, '/api/style/memories')).memories.find(m => m.value === 'brown').id;
+  await p.locator('li.mem', { hasText: /brown/i }).first().getByRole('button', { name: 'Correct' }).click();
+  const input = p.locator('#mem-' + brownId);
+  await input.fill('green');
+  await p.locator('form.mem-edit', { has: input }).getByRole('button', { name: 'Save' }).click();
+  await p.waitForTimeout(1500);
+  const all = (await L.api(p, '/api/style/memories?status=all')).memories;
+  const active = all.filter(m => m.status === 'active');
+  L.step('correction: green active, brown no longer active', active.length === 1 && active[0].value === 'green' && all.some(m => m.value === 'brown' && m.status !== 'active'), all.map(m => [m.value, m.status, m.source]));
+  t = await L.panelText(p);
+  L.step('correction: panel shows green, not brown', /green/i.test(t) && !/Likes\s*brown|Color like brown/i.test(t));
+  await p.screenshot({ path: L.S + '/shots/p2-02-corrected.png' });
+  await L.closePanel(p);
+  c = await L.search(p);
+  L.step('correction takes effect: brown reason gone after re-search', c.every(x => !/brown/i.test(x.personalization || '')), c.map(x => [x.title.slice(0, 30), x.personalization]));
+  // Delete the preference
+  await L.openPanel(p);
+  const g = p.locator('li.mem', { hasText: /green/i }).first();
+  await g.getByRole('button', { name: 'Remove' }).click();
+  await g.getByRole('button', { name: 'Forget it' }).click();
+  await p.waitForTimeout(1500);
+  const act2 = (await L.api(p, '/api/style/memories')).memories;
+  L.step('deletion: no active preferences remain', act2.length === 0, act2.map(m => [m.value, m.status]));
+  const prof = await L.api(p, '/api/style/profile');
+  L.step('deletion: profile has no liked colors; saved item kept', (prof.profile.colorsLike || []).length === 0 && (await L.api(p, '/api/style/events')).events.some(e => e.type === 'saved_item'));
+  await p.screenshot({ path: L.S + '/shots/p2-03-deleted.png' });
+  await L.closePanel(p);
+  c = await L.search(p);
+  L.step('deletion takes effect: no personalization reasons after re-search', c.every(x => !x.personalization), c.map(x => [x.title.slice(0, 30), x.personalization, x.save]));
+  await p.screenshot({ path: L.S + '/shots/p2-04-no-reason.png', fullPage: true });
+  await ctx.storageState({ path: L.STATE });
+  fs.writeFileSync(L.S + '/phase2-state.json', JSON.stringify({ all: (await L.api(p, '/api/style/memories?status=all')).memories, events: (await L.api(p, '/api/style/events')).events }, null, 2));
+  await b.close();
+  process.exit(L.save('phase2') ? 0 : 1);
+})();

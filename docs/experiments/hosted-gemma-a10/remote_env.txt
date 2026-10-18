@@ -1,0 +1,49 @@
+## snapshot dirs
+3b0c67b98eee8fb90633ef1bfbf3d39f43b9cf9d
+3b0c67b98eee8fb90633ef1bfbf3d39f43b9cf9d
+## snapshot files
+../../blobs/e17bde03d42feda32d1abfca6d3b598b9a020df7
+../../blobs/719b0cd0d7a373a400b0c119ee0e051f41ea88d9
+../../blobs/88fd3f7d2554aed4f46b4553e6077bab019c219c
+../../blobs/37a4c871d263a349f50e4a313db3e72164950702
+../../blobs/11590a9f31d6b7c2c072446b5c1ec53c29bc0626a323bf6bd23da373fbe851ce
+../../blobs/527c47483ed676e9d10f3dcb3280f77b16951b02e057596ba06496ead00c3b3f
+../../blobs/e90ec5bc7e5f189b7b21635e66af5eb81ebd0573
+../../blobs/b1e00fc184f61b698181821169c6374cd5813e5c
+../../blobs/453c7966d4b5d0b4a317c585989f64c58c2a6bf0
+../../blobs/1a6193244714d3d78be48666cb02cdbfac62ad86
+../../blobs/4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795
+../../blobs/1299c11d7cf632ef3b4e11937501358ada021bbdf7c47638d13c0ee982f2e79c
+../../blobs/7bdd14f0eaec30c8d2c56bc9d543587676e19c0f
+## quant
+awq_marlin kernel.
+awq_marlin.py:116] The model is convertible to awq_marlin during runti
+dtype=auto
+dtype=torch.bfloat16
+quantization=awq_marlin
+## os
+Ubuntu 24.04.4 LTS
+6.8.0-1046-nvidia
+Python 3.12.3
+## gpu
+NVIDIA A10, 580.105.08, 23028 MiB, 8.6
+CUDA Version: 13.0
+## versions
+compressed-tensors==0.10.2
+fastapi==0.143.3
+huggingface_hub==0.36.2
+numpy==2.2.6
+openai==1.90.0
+pydantic==2.14.1
+safetensors==0.8.0
+tokenizers==0.21.4
+torch==2.7.0
+torchaudio==2.7.0
+torchvision==0.22.0
+transformers==4.53.2
+triton==3.3.0
+uvicorn==0.54.0
+vllm==0.9.2
+xformers==0.0.30
+## freeze_count
+153
