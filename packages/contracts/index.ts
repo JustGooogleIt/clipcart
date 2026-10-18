@@ -291,6 +291,16 @@ export interface OutboundLink {
   token: string;
 }
 /**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "OwnedItem".
+ */
+export interface OwnedItem {
+  at: string;
+  brand: string | null;
+  source: "user_confirmed_purchase" | "verified_order";
+  title: string;
+}
+/**
  * Partial update. Only fields present in the request are applied (FR14).
  *
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -360,6 +370,16 @@ export interface Preferences {
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "ProfileEntry".
+ */
+export interface ProfileEntry {
+  evidenceCount?: number | null;
+  memoryId: string;
+  origin: "stated" | "inferred";
+  value: unknown;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
  * via the `definition` "Recommendation".
  */
 export interface Recommendation {
@@ -372,6 +392,7 @@ export interface Recommendation {
   identityTier: "verified" | "likely" | "similar";
   links: OutboundLink[];
   listingId: string;
+  personalization?: string[];
   rank: number;
   rankingVersion: string;
   searchId: string;
@@ -393,6 +414,344 @@ export interface ReferralEvent {
   outboundUrl: string;
   recommendationId: string;
   sessionId: string;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "RejectedItem".
+ */
+export interface RejectedItem {
+  domain?: string | null;
+  index: number;
+  reason: string;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "ResearchGarmentContext".
+ */
+export interface ResearchGarmentContext {
+  category: string;
+  colors?: string[];
+  cropAssetId?: string | null;
+  cut?: string[];
+  description?: string | null;
+  details?: string[];
+  garmentId: string;
+  garmentSource: "media" | "gemini_youtube";
+  pattern?: string[];
+  timestampMs?: number | null;
+  visibleText?: string[];
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "ResearchJob".
+ */
+export interface ResearchJob {
+  agentNotes?: string | null;
+  createdAt: string;
+  error?: {} | null;
+  expiresAt: string;
+  finishedAt?: string | null;
+  garment: ResearchGarmentContext;
+  id: string;
+  mode: "live" | "fixture";
+  preferences: Preferences;
+  products?: ResearchProduct[];
+  provider: "fixture";
+  rejected?: RejectedItem[];
+  sessionId: string;
+  status: "pending" | "completed" | "failed" | "expired";
+  summary?: string | null;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "ResearchProduct".
+ */
+export interface ResearchProduct {
+  availability: "in_stock" | "out_of_stock" | "unknown";
+  constraintChecks: ConstraintCheck[];
+  domain: string;
+  id: string;
+  identityTier: "likely" | "similar";
+  jobId: string;
+  links: OutboundLink[];
+  matchClaim: "exact" | "similar";
+  mode: "live" | "fixture";
+  observedAt: string;
+  price: Money | null;
+  priceBasis: "agent_observed" | "unknown";
+  priceExcerpt: string | null;
+  retailer: string;
+  section: "primary" | "needs_checking" | "excluded";
+  sizesAvailable: string[];
+  title: string;
+  uncertainty: string | null;
+  validatedAt: string;
+  verification: "url_checked_page_not_fetched";
+  warnings: string[];
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "ResearchSubmission".
+ */
+export interface ResearchSubmission {
+  jobId: string;
+  notes?: string | null;
+  /**
+   * @maxItems 20
+   */
+  products:
+    | []
+    | [SubmittedProduct]
+    | [SubmittedProduct, SubmittedProduct]
+    | [SubmittedProduct, SubmittedProduct, SubmittedProduct]
+    | [SubmittedProduct, SubmittedProduct, SubmittedProduct, SubmittedProduct]
+    | [SubmittedProduct, SubmittedProduct, SubmittedProduct, SubmittedProduct, SubmittedProduct]
+    | [SubmittedProduct, SubmittedProduct, SubmittedProduct, SubmittedProduct, SubmittedProduct, SubmittedProduct]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ]
+    | [
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct,
+        SubmittedProduct
+      ];
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "SubmittedProduct".
+ */
+export interface SubmittedProduct {
+  availability?: "in_stock" | "out_of_stock" | "unknown";
+  matchType: "exact" | "similar";
+  observedAt: string;
+  observedPrice?: SubmittedPrice | null;
+  priceExcerpt?: string | null;
+  productUrl: string;
+  retailer: string;
+  /**
+   * @maxItems 30
+   */
+  sizesAvailable?: string[];
+  sourceUrl?: string | null;
+  title: string;
+  uncertainty?: string | null;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "SubmittedPrice".
+ */
+export interface SubmittedPrice {
+  amountMinor: number;
+  currency: string;
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -445,4 +804,217 @@ export interface ShoppingSession {
   revision: number;
   selectedGarmentId: string | null;
   updatedAt: string;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleEvent".
+ */
+export interface StyleEvent {
+  id: string;
+  item?: StyleItem | null;
+  linkKind?: string | null;
+  memoryId?: string | null;
+  occurredAt: string;
+  orderId?: string | null;
+  origin: "stated" | "inferred";
+  source: string;
+  type:
+    | "explicit_preference"
+    | "saved_item"
+    | "rejected_item"
+    | "retailer_click"
+    | "user_confirmed_purchase"
+    | "verified_order";
+}
+/**
+ * Listing facts copied server-side from stored records; never client-supplied.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleItem".
+ */
+export interface StyleItem {
+  brand?: string | null;
+  category?: string | null;
+  domain?: string | null;
+  listingId?: string | null;
+  offerKey?: string | null;
+  productKey?: string | null;
+  recommendationId?: string | null;
+  title: string;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleMemory".
+ */
+export interface StyleMemory {
+  createdAt: string;
+  evidenceCount?: number;
+  id: string;
+  kind:
+    | "size"
+    | "fit"
+    | "budget_max"
+    | "color_like"
+    | "color_avoid"
+    | "material_like"
+    | "material_avoid"
+    | "brand_like"
+    | "brand_avoid";
+  origin: "stated" | "inferred";
+  overriddenBy?: string | null;
+  source:
+    | "preferences_form"
+    | "style_panel"
+    | "style_note"
+    | "chat_refinement"
+    | "saved_items"
+    | "rejected_items"
+    | "purchases";
+  sourceEventIds?: string[];
+  status: "active" | "overridden" | "removed";
+  updatedAt: string;
+  value: unknown;
+}
+/**
+ * Which reader handles style notes. Never claims local processing for a hosted model.
+ *
+ * mode: unavailable (feature or provider off), unverified (configured, no successful call yet),
+ * live (a real call succeeded since startup).
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleModelInfo".
+ */
+export interface StyleModelInfo {
+  hosting?: ("local" | "remote") | null;
+  label?: string | null;
+  mode: "unavailable" | "unverified" | "live";
+  model?: string | null;
+  provider?: ("none" | "ollama" | "openai_compatible") | null;
+}
+/**
+ * What POST /api/style/notes returns. Proposals only; nothing is saved.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleNoteResult".
+ */
+export interface StyleNoteResult {
+  hosting?: ("local" | "remote") | null;
+  mode: "model" | "rule_based";
+  model?: string | null;
+  note?: string | null;
+  proposals?: StyleProposal[];
+  provider: string;
+  rejectedProposals?: number;
+  usage?: StyleNoteUsage | null;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleProposal".
+ */
+export interface StyleProposal {
+  action: "add" | "set" | "remove";
+  kind:
+    | "size"
+    | "fit"
+    | "budget_max"
+    | "color_like"
+    | "color_avoid"
+    | "material_like"
+    | "material_avoid"
+    | "brand_like"
+    | "brand_avoid";
+  quote: string;
+  value: unknown;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleNoteUsage".
+ */
+export interface StyleNoteUsage {
+  completionTokens?: number | null;
+  promptTokens?: number | null;
+  wallMs?: number | null;
+}
+/**
+ * What GET /api/style/profile returns: the profile without internal product keys.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleProfileView".
+ */
+export interface StyleProfileView {
+  /**
+   * @maxItems 5
+   */
+  brandsAvoid?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  /**
+   * @maxItems 5
+   */
+  brandsLike?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  budgetMax?: ProfileEntry | null;
+  /**
+   * @maxItems 5
+   */
+  colorsAvoid?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  /**
+   * @maxItems 5
+   */
+  colorsLike?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  fit?: ProfileEntry | null;
+  /**
+   * @maxItems 5
+   */
+  materialsAvoid?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  /**
+   * @maxItems 5
+   */
+  materialsLike?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  /**
+   * @maxItems 5
+   */
+  recentlyOwned?:
+    | []
+    | [OwnedItem]
+    | [OwnedItem, OwnedItem]
+    | [OwnedItem, OwnedItem, OwnedItem]
+    | [OwnedItem, OwnedItem, OwnedItem, OwnedItem]
+    | [OwnedItem, OwnedItem, OwnedItem, OwnedItem, OwnedItem];
+  rejectedOfferCount?: number;
+  size?: ProfileEntry | null;
+  updatedAt?: string | null;
 }

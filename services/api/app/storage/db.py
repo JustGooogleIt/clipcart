@@ -26,6 +26,8 @@ COLLECTIONS = (
     "outbound_links",
     "referrals",
     "idempotency",
+    "style_events",
+    "style_memories",
     "research_jobs",
 )
 
@@ -58,6 +60,9 @@ def ensure_indexes(db: Any) -> None:
     db.garment_observations.create_index([("mediaId", ASCENDING)])
     db.research_jobs.create_index([("sessionId", ASCENDING), ("createdAt", DESCENDING)])
     db.research_jobs.create_index([("status", ASCENDING), ("expiresAt", ASCENDING)])
+    db.style_events.create_index([("ownerId", ASCENDING), ("occurredAt", DESCENDING)])
+    db.style_events.create_index([("ownerId", ASCENDING), ("type", ASCENDING)])
+    db.style_memories.create_index([("ownerId", ASCENDING), ("status", ASCENDING), ("kind", ASCENDING)])
     db.referrals.create_index([("sessionId", ASCENDING), ("occurredAt", DESCENDING)])
 
 

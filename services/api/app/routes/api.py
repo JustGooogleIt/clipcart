@@ -34,6 +34,7 @@ from app.sessions.service import (
 )
 from app.shopping.refine import apply_patch, parse_refinement
 from app.storage.db import ping
+from app.style.labels import remote_style_label, style_model_mode
 
 from .deps import current_owner, ensure_owner, limiter, require_mutation_header, state_of
 
@@ -96,6 +97,18 @@ class YoutubeAnalyzeIn(In):
 
 
 # ------------------------------------------------------------------ system
+def _style_model_info(s) -> dict:
+    """Never claims local processing for a hosted model."""
+    if not s.feature_style_memory:
+        return {"provider": None, "model": None, "hosting": None, "label": None}
+    if s.style_model_provider == "openai_compatible":
+        return {"provider": "openai_compatible", "model": s.style_remote_model, "hosting": "remote",
+                "label": remote_style_label(s)}
+    if s.style_model_provider == "ollama":
+        return {"provider": "ollama", "model": s.style_model, "hosting": "local", "label": f"{s.style_model} via local Ollama"}
+    return {"provider": "none", "model": None, "hosting": None, "label": "Rule-based parser only"}
+
+
 @router.get("/api/health")
 def health(request: Request) -> dict:
     st = state_of(request)
@@ -110,6 +123,8 @@ def health(request: Request) -> dict:
                            "setting": s.perception_provider},
             "grok": {**st.status["grok"].snapshot(), "model": s.xai_model},
             "catalog": {**st.status["catalog"].snapshot(), "provider": s.catalog_provider, "error": st.catalog_error},
+            "styleModel": {**st.status["style_model"].snapshot(), "mode": style_model_mode(st.status["style_model"]),
+                           **_style_model_info(s)},
         },
         "features": {
             "photon": s.feature_photon,
@@ -117,6 +132,7 @@ def health(request: Request) -> dict:
             "solana": s.feature_solana,
             "agentResearch": s.feature_agent_research,
             "youtubeDownload": s.feature_youtube_download,
+            "styleMemory": s.feature_style_memory,
         },
         "youtube": {
             "enabled": s.feature_youtube_download,
@@ -659,4 +675,12 @@ def go(token: str, request: Request):
         st.bump("outbound_clicks")
     except Exception:  # noqa: BLE001 - analytics must never block the shopper
         log.exception("referral logging failed")
+    if st.settings.feature_style_memory:
+        try:  # a click is interest only: never a purchase, never a memory
+            from app.style.service import record_retailer_click
+
+            record_retailer_click(st.db, link["ownerId"], link["listingId"], link.get("recommendationId"), link["kind"],
+                                  target_url=link["url"])
+        except Exception:  # noqa: BLE001 - must never block the redirect
+            log.exception("style click logging failed")
     return RedirectResponse(link["url"], status_code=302, headers={"Referrer-Policy": "no-referrer"})

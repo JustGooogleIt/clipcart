@@ -21,7 +21,9 @@ def test_health_reports_honest_modes(app_factory):
         "solana": False,
         "agentResearch": False,
         "youtubeDownload": False,
+        "styleMemory": False,
     }
+    assert h["providers"]["styleModel"]["mode"] == "unavailable"
 
 
 def test_full_journey_with_detection_unavailable(app_factory):
