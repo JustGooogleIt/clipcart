@@ -34,6 +34,7 @@ from app.sessions.service import (
 )
 from app.shopping.refine import apply_patch, parse_refinement
 from app.storage.db import ping
+from app.research.providers import research_mode
 from app.style.labels import remote_style_label, style_model_mode
 
 from .deps import current_owner, ensure_owner, limiter, require_mutation_header, state_of
@@ -113,8 +114,11 @@ def _style_model_info(s) -> dict:
 def categories() -> dict:
     """Category families, size rules and attribute keys (docs/contracts/accessories.md). Static; no auth."""
     from app.categories import public_categories
+    from app.contracts import CategoriesResponse
+    from app.style.tags import STYLE_TAGS
+    from app.style.vocab import TONES
 
-    return {"categories": public_categories()}
+    return CategoriesResponse(categories=public_categories(), style_tags=list(STYLE_TAGS), tones=list(TONES)).wire()
 
 
 @router.get("/api/health")
@@ -149,7 +153,7 @@ def health(request: Request) -> dict:
             "maxDurationS": 90,
         },
         "research": {"provider": s.research_provider if s.feature_agent_research else None,
-                     "mode": ("fixture" if s.research_provider == "fixture" else "live") if s.feature_agent_research else None},
+                     "mode": research_mode(s.research_provider, st) if s.feature_agent_research else None},
     }
 
 

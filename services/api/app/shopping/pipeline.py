@@ -281,12 +281,16 @@ def run_search(
         rec_id = "rec_" + hashlib.sha256(f"{search_id}|{L.id}|{section}".encode()).hexdigest()[:20]
         links, targets = _links_for(rec_id, L, prefs)
         warnings = list(L.warnings)
+        codes: list[str] = []  # stable codes for the warnings ClipCart adds (contract: WarningCode)
         if is_accessory(profile.category) and seller_claims(L.title, L.material_text):
             warnings.append(SELLER_CLAIMS_WARNING)
+            codes.append("seller_claims_unverified")
         if L.availability == "unknown":
             warnings.append("Availability unknown")
+            codes.append("availability_unknown")
         if L.mode in ("fixture", "catalog"):
             warnings.append("Fixture data: not a live result")
+            codes.append("fixture_data")
         out.recommendations.append(
             Recommendation(
                 id=rec_id,
@@ -299,6 +303,7 @@ def run_search(
                 constraint_checks=checks,
                 explanation=explanation(L, profile, tier, reason, prefs),
                 warnings=list(dict.fromkeys(warnings)),
+                warning_codes=codes,
                 rank=rank,
                 ranking_version=RANKING_VERSION,
                 found_by=sorted(c.found_by & {"exact", "alternatives"}) or ["alternatives"],

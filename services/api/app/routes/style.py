@@ -150,6 +150,7 @@ def post_note(body: NoteIn, request: Request) -> dict:
 @router.get("/api/style/interpretations")
 def get_interpretations(request: Request) -> dict:
     """Model interpretation queue and recent runs: what was applied and what validation refused."""
+    from app.contracts import StyleInterpretations
     from app.style.interpret import status
 
     st = _flag(request)
@@ -159,7 +160,7 @@ def get_interpretations(request: Request) -> dict:
     out["status"] = "waiting_for_model" if model is None and out["pendingEvents"] else ("idle" if not out["pendingEvents"] else "debouncing")
     out["rankingInfluence"] = st.settings.style_model_ranking
     out["styleModel"] = _model_info(st)
-    return out
+    return StyleInterpretations.model_validate(out).wire()
 
 
 @router.post("/api/style/interpretations/run")
@@ -171,4 +172,6 @@ def run_interpretations(request: Request) -> dict:
     require_mutation_header(request)
     owner = current_owner(request)
     limiter.check(owner, "style_interpret", 6)
-    return run_due(st, owner, force=True)
+    from app.contracts import InterpretationRunResult
+
+    return InterpretationRunResult.model_validate(run_due(st, owner, force=True)).wire()

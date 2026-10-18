@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, get_args
+
+from app.contracts import Tone
 
 from app.shopping.refine import _MATERIALS
 from app.shopping.rules import _COLOR_WORDS, norm_size
@@ -16,7 +18,7 @@ PAIRS = {
     "tone_like": "tone_avoid", "tone_avoid": "tone_like",
     "style_like": "style_avoid", "style_avoid": "style_like",
 }
-TONES = ("gold-tone", "silver-tone", "rose-gold-tone", "black", "two-tone")
+TONES: tuple[str, ...] = get_args(Tone)  # the contract's Tone enum is the vocabulary
 _TONE_ALIASES = {"gold": "gold-tone", "gold tone": "gold-tone", "golden": "gold-tone", "silver": "silver-tone",
                  "silver tone": "silver-tone", "rose gold": "rose-gold-tone", "rose gold tone": "rose-gold-tone",
                  "rose-gold": "rose-gold-tone", "two tone": "two-tone", "mixed metal": "two-tone"}
