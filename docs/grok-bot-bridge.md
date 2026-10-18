@@ -1,5 +1,18 @@
 # Grok Bot as shopping research agent: bridge findings
 
+## What you need to provide (owner)
+
+The probe has **not been run**, so nothing about the callback is proven. Each of these needs you:
+
+1. **A routine.** In the app where your Grok Bot runs (these findings cite the Cursor desktop app, 0.53+), ask the Bot to create a routine with a **webhook trigger** and exactly this instruction:
+   > When triggered, read the JSON body. Send an HTTP POST to body.callbackUrl with header Authorization set to body.callbackAuthorization and JSON body {"probeId": body.probeId, "nonce": body.nonce, "echo": "pong"}. Do nothing else.
+2. **The webhook URL and key** the app shows for that routine. Set them in your shell as `GROK_BOT_WEBHOOK_URL` and `GROK_BOT_WEBHOOK_KEY`, not in a committed file. Don't assume a Grok or SuperGrok subscription gives an xAI API key. It doesn't, and this bridge doesn't need one.
+3. **An Allow rule** in the Bot's approvals for **POST requests to your tunnel's host**. Without it, an unattended callback is expected to wait for approval and expire after about 10 minutes.
+4. **A public HTTPS callback.** Run a tunnel to the probe's local port 8765, for example `cloudflared tunnel --url http://127.0.0.1:8765`, and set its `https://` address as `PROBE_PUBLIC_BASE_URL`. No tunnel tool is installed on this machine.
+5. **Run the probe once:** `python3 scripts/experiments/grokbot_bridge_probe.py`. It makes **one webhook call**, which spends Bot usage. It waits up to 10 minutes for the callback and prints which step passed or failed: `trigger`, `payload` or `callback`. The webhook response only confirms the run started. **It never contains results.**
+
+**If all three steps pass,** Claude implements the `grok_bot` provider below, through the existing job lifecycle and validation. **If the callback fails or is held,** the bridge isn't viable unattended. Research results can then still be brought in through the **labelled manual import** (`POST /api/research-jobs/{id}/import`, see `docs/contracts/agent-research.md` v2). That import also works on failed and expired jobs.
+
 Checked 2026-10-17 against official xAI and Cursor documentation. Status: **not proven; not implemented**. Only the provider-neutral job interface and a labelled fixture ship on `feat/grok-bot-research`.
 
 ## Proposed bridge versus documentation

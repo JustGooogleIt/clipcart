@@ -1,3 +1,5 @@
+import os
+
 from shopping.fakes import FakeCatalog, item
 
 from .conftest import H, bootstrap, new_client, wait
@@ -12,7 +14,10 @@ def cat(**kw):
 def test_health_reports_honest_modes(app_factory):
     c = new_client(app_factory())
     h = c.get("/api/health").json()
-    assert h["database"]["mode"] == "local_memory" and "not MongoDB Atlas" in h["database"]["note"]
+    if os.getenv("CLIPCART_TEST_MONGODB_URI"):  # opt-in real MongoDB run (see conftest)
+        assert h["database"]["mode"] in ("mongodb", "atlas") and h["database"]["ok"] and h["database"]["note"] is None
+    else:
+        assert h["database"]["mode"] == "local_memory" and "not MongoDB Atlas" in h["database"]["note"]
     assert h["providers"]["perceptron"]["mode"] == "unavailable"
     assert h["providers"]["grok"]["mode"] == "unavailable"
     assert h["features"] == {
@@ -22,6 +27,7 @@ def test_health_reports_honest_modes(app_factory):
         "agentResearch": False,
         "youtubeDownload": False,
         "styleMemory": False,
+        "accessoryDetection": False,
     }
     assert h["providers"]["styleModel"]["mode"] == "unavailable"
 

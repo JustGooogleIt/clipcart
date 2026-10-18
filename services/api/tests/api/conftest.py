@@ -1,5 +1,7 @@
+import os
 import sys
 import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -29,17 +31,50 @@ def app_factory(tmp_path, monkeypatch):
     monkeypatch.setenv("CLIPCART_SKIP_DOTENV", "1")  # never read real keys in tests
     monkeypatch.setenv("CLIPCART_MEDIA_ROOT", str(tmp_path / "media"))
     monkeypatch.setenv("CLIPCART_WEB_DIST", str(tmp_path / "nodist"))
+    real = _real_mongo_uri()
+    dbs: list[str] = []
+    if real:
+        # Opt-in: run against a real MongoDB server. Each app gets its own throwaway database.
+        monkeypatch.setenv("MONGODB_URI", real)
     from app.main import create_app
     from app.shopping.tools import clear_cache
 
     def make(catalog=None):
         clear_cache()
+        if real:
+            name = f"cctest_{uuid.uuid4().hex[:12]}"
+            dbs.append(name)
+            monkeypatch.setenv("MONGODB_DB", name)
         app = create_app()
         if catalog is not None:
             app.state.clipcart.catalog = catalog
         return app
 
-    return make
+    yield make
+    if real and dbs:
+        import pymongo
+
+        client = pymongo.MongoClient(real, serverSelectionTimeoutMS=5000)
+        # Background job threads (search, analysis) can write a last event just after a test ends and
+        # recreate the database; drop, let them settle, then drop again.
+        for attempt in range(3):
+            for name in dbs:
+                client.drop_database(name)
+            if attempt < 2:
+                time.sleep(0.3)
+        client.close()
+
+
+def _real_mongo_uri() -> str | None:
+    """CLIPCART_TEST_MONGODB_URI opts the API tests into a real MongoDB (default: mongomock).
+
+    Tests create and drop their own cctest_* databases, so point this at a local or dedicated test
+    server, never at the app's Atlas cluster.
+    """
+    uri = os.getenv("CLIPCART_TEST_MONGODB_URI")
+    if uri and "mongodb.net" in uri and not os.getenv("CLIPCART_TEST_ALLOW_ATLAS"):
+        raise pytest.UsageError("CLIPCART_TEST_MONGODB_URI points at Atlas; set CLIPCART_TEST_ALLOW_ATLAS=1 for a dedicated test cluster")
+    return uri or None
 
 
 def wait(fn, cond, timeout=15):

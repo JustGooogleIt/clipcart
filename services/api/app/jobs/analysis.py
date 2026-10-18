@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 
+from app.categories import ACCESSORIES
 from app.contracts import AnalysisJob
 from app.media.context import RequestContext
 from app.media.grouping import GarmentGrouper
@@ -12,7 +13,8 @@ from app.sessions.service import new_id, now
 from app.state import AppState
 
 log = logging.getLogger("clipcart.analysis")
-CATEGORIES = ["jacket", "top", "pants", "bag"]
+
+CATEGORIES = ["jacket", "top", "pants", "bag"]  # automatic detection; accessories only with FEATURE_ACCESSORY_DETECTION
 
 
 def create_analysis(state: AppState, session_id: str, owner_id: str, media_id: str) -> AnalysisJob:
@@ -77,7 +79,8 @@ def run_analysis(state: AppState, job_id: str) -> None:
         return
     ctx = RequestContext.with_timeout(owner, f"req_{uuid.uuid4().hex[:10]}", state.settings.analysis_deadline_s)
     try:
-        result = provider.analyze(frames, CATEGORIES, ctx)
+        cats = CATEGORIES + (list(ACCESSORIES) if state.settings.feature_accessory_detection else [])
+        result = provider.analyze(frames, cats, ctx)
     except Exception as exc:  # noqa: BLE001 - adapter guard requested in PR #2 review
         log.exception("perception analyze crashed")
         state.status["perceptron"].record(False, code="adapter_error", note=type(exc).__name__)

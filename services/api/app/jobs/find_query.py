@@ -23,6 +23,7 @@ _ANCHORS = frozenset(
         "jacket", "coat", "blazer", "hoodie", "sweater", "shirt", "tee", "top", "pants", "jeans",
         "trousers", "shorts", "skirt", "dress", "bag", "purse", "tote", "backpack", "hat", "cap",
         "shoe", "sneaker", "boot", "watch", "glasses", "sunglasses", "scarf", "belt",
+        "necklace", "pendant", "chain", "bracelet", "bangle", "ring", "earring", "earrings", "hoops", "studs",
         "plant", "monstera", "flower", "vase", "painting", "poster", "print", "frame", "lamp",
         "chair", "sofa", "table", "bottle", "cup", "phone", "laptop", "camera", "guitar",
         "denim", "leather", "trucker", "bomber", "biker",
@@ -52,7 +53,8 @@ def normalize_find_query(text: str) -> str:
 
 
 # One-word asks that are still worth attempting (common shoppable nouns).
-_SINGLE_OK = frozenset({"jacket", "jeans", "hoodie", "sneakers", "backpack", "handbag"})
+_SINGLE_OK = frozenset({"jacket", "jeans", "hoodie", "sneakers", "backpack", "handbag",
+                        "watch", "necklace", "bracelet", "earrings"})
 
 
 def query_too_vague(query: str) -> str | None:
@@ -104,7 +106,12 @@ def detect_classes_for_query(query: str) -> list[str]:
 
 
 def infer_category(query: str, what: str | None = None) -> str:
-    """Map find results onto apparel categories when the ask/description is clearly clothing."""
+    """Map find results onto apparel or accessory categories when the ask/description is clear."""
+    from app.categories import accessory_from_label
+
+    acc = accessory_from_label(query) or accessory_from_label(what)  # the shopper's ask wins
+    if acc:
+        return acc
     blob = f"{what or ''} {query or ''}".lower()
     for cat, nouns in _APPAREL.items():
         if any(re.search(rf"\b{re.escape(n)}\b", blob) for n in nouns):

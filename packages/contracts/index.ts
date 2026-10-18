@@ -158,7 +158,7 @@ export interface GarmentObservation {
    * @maxItems 4
    */
   box01: [unknown, unknown, unknown, unknown];
-  category: "jacket" | "top" | "pants" | "bag" | "other";
+  category: "jacket" | "top" | "pants" | "bag" | "watch" | "necklace" | "bracelet" | "ring" | "earrings" | "other";
   cropAssetId: string;
   editedByUser: boolean;
   frameAssetId: string;
@@ -282,6 +282,31 @@ export interface MediaAsset {
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "MemoryEvidence".
+ */
+export interface MemoryEvidence {
+  at: string;
+  eventId: string;
+  excerpt?: string | null;
+  type: string;
+}
+/**
+ * Offers ClipCart treats as the same product, for price comparison.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "OfferGroup".
+ */
+export interface OfferGroup {
+  basis: string;
+  equivalence: "identifier_match" | "approximate" | "single";
+  id: string;
+  isLowestConfirmed: boolean;
+  lowestConfirmedPrice: Money | null;
+  offerCount: number;
+  uncertainPriceCount: number;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
  * via the `definition` "OutboundLink".
  */
 export interface OutboundLink {
@@ -300,6 +325,14 @@ export interface OwnedItem {
   brand: string | null;
   source: "user_confirmed_purchase" | "verified_order";
   title: string;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "PageEvidence".
+ */
+export interface PageEvidence {
+  excerpt: string;
+  field: "title" | "price" | "availability" | "size" | "condition" | "brand" | "identifier" | "image";
 }
 /**
  * Partial update. Only fields present in the request are applied (FR14).
@@ -332,6 +365,7 @@ export interface PreferencePatch {
     | [string, string, string, string, string, string, string, string]
     | null;
   maxItemPriceMinor?: number | null;
+  ringSize?: SizePref | null;
   size?: SizePref | null;
 }
 /**
@@ -367,16 +401,30 @@ export interface Preferences {
     | [string, string, string, string, string, string, string]
     | [string, string, string, string, string, string, string, string];
   maxItemPriceMinor?: number | null;
+  ringSize?: SizePref | null;
   size?: SizePref | null;
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "ProductIdentifiers".
+ */
+export interface ProductIdentifiers {
+  catalogRef?: string | null;
+  gtin?: string | null;
+  mpn?: string | null;
+  sku?: string | null;
+  styleCode?: string | null;
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
  * via the `definition` "ProfileEntry".
  */
 export interface ProfileEntry {
+  confidence?: number | null;
   evidenceCount?: number | null;
   memoryId: string;
   origin: "stated" | "inferred";
+  source?: string | null;
   value: unknown;
 }
 /**
@@ -454,13 +502,15 @@ export interface ResearchJob {
   finishedAt?: string | null;
   garment: ResearchGarmentContext;
   id: string;
-  mode: "live" | "fixture";
+  mode: "live" | "fixture" | "manual";
   preferences: Preferences;
   products?: ResearchProduct[];
-  provider: "fixture";
+  provider: "fixture" | "solescout" | "manual";
   rejected?: RejectedItem[];
+  resultSource?: "provider" | "manual_import";
   sessionId: string;
   status: "pending" | "completed" | "failed" | "expired";
+  styleHints?: StyleHints | null;
   summary?: string | null;
 }
 /**
@@ -469,26 +519,112 @@ export interface ResearchJob {
  */
 export interface ResearchProduct {
   availability: "in_stock" | "out_of_stock" | "unknown";
+  brand?: string | null;
+  brandBasis?: ("page_text" | "catalog_record") | null;
+  condition?: "new" | "used" | "unknown";
   constraintChecks: ConstraintCheck[];
   domain: string;
+  evidence?: PageEvidence[];
   id: string;
   identityTier: "likely" | "similar";
+  imageUrl?: string | null;
   jobId: string;
   links: OutboundLink[];
   matchClaim: "exact" | "similar";
-  mode: "live" | "fixture";
+  mode: "live" | "fixture" | "manual";
   observedAt: string;
+  offerGroup?: OfferGroup | null;
   price: Money | null;
   priceBasis: "agent_observed" | "unknown";
   priceExcerpt: string | null;
   retailer: string;
   section: "primary" | "needs_checking" | "excluded";
+  sellerKind?: "retailer" | "marketplace" | "resale" | "unknown";
   sizesAvailable: string[];
+  source?: "agent" | "catalog" | "manual_import";
   title: string;
   uncertainty: string | null;
   validatedAt: string;
+  variants?: ResearchVariant[];
   verification: "url_checked_page_not_fetched";
   warnings: string[];
+}
+/**
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "ResearchVariant".
+ */
+export interface ResearchVariant {
+  availability: "available" | "unavailable" | "unknown";
+  label: string;
+  price?: Money | null;
+}
+/**
+ * Compact, soft hints from the shopper's style profile. Never hard constraints.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleHints".
+ */
+export interface StyleHints {
+  /**
+   * @maxItems 5
+   */
+  brandsAvoid?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 5
+   */
+  brandsLike?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 5
+   */
+  colorsAvoid?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 5
+   */
+  colorsLike?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 5
+   */
+  materialsAvoid?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 5
+   */
+  tonesLike?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -732,12 +868,80 @@ export interface ResearchSubmission {
  */
 export interface SubmittedProduct {
   availability?: "in_stock" | "out_of_stock" | "unknown";
+  brand?: string | null;
+  condition?: "new" | "used" | "pre_owned" | "unknown";
+  /**
+   * @maxItems 12
+   */
+  evidence?:
+    | []
+    | [PageEvidence]
+    | [PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence]
+    | [PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence, PageEvidence]
+    | [
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence
+      ]
+    | [
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence
+      ]
+    | [
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence
+      ]
+    | [
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence,
+        PageEvidence
+      ];
+  identifiers?: ProductIdentifiers | null;
+  imageUrl?: string | null;
   matchType: "exact" | "similar";
   observedAt: string;
   observedPrice?: SubmittedPrice | null;
   priceExcerpt?: string | null;
   productUrl: string;
   retailer: string;
+  sellerKind?: "retailer" | "marketplace" | "resale" | "unknown";
   /**
    * @maxItems 30
    */
@@ -745,6 +949,10 @@ export interface SubmittedProduct {
   sourceUrl?: string | null;
   title: string;
   uncertainty?: string | null;
+  /**
+   * @maxItems 60
+   */
+  variants?: SubmittedVariant[];
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -753,6 +961,18 @@ export interface SubmittedProduct {
 export interface SubmittedPrice {
   amountMinor: number;
   currency: string;
+}
+/**
+ * A size or variant as the page showed it. ``available`` False is kept, never dropped.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "SubmittedVariant".
+ */
+export interface SubmittedVariant {
+  available?: boolean | null;
+  label: string;
+  price?: SubmittedPrice | null;
+  priceExcerpt?: string | null;
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
@@ -836,19 +1056,43 @@ export interface StyleEvent {
 export interface StyleItem {
   brand?: string | null;
   category?: string | null;
+  condition?: string | null;
   domain?: string | null;
   listingId?: string | null;
   offerKey?: string | null;
   productKey?: string | null;
   recommendationId?: string | null;
+  styleFacts?: StyleTagFact[];
   title: string;
+}
+/**
+ * A style tag the listing's own text states, with the words that state it.
+ *
+ * This interface was referenced by `ClipCartContracts`'s JSON-Schema
+ * via the `definition` "StyleTagFact".
+ */
+export interface StyleTagFact {
+  excerpt: string;
+  field: "title" | "material";
+  tag: string;
 }
 /**
  * This interface was referenced by `ClipCartContracts`'s JSON-Schema
  * via the `definition` "StyleMemory".
  */
 export interface StyleMemory {
+  confidence?: number | null;
   createdAt: string;
+  /**
+   * @maxItems 5
+   */
+  evidence?:
+    | []
+    | [MemoryEvidence]
+    | [MemoryEvidence, MemoryEvidence]
+    | [MemoryEvidence, MemoryEvidence, MemoryEvidence]
+    | [MemoryEvidence, MemoryEvidence, MemoryEvidence, MemoryEvidence]
+    | [MemoryEvidence, MemoryEvidence, MemoryEvidence, MemoryEvidence, MemoryEvidence];
   evidenceCount?: number;
   id: string;
   kind:
@@ -860,7 +1104,13 @@ export interface StyleMemory {
     | "material_like"
     | "material_avoid"
     | "brand_like"
-    | "brand_avoid";
+    | "brand_avoid"
+    | "tone_like"
+    | "tone_avoid"
+    | "ring_size"
+    | "style_like"
+    | "style_avoid";
+  lastEvidenceAt?: string | null;
   origin: "stated" | "inferred";
   overriddenBy?: string | null;
   source:
@@ -870,7 +1120,8 @@ export interface StyleMemory {
     | "chat_refinement"
     | "saved_items"
     | "rejected_items"
-    | "purchases";
+    | "purchases"
+    | "model_interpretation";
   sourceEventIds?: string[];
   status: "active" | "overridden" | "removed";
   updatedAt: string;
@@ -923,7 +1174,12 @@ export interface StyleProposal {
     | "material_like"
     | "material_avoid"
     | "brand_like"
-    | "brand_avoid";
+    | "brand_avoid"
+    | "tone_like"
+    | "tone_avoid"
+    | "ring_size"
+    | "style_like"
+    | "style_avoid";
   quote: string;
   value: unknown;
 }
@@ -1016,6 +1272,47 @@ export interface StyleProfileView {
     | [OwnedItem, OwnedItem, OwnedItem, OwnedItem]
     | [OwnedItem, OwnedItem, OwnedItem, OwnedItem, OwnedItem];
   rejectedOfferCount?: number;
+  ringSize?: ProfileEntry | null;
   size?: ProfileEntry | null;
+  /**
+   * @maxItems 5
+   */
+  stylesAvoid?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  /**
+   * @maxItems 5
+   */
+  stylesLike?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  /**
+   * @maxItems 5
+   */
+  tonesAvoid?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
+  /**
+   * @maxItems 5
+   */
+  tonesLike?:
+    | []
+    | [ProfileEntry]
+    | [ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry]
+    | [ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry, ProfileEntry];
   updatedAt?: string | null;
 }

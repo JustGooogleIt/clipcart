@@ -43,6 +43,8 @@ from app.media.types import (
     ProviderRequestMeta,
 )
 
+from app.categories import DETECT_PROMPTS, accessory_from_label, appearance_safe, is_accessory
+
 from .errors import NormalizedError, normalize_exception
 from .sdk import AttributeResponse, DetectResponse, PerceptronBackend
 
@@ -54,6 +56,7 @@ CATEGORY_PROMPTS: dict[str, str] = {
     "top": "top or shirt or sweater",
     "pants": "pants or jeans or trousers",
     "bag": "bag or handbag or backpack",
+    **DETECT_PROMPTS,  # watch, necklace, bracelet, ring, earrings (only when requested)
 }
 
 _LABEL_KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
@@ -70,11 +73,26 @@ _MAX_ATTR_LEN = 60
 
 
 def category_from_label(label: str | None) -> Category:
+    acc = accessory_from_label(label)  # checked first: "watch strap" or "earring" must not fall into other rules
+    if acc:
+        return acc  # type: ignore[return-value]
     text = (label or "").lower()
     for category, words in _LABEL_KEYWORDS:
         if any(w in text for w in words):
             return category  # type: ignore[return-value]
     return "other"
+
+
+def _appearance_only(attrs: dict[str, list[str]]) -> tuple[dict[str, list[str]], bool]:
+    """Accessories: keep appearance, drop metal/stone/authenticity/brand inferences (docs/contracts/accessories.md)."""
+    out: dict[str, list[str]] = {}
+    changed = False
+    for k, vals in attrs.items():
+        safe, ch = appearance_safe(vals)
+        changed = changed or ch
+        if safe:
+            out[k] = safe
+    return out, changed
 
 
 def _clean_list(values: object, limit: int) -> list[str]:
@@ -225,7 +243,7 @@ class PerceptronPerceptionProvider:
         ctx = request_context
         cats = [c for c in categories if c in CATEGORY_PROMPTS or c == "other"]
         if not cats:
-            raise ValueError("at least one of jacket/top/pants/bag must be requested")
+            raise ValueError("at least one known category (garment, bag or accessory) must be requested")
         classes = [CATEGORY_PROMPTS[c] for c in cats if c in CATEGORY_PROMPTS]
         # Drop repeated frame IDs so a frame is never paid for twice.
         frames = list({f.asset_id: f for f in frame_refs}.values())[: self.max_frames]
@@ -358,7 +376,12 @@ class PerceptronPerceptionProvider:
         def size(o: GarmentObservation) -> float:
             return (o.box01[2] - o.box01[0]) * (o.box01[3] - o.box01[1])
 
-        chosen = sorted(observations, key=size, reverse=True)[: self.max_attribute_calls]
+        garments = sorted([o for o in observations if not is_accessory(o.category)], key=size, reverse=True)
+        accessories = sorted([o for o in observations if is_accessory(o.category)], key=size, reverse=True)
+        # Small accessories never win a size sort; reserve up to a third of the budget for them.
+        reserve = min(len(accessories), max(1, self.max_attribute_calls // 3)) if accessories else 0
+        chosen = accessories[:reserve] + garments[: self.max_attribute_calls - reserve]
+        chosen += accessories[reserve: self.max_attribute_calls - len(chosen)]
 
         def attr_job(o: GarmentObservation):
             crop_bytes = self.media.store.read_bytes(o.crop_asset_id, ctx.owner_id)
@@ -391,10 +414,14 @@ class PerceptronPerceptionProvider:
             limits = {"color": 5, "pattern": 4, "cut": 6, "details": 10}
             attrs = {k: _clean_list(res.attributes.get(k), limits.get(k, 6)) for k in _ALLOWED_ATTRIBUTE_KEYS}
             attrs = {k: v for k, v in attrs.items() if v}
+            if is_accessory(o.category):
+                attrs, normalized = _appearance_only(attrs)
+            else:
+                normalized = False
             text = _clean_list(res.attributes.get("visible_text"), 6)
             updated[o.id] = o.model_copy(
                 update={
-                    "observed_attributes": attrs,
+                    "observed_attributes": {**attrs, **({"appearanceNormalized": ["true"]} if normalized else {})},
                     "visible_text": text,
                     "model_generated_fields": o.model_generated_fields
                     + list(attrs)
@@ -411,6 +438,8 @@ class PerceptronPerceptionProvider:
     ) -> AnalysisResult:
         """Open-vocabulary find: detect ``query`` on frames, describe the best crop richly."""
         from app.jobs.find_query import detect_classes_for_query
+
+        small_ok = accessory_from_label(query) is not None  # rings and earrings are often <0.4% of a frame
 
         ctx = request_context
         q = " ".join((query or "").split())
@@ -477,7 +506,7 @@ class PerceptronPerceptionProvider:
                     x0, y0, x1, y1 = box
                     area = max(0.0, x1 - x0) * max(0.0, y1 - y0)
                     # Reject dust specs and near-full-frame "detections" (usually wrong).
-                    if area < 0.004 or area > 0.88:
+                    if area < (0.0004 if small_ok else 0.004) or area > 0.88:
                         dropped_n += 1
                         continue
                     try:
@@ -533,8 +562,8 @@ class PerceptronPerceptionProvider:
         def score(o: GarmentObservation) -> float:
             x0, y0, x1, y1 = o.box01
             area = max(0.0, x1 - x0) * max(0.0, y1 - y0)
-            # Sweet spot ~4–45% of the frame for product-like objects.
-            size_score = 1.0 - abs(area - 0.18) / 0.18
+            # Sweet spot ~4–45% of the frame for product-like objects; accessories: don't favour big boxes.
+            size_score = 0.5 if small_ok else 1.0 - abs(area - 0.18) / 0.18
             try:
                 c = self.media.get_crop(o.crop_asset_id, ctx.owner_id)
                 sharp = c.sharpness
@@ -580,6 +609,14 @@ class PerceptronPerceptionProvider:
             if detail_list:
                 attrs["details"] = detail_list[:12]
             visible = _clean_list(raw.get("visible_text"), 6)
+            if small_ok:  # appearance only: no metal, stone, authenticity or brand inferences
+                attrs, _ = _appearance_only(attrs)
+                safe_what = appearance_safe([what])[0]
+                what = safe_what[0] if safe_what else q
+                safe_desc = appearance_safe([search_desc])[0]
+                search_desc = safe_desc[0] if safe_desc else what
+                if attrs.get("details"):
+                    attrs["details"] = [search_desc] + [d for d in attrs["details"][1:] if d != search_desc]
             best = best.model_copy(
                 update={
                     "observed_attributes": attrs,

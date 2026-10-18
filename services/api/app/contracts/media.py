@@ -15,7 +15,8 @@ from pydantic import Field, field_validator
 
 from .base import Record as _Record
 
-Category = Literal["jacket", "top", "pants", "bag", "other"]
+# Watches and jewelry are additive (docs/contracts/accessories.md); app/categories.py holds their rules.
+Category = Literal["jacket", "top", "pants", "bag", "watch", "necklace", "bracelet", "ring", "earrings", "other"]
 GroupingBasis = Literal["single", "within_shot", "user_confirmed"]
 SourceType = Literal["upload_image", "upload_video", "youtube_download", "browser_capture"]
 MediaKind = Literal["image", "video"]
