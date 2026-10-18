@@ -27,6 +27,7 @@ class AppState:
     counters: dict[str, int] = field(default_factory=dict)
     lock: threading.Lock = field(default_factory=threading.Lock)
     _perception: Any = None
+    research_url_checker: Any = None
 
     def bump(self, key: str) -> None:
         with self.lock:
@@ -87,6 +88,11 @@ def build_state(settings: Settings) -> AppState:
         status["perceptron"] = ProviderStatus("perceptron", False, mode_when_unconfigured="fixture")
     if settings.catalog_provider in ("fixture", "catalog", "demo") and catalog is not None:
         status["catalog"] = ProviderStatus("fixture", False, mode_when_unconfigured="fixture")
+    from functools import partial
+
+    from app.research.urlsafety import check_url
+
+    url_checker = partial(check_url, resolve=settings.research_resolve_dns)
     return AppState(
         settings=settings,
         db=db,
@@ -95,4 +101,5 @@ def build_state(settings: Settings) -> AppState:
         catalog_error=err,
         status=status,
         executor=ThreadPoolExecutor(max_workers=3, thread_name_prefix="job"),
+        research_url_checker=url_checker,
     )

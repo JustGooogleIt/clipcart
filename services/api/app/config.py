@@ -44,6 +44,10 @@ class Settings:
     xai_key_present: bool
     xai_model: str
     xai_base_url: str
+    feature_agent_research: bool
+    research_provider: str
+    research_job_ttl_s: int
+    research_resolve_dns: bool
     feature_photon: bool
     feature_voice: bool
     feature_solana: bool
@@ -101,6 +105,10 @@ def load_settings() -> Settings:
         xai_key_present=bool(os.getenv("XAI_API_KEY")),
         xai_model=os.getenv("XAI_MODEL", "grok-4.3"),
         xai_base_url=os.getenv("XAI_BASE_URL", "https://api.x.ai/v1").rstrip("/"),
+        feature_agent_research=_flag("FEATURE_AGENT_RESEARCH"),
+        research_provider=(os.getenv("RESEARCH_PROVIDER") or "fixture").lower(),
+        research_job_ttl_s=int(os.getenv("RESEARCH_JOB_TTL_S", "900")),
+        research_resolve_dns=_flag("RESEARCH_RESOLVE_DNS", True),
         feature_photon=_flag("FEATURE_PHOTON"),
         feature_voice=_flag("FEATURE_VOICE"),
         feature_solana=_flag("FEATURE_SOLANA"),

@@ -1,0 +1,49 @@
+{
+  "fixture_label": "DEVELOPMENT FIXTURE - built from SoleScout captures in fixtures/catalog. NOT GROK BOT OUTPUT and not live research.",
+  "provenance": "Product 0 is the visible store record captured on 2026-10-17T21:17:33Z (fixtures/catalog/example_live_retailer_offer.json, raw product_3-pack-classic-slim-crew-tee-nscnp3whd.json). Product 1 is a SoleScout comparison page from fixtures/catalog/raw. Items 2-4 are deliberately invalid to exercise rejection paths.",
+  "notes": "Fixture submission for UI development. Prices are only those present in the captured store record.",
+  "products": [
+    {
+      "retailer": "Farfetch (listed by SoleScout as Grp-Ff)",
+      "productUrl": "https://www.farfetch.com/us/shopping/men/polo-ralph-lauren-slim-fit-3-pack-t-shirts-set-of-three-item-39280997.aspx",
+      "title": "Polo Ralph Lauren Slim Fit Cotton T-shirt White",
+      "matchType": "similar",
+      "observedPrice": {"amountMinor": 7400, "currency": "USD"},
+      "priceExcerpt": "store.price_usd=74 (SoleScout store record)",
+      "availability": "in_stock",
+      "sizesAvailable": ["XS", "S", "M", "L", "XL"],
+      "sourceUrl": "https://solescout.ai/product/3-pack-classic-slim-crew-tee-nscnp3whd",
+      "observedAt": "2026-10-17T21:17:33Z",
+      "uncertainty": "Captured snapshot; price and sizes may have changed."
+    },
+    {
+      "retailer": "SoleScout",
+      "productUrl": "https://solescout.ai/product/our-legacy-avenue-padded-cotton-blend-shell-bomber-jacket-m2261abblacktidecottonnylon",
+      "title": "Our Legacy Avenue padded cotton-blend shell bomber jacket",
+      "matchType": "similar",
+      "availability": "unknown",
+      "observedAt": "2026-10-17T20:40:36Z",
+      "uncertainty": "Comparison page; the seller and price are not tied to a retailer checkout."
+    },
+    {
+      "retailer": "Internal test host",
+      "productUrl": "http://127.0.0.1:8000/admin",
+      "title": "Should be rejected: not https and not a public host",
+      "matchType": "exact",
+      "observedAt": "2026-10-17T21:17:33Z"
+    },
+    {
+      "retailer": "Farfetch",
+      "productUrl": "https://www.farfetch.com/us/shopping/men/polo-ralph-lauren-slim-fit-3-pack-t-shirts-set-of-three-item-39280997.aspx?utm_source=agent",
+      "title": "Duplicate of product 0 with a tracking parameter",
+      "matchType": "similar",
+      "observedAt": "2026-10-17T21:17:33Z"
+    },
+    {
+      "retailer": "Missing URL",
+      "title": "Should be rejected: no productUrl",
+      "matchType": "similar",
+      "observedAt": "2026-10-17T21:17:33Z"
+    }
+  ]
+}
