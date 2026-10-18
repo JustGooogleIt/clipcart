@@ -156,17 +156,13 @@ def receipt_card(order: dict, attempt: dict | None) -> dict:
         "ready" if asset else ("pending" if sig else "unavailable")
     )
     status = order.get("receiptStatus") or "ineligible"
-    return {
-        "status": status,
-        "assetId": asset,
-        "mintSignature": sig,
-        "explorerMintUrl": explorer_tx_url(sig) if sig else None,
-        "buyerWallet": order.get("buyerWallet"),
-        "merkleTree": (attempt or {}).get("merkleTree"),
-        "indexingStatus": indexing,
-        "metadataUri": (attempt or {}).get("metadataUri"),
-        "label": RECEIPT_LABEL,
-    }
+    from app.contracts import DemoReceipt
+
+    return DemoReceipt(
+        status=status, asset_id=asset, mint_signature=sig, explorer_mint_url=explorer_tx_url(sig) if sig else None,
+        buyer_wallet=order.get("buyerWallet"), merkle_tree=(attempt or {}).get("merkleTree"), indexing_status=indexing,
+        metadata_uri=(attempt or {}).get("metadataUri"), label=RECEIPT_LABEL,
+    ).wire()
 
 
 def _eligible_order(doc: dict) -> None:
