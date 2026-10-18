@@ -20,7 +20,7 @@ from .shopping import ConstraintCheck, Money, OutboundLink, Preferences
 
 # "solescout": catalog-backed fallback (named store records). "manual": waits for a labelled manual import.
 # Bridge providers ("grok_bot", "xai_api") are not implemented: see docs/grok-bot-bridge.md.
-ResearchProviderName = Literal["fixture", "solescout", "manual"]
+ResearchProviderName = Literal["fixture", "solescout", "manual", "grok_bot"]
 ResultSource = Literal["provider", "manual_import"]
 ProductSource = Literal["agent", "catalog", "manual_import"]
 ResearchJobStatus = Literal["pending", "completed", "failed", "expired"]

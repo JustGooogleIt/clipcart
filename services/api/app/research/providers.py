@@ -6,9 +6,8 @@
   Real retailer URLs, but the data is SoleScout's store record, not the store page itself.
 - ``manual``: dispatches nothing and waits for a clearly labelled manual import.
 
-A bridge provider (Grok Bot webhook routine, xAI API agent) must implement ``dispatch`` and deliver
-results through ``service.ingest_submission``. The Grok Bot bridge is not implemented: its callback
-round trip has not been proven (docs/grok-bot-bridge.md).
+- ``grok_bot``: dormant until the bridge probe proves the callback (app/research/grokbot.py,
+  docs/grok-bot-bridge.md). Results arrive through ``POST /api/research-jobs/{id}/results``.
 """
 
 from __future__ import annotations
@@ -203,4 +202,8 @@ def get_provider(name: str, state: Any = None) -> ResearchProvider:
         return ManualResearchProvider()
     if name == "solescout":
         return CatalogResearchProvider(state)
+    if name == "grok_bot":
+        from .grokbot import GrokBotResearchProvider
+
+        return GrokBotResearchProvider(state)
     raise ValueError(f"research provider {name!r} is not implemented (bridge not proven; see docs/grok-bot-bridge.md)")
