@@ -57,3 +57,26 @@ See `git log integration`. Tests: `services/api/.venv/bin/python -m pytest servi
 1. Fill `PERCEPTRON_API_KEY` (and optionally `XAI_API_KEY`, `MONGODB_URI`) in the root `.env`, then run `services/api/.venv/bin/python scripts/live_checks.py --image <garment photo>`.
 2. Set the Atlas URI and confirm reload after a server restart.
 3. Build the truth set (AT19) on real clips once Perceptron is live.
+
+## Demo pass, 2026-10-17 (branch `fix/demo-pass`)
+
+**Ran live:** Perceptron mk1.5 and SoleScout. Grok, Atlas and Gemini did not run (no keys). Photon, voice, Solana and research jobs are off. YouTube download is off by default and limited to allowlisted IDs.
+
+| Path | Result | Time | Paid Perceptron calls |
+| --- | --- | --- | --- |
+| YouTube, cold (Big Buck Bunny, CC-BY, the only permitted video) | 6 ranked frames, live detection, honestly 0 garments | download 55.1 s, done 71.7 s | 6 |
+| YouTube, cache hit (same video) | Same | download 0.1 s, done 16.8 s | 6 |
+| YouTube, unpermitted lookbook | 403 `video_not_permitted` before any download | — | 0 |
+| Upload, photo (desktop): detect, select box, search, refine, link, reload | 1 jacket box, search plus refinement, SoleScout link opened, state restored | about 10 s end to end | 2 |
+| Upload, photo (phone, 390 px) | Same | — | 2 |
+
+That's 16 paid calls in total, with 0 failures.
+
+**Blocker:** there's no team-owned or permitted *fashion* YouTube clip. Big Buck Bunny proves only the plumbing. The earlier lookbook proof (`7-etsr5-Z8A`) has no recorded permission. Add a permitted clip's ID to `YOUTUBE_ALLOWED_VIDEO_IDS` to demo garments from YouTube.
+
+**For the UI owner** (not edited here):
+1. Upload copy says "A photo, a short clip, or a YouTube URL". Scope it to permitted clips, and hide the YouTube field when `features.youtubeDownload` is false.
+2. Show the `video_not_permitted` and `youtube_blocked` messages as they are. They already suggest uploading instead.
+3. Refresh `/api/health` after analysis finishes, so the detection chip shows "Live" after the first success.
+4. A new `fit` constraint check can appear (state `unknown`) for explicitly women's listings.
+5. `experiments/youtube-capture/fixtures/VIDEO.md` still says the spike never downloads YouTube media. The teammate should update it.
