@@ -31,6 +31,7 @@ COLLECTIONS = (
     "research_jobs",
     "demo_orders",
     "payment_signatures",
+    "receipt_mint_attempts",
 )
 
 
@@ -71,6 +72,9 @@ def ensure_indexes(db: Any) -> None:
     # Sparse so unpaid orders (null signature) do not collide; claims also go through payment_signatures.
     db.demo_orders.create_index([("paymentSignature", ASCENDING)], unique=True, sparse=True)
     db.payment_signatures.create_index([("orderId", ASCENDING)])
+    # One mint attempt record per demo order (atomic claim for cNFT receipts).
+    db.receipt_mint_attempts.create_index([("orderId", ASCENDING)], unique=True)
+    db.receipt_mint_attempts.create_index([("mintSignature", ASCENDING)], unique=True, sparse=True)
 
 
 def ping(db: Any) -> bool:
