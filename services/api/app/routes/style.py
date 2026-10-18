@@ -19,7 +19,7 @@ router = APIRouter()
 
 class MemoryIn(In):
     kind: Literal["size", "fit", "budget_max", "color_like", "color_avoid", "material_like", "material_avoid",
-                  "brand_like", "brand_avoid", "tone_like", "tone_avoid", "ring_size"]
+                  "brand_like", "brand_avoid", "tone_like", "tone_avoid", "ring_size", "style_like", "style_avoid"]
     value: Any
     source: Literal["preferences_form", "style_panel", "style_note", "chat_refinement"] = "preferences_form"
     idempotency_key: str | None = Field(default=None, max_length=100)
@@ -109,6 +109,9 @@ def post_event(body: EventIn, request: Request) -> dict:
     if replay is not None:
         return replay
     ev, changes = svc.record_api_event(st.db, owner, body.type, body.recommendation_id)
+    from app.style.interpret import schedule
+
+    schedule(st, owner, ev.id)  # debounced model interpretation (no-op without a configured model)
     resp = {"event": ev.wire(), "inferredChanges": changes}
     commit(resp)
     return resp
@@ -142,3 +145,30 @@ def post_note(body: NoteIn, request: Request) -> dict:
         usage=StyleNoteUsage(wall_ms=t.get("wallMs"), prompt_tokens=t.get("promptTokens"),
                              completion_tokens=t.get("completionTokens")) if used and t else None,
     ).wire()
+
+
+@router.get("/api/style/interpretations")
+def get_interpretations(request: Request) -> dict:
+    """Model interpretation queue and recent runs: what was applied and what validation refused."""
+    from app.style.interpret import status
+
+    st = _flag(request)
+    owner = current_owner(request)
+    out = status(st.db, owner)
+    model = st.style_model()
+    out["status"] = "waiting_for_model" if model is None and out["pendingEvents"] else ("idle" if not out["pendingEvents"] else "debouncing")
+    out["rankingInfluence"] = st.settings.style_model_ranking
+    out["styleModel"] = _model_info(st)
+    return out
+
+
+@router.post("/api/style/interpretations/run")
+def run_interpretations(request: Request) -> dict:
+    """Run any queued interpretation now (skips the debounce window). Same validation as the automatic run."""
+    from app.style.interpret import run_due
+
+    st = _flag(request)
+    require_mutation_header(request)
+    owner = current_owner(request)
+    limiter.check(owner, "style_interpret", 6)
+    return run_due(st, owner, force=True)

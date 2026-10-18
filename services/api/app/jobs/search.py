@@ -81,7 +81,8 @@ def create_search(state: AppState, session_doc: dict, garment_doc: dict, prefs: 
         # Compact profile snapshot for this job only; never the event history.
         from app.style.service import build_profile
 
-        extra["styleSnapshot"] = build_profile(state.db, session_doc["ownerId"]).wire()
+        extra["styleSnapshot"] = build_profile(state.db, session_doc["ownerId"],
+                                               include_model=state.settings.style_model_ranking).wire()
     state.db.search_jobs.insert_one({"_id": job.id, "attempt": 0, "leaseOwner": None, "leaseExpiresAt": None,
                                      **job.wire(), **extra})
     return job

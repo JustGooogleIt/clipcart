@@ -57,6 +57,9 @@ class Settings:
     ollama_base_url: str
     style_model_timeout_s: float
     style_model_explanations: bool
+    style_model_ranking: bool  # let model interpretations influence ranking (default off)
+    style_interpret_debounce_s: float
+    style_interpret_max_wait_s: float
     style_remote_base_url: str | None
     style_remote_api_key: str | None = field(repr=False)
     style_remote_model: str | None
@@ -135,6 +138,9 @@ def load_settings() -> Settings:
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/"),
         style_model_timeout_s=float(os.getenv("STYLE_MODEL_TIMEOUT_S", "8")),
         style_model_explanations=_flag("STYLE_MODEL_EXPLANATIONS"),
+        style_model_ranking=_flag("STYLE_MODEL_RANKING"),
+        style_interpret_debounce_s=float(os.getenv("STYLE_INTERPRET_DEBOUNCE_S", "20")),
+        style_interpret_max_wait_s=float(os.getenv("STYLE_INTERPRET_MAX_WAIT_S", "120")),
         style_remote_base_url=(os.getenv("STYLE_REMOTE_BASE_URL") or "").rstrip("/") or None,
         style_remote_api_key=os.getenv("STYLE_REMOTE_API_KEY") or None,
         style_remote_model=os.getenv("STYLE_REMOTE_MODEL") or None,

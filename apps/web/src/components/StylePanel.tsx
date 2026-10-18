@@ -28,6 +28,9 @@ const KIND: Record<MemoryKind, string> = {
   tone_like: "Likes",
   tone_avoid: "Avoids",
   ring_size: "Ring size",
+  // Style kinds (docs/contracts/style-memory.md, v2). Type-compat labels only; the UI lane owns presentation.
+  style_like: "Likes",
+  style_avoid: "Avoids",
 };
 const FIT: Record<string, string> = { womens: "Women's", mens: "Men's", unisex: "Unisex" };
 
