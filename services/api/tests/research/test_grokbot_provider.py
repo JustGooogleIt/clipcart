@@ -143,3 +143,41 @@ def test_health_says_unverified_until_a_bot_job_completes_then_operational(bot):
 def test_health_reports_grok_bot_unavailable_without_its_configuration(bot):
     c, st, hook = bot(configured=False)
     assert c.get("/api/health").json()["research"] == {"provider": "grok_bot", "mode": None, "status": "unavailable"}
+
+
+import pytest as _pytest  # noqa: E402
+
+
+@_pytest.mark.parametrize("notes", [
+    "Closest match: " + "olive sport coat, notch lapel, flap pockets; " * 30,  # ~1300 chars: a real Bot wrote >500
+    ["Opened 9 pages.", "Amazon blocked (403).", None, "Poshmark 404."],
+    {"summary": "two retail, one resale", "blocked": ["ebay.com"]},
+    12345,
+])
+def test_callback_with_overlong_or_non_string_notes_still_validates_products(bot, notes):
+    """Regression (2026-10-18): a real Bot callback failed the whole job with "submission envelope failed validation"
+    because only the free-text notes broke the envelope. Notes are normalised; products are still fully validated."""
+    c, st, hook = bot()
+    job = _start(c)["job"]
+    token = hook.calls[0]["json"]["callbackAuthorization"]
+    r = c.post(f"/api/research-jobs/{job['id']}/results", headers={"Authorization": token},
+               json={"jobId": job["id"], "products": [_product(), _product(productUrl="ftp://bad-store.com/x")], "notes": notes})
+    assert r.status_code == 202, r.text
+    done = c.get(f"/api/research-jobs/{job['id']}").json()["job"]
+    assert done["status"] == "completed" and done["resultSource"] == "provider"
+    assert isinstance(done["agentNotes"], str) and 0 < len(done["agentNotes"]) <= 500
+    assert len(done["products"]) == 1 and done["products"][0]["source"] == "agent"  # product validation unchanged
+    assert any("product_url" in x["reason"] for x in done["rejected"])
+
+
+def test_envelope_failure_names_the_field_and_auth_is_unchanged(bot):
+    c, st, hook = bot()
+    job = _start(c)["job"]
+    token = hook.calls[0]["json"]["callbackAuthorization"]
+    assert c.post(f"/api/research-jobs/{job['id']}/results", headers={"Authorization": "Bearer wrong"},
+                  json={"jobId": job["id"], "products": []}).status_code == 401
+    r = c.post(f"/api/research-jobs/{job['id']}/results", headers={"Authorization": token},
+               json={"jobId": 42, "products": [_product()]})
+    assert r.status_code == 422
+    err = c.get(f"/api/research-jobs/{job['id']}").json()["job"]["error"]
+    assert err["code"] == "invalid_submission" and "jobId" in err["message"] and "42" not in err["message"]
