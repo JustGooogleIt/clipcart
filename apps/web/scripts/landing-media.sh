@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 # Builds the landing page's video previews and posters from the committed fit-check clips.
 # Usage (from the repo root): bash apps/web/scripts/landing-media.sh
+#   Sharper native renditions: set LANDING_SRC to downloads/fit-checks-hires (see apps/web/docs/landing-media-sources.md).
 # Needs ffmpeg/ffprobe with libx264. Output: apps/web/src/assets/landing/
 #
 # Quality rules:
 # - Never upscale. Each output keeps the source's native size, capped at HERO_MAX (hero) or CARD_MAX
-#   (gallery and the clips beside the hero). The committed clips are all 360x640, so today every
-#   output is 360x640; a sharper source dropped into downloads/fit-checks/ is used up to the cap.
+#   (gallery and the clips beside the hero). downloads/fit-checks/ holds 360x640 renditions; the local,
+#   gitignored downloads/fit-checks-hires/ holds native renditions up to 1080x1920, used up to the cap.
 # - The hero is re-encoded only when it has to be scaled down; otherwise its video stream is copied
 #   untouched (no generation loss), with audio dropped.
 # - Posters are taken from the source frame, not from the re-encoded loop.
 set -euo pipefail
-SRC=downloads/fit-checks
+SRC="${LANDING_SRC:-downloads/fit-checks}"
+SAMPLE_MAX=720   # fc01 walkthrough/upload sample: wider sources are scaled down, never up
+SAMPLE_CRF=20
 OUT=apps/web/src/assets/landing
 HERO_MAX=1080
 CARD_MAX=720
@@ -54,9 +57,17 @@ echo "$LOOPS" | while read -r id start len; do
   poster "$src" "$start" "$OUT/$id-poster.jpg"
 done
 
-# The walkthrough plays the original fc01 clip unchanged (it is also the file "Try this video" uploads),
-# so its timestamps match the source. Its poster is the walkthrough frame at 22s.
-cp "$SRC"/fc01_*.mp4 "$OUT/fc01-sample.mp4"
+# The walkthrough plays the fc01 clip (it is also the file "Try this video" uploads). It is copied unchanged
+# when it is no wider than SAMPLE_MAX. A wider source is only scaled down, keeping its native frame rate,
+# timestamps (no trim, passthrough timing) and original audio, so the 22s walkthrough frame stays the same.
+# Its poster is the walkthrough frame at 22s.
+src=$(ls "$SRC"/fc01_*.mp4)
+if [ "$(width "$src")" -le "$SAMPLE_MAX" ]; then
+  cp "$src" "$OUT/fc01-sample.mp4"
+else
+  ffmpeg -v error -y -i "$src" -map 0:v:0 -map "0:a:0?" -vf "scale=$SAMPLE_MAX:-2:flags=lanczos" -fps_mode passthrough \
+    $(x264 $SAMPLE_CRF) -c:a copy "$OUT/fc01-sample.mp4" </dev/null
+fi
 poster "$OUT/fc01-sample.mp4" 22 "$OUT/fc01-poster.jpg"
 
 for f in "$OUT"/*; do
