@@ -43,6 +43,25 @@ class FakeBackend:
             n = self.describe_calls
         return self._describe(n, category)
 
+    def describe_object(self, crop_bytes, query):
+        with self.lock:
+            self.describe_calls += 1
+            n = self.describe_calls
+        return AttributeResponse(
+            {
+                "what": query,
+                "color": ["green"],
+                "pattern": [],
+                "form": ["potted"],
+                "details": ["broad leaves"],
+                "search_description": f"tall {query} with broad leaves in ceramic pot",
+                "visible_text": [],
+            },
+            f"obj-{n}",
+            "perceptron-mk1.5",
+            None,
+        )
+
 
 @pytest.fixture
 def frame(media):

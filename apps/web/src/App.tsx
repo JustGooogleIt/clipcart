@@ -3,6 +3,7 @@ import { api, ApiError, upload } from "./api";
 import Constraints, { draftFrom, patchFrom, type PrefsDraft } from "./components/Constraints";
 import Diagnostics from "./components/Diagnostics";
 import GarmentTray from "./components/GarmentTray";
+import FindInVideo from "./components/FindInVideo";
 import ModeChips from "./components/ModeChips";
 import Refine from "./components/Refine";
 import Results from "./components/Results";
@@ -263,6 +264,28 @@ export default function App() {
     }
   };
 
+  const findInVideo = async (text: string) => {
+    if (!s) return;
+    setBusy(true);
+    setReply(null);
+    try {
+      setNotice({ kind: "info", text: "Searching the video for that…" });
+      const r = await api.findInMedia(s.id, text, s.revision);
+      setView(r);
+      setReply(r.reply);
+      if (r.find?.searchDescription) {
+        setNotice({ kind: "info", text: `Using full description: ${r.find.searchDescription}` });
+      } else {
+        setNotice(null);
+      }
+      if (r.searchId) setSearchId(r.searchId);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const analyzing = analysis && ["queued", "running"].includes(analysis.status);
 
   return (
@@ -422,6 +445,9 @@ export default function App() {
               busy={busy}
               detectionMode={analysis?.detectionMode ?? "unavailable"}
             />
+            {frames.length > 0 && !analyzing && (
+              <FindInVideo disabled={busy} busy={busy} onFind={findInVideo} reply={reply} />
+            )}
           </section>
 
           <section className="col-rules" aria-label="Your constraints">

@@ -57,6 +57,20 @@ export const api = {
       `/api/sessions/${id}/messages`,
       { text, expectedRevision, idempotencyKey: key() },
     ),
+  findInMedia: (id: string, text: string, expectedRevision: number) =>
+    req<
+      SessionView & {
+        applied: boolean;
+        reply: string;
+        searchId?: string;
+        find?: { query?: string; searchDescription?: string; garmentId?: string };
+      }
+    >("POST", `/api/sessions/${id}/find-in-media`, {
+      text,
+      expectedRevision,
+      startSearch: true,
+      idempotencyKey: key(),
+    }),
   youtubeAnalyze: (id: string, youtubeUrl: string, expectedRevision: number) =>
     req<
       SessionView & {
