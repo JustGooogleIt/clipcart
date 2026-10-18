@@ -86,6 +86,27 @@ def expire_if_due(state, doc: dict) -> dict:
     return doc
 
 
+NOTES_MAX = 500
+
+
+def _envelope_notes(notes):
+    """Agent notes are free text shown as context, never data: keep a string, trimmed to the contract's 500 chars.
+
+    A non-string (list, object, number) is joined or stringified rather than failing the whole submission; the
+    products still go through full validation. Over-long notes from a real Bot run failed jobs that had valid offers.
+    """
+    if notes is None:
+        return None
+    if isinstance(notes, list):
+        notes = " ".join(str(x) for x in notes if x is not None)
+    elif not isinstance(notes, str):
+        notes = str(notes)
+    notes = " ".join(notes.split())
+    if len(notes) > NOTES_MAX:
+        notes = notes[: NOTES_MAX - 1].rstrip() + "…"
+    return notes or None
+
+
 def ingest_submission(state, job_id: str, payload: dict, *, source: str = "agent",
                       allow: tuple[str, ...] = ("pending",)) -> tuple[bool, str]:
     """Accept results once, only while the job is in an allowed state (pending and unexpired by default)."""
@@ -101,10 +122,13 @@ def ingest_submission(state, job_id: str, payload: dict, *, source: str = "agent
         return False, "provider error"
     try:
         sub = ResearchSubmission.model_validate({"jobId": payload.get("jobId"), "products": [],
-                                                 "notes": payload.get("notes")})
-    except ValidationError:
+                                                 "notes": _envelope_notes(payload.get("notes"))})
+    except ValidationError as exc:
+        # Field names and constraint types only: never values (they may hold page text or tokens).
+        where = ", ".join(sorted({f"{'.'.join(str(x) for x in e['loc'])}: {e['type']}" for e in exc.errors()}))[:200]
+        log.warning("research submission envelope invalid for %s: %s", job_id, where)
         if source != "manual_import":  # a bad manual import is refused, never fatal to the job
-            _fail(state, job_id, "invalid_submission", "submission envelope failed validation")
+            _fail(state, job_id, "invalid_submission", f"submission envelope failed validation ({where})")
         return False, "invalid submission"
     if sub.job_id != job_id or not isinstance(payload.get("products"), list):
         if source != "manual_import":
