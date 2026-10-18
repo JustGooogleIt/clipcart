@@ -30,6 +30,7 @@ from app.contracts import (
 from app.contracts.research import ProductIdentifiers, RejectedItem, ResearchVariant
 
 from .compare import group_offers
+from app.categories import SELLER_CLAIMS_WARNING, is_accessory, seller_claims
 from app.shopping.rules import check_constraints, money_str, section_for, title_matches_category
 
 from .urlsafety import AGGREGATOR_DOMAINS, UrlCheck, check_url
@@ -79,6 +80,10 @@ def _checks(sp: SubmittedProduct, price: Money | None, prefs: Preferences, url: 
         if c.constraint in ("size", "ring size") and c.state == "unknown" and sizes == []:
             detail = "Agent reported the item out of stock"
         out.append(c.model_copy(update={"detail": detail, "evidence_ids": []}))
+    if price is None and prefs.max_item_price_minor is None:
+        # No budget means no budget check, but an offer whose price nobody confirmed is still not a recommendation:
+        # it goes to Needs checking, never Recommended (docs/contracts/agent-research.md, "Sections").
+        out.append(ConstraintCheck(constraint="price", state="unknown", detail="Price not confirmed on the page"))
     return out
 
 
@@ -134,19 +139,28 @@ def verify_submission(
             continue
 
         warnings: list[str] = [FIRST_WARNING.get(source, FIRST_WARNING["agent"])]
+        # Contract: every warning after the first (which names the source) is coded, in warningCodes order.
+        codes: list[str] = []
+
+        def warn(code: str, text: str) -> None:
+            warnings.append(text)
+            codes.append(code)
+
         if mode != "live" and observed < now - timedelta(hours=24):
-            warnings.append(f"Seen on {observed.date().isoformat()}; price and stock may have changed.")
+            warn("observation_stale", f"Seen on {observed.date().isoformat()}; price and stock may have changed.")
         price = None
         if sp.observed_price and sp.price_excerpt and sp.price_excerpt.strip():
             price = Money(amount_minor=sp.observed_price.amount_minor, currency=sp.observed_price.currency)
         elif sp.observed_price:
-            warnings.append("Agent gave a price without the page text showing it; price not shown.")
+            warn("price_without_page_text", "Agent gave a price without the page text showing it; price not shown.")
         is_aggregator = chk.domain in AGGREGATOR_DOMAINS
         if is_aggregator:
             price = None  # comparison pages show an aggregate, never a seller price
-            warnings.append("Price comparison page, not a retailer checkout.")
+            warn("comparison_page", "Price comparison page, not a retailer checkout.")
         if mode == "fixture":
-            warnings.append("Development fixture: not live research output.")
+            warn("fixture_data", "Development fixture: not live research output.")
+        if is_accessory(category) and seller_claims(sp.title):
+            warn("seller_claims_unverified", SELLER_CLAIMS_WARNING)
         # v2 fields: variants keep unavailable sizes; brand needs page or catalog evidence; images are URL-checked only.
         variants = [
             ResearchVariant(
@@ -166,17 +180,17 @@ def verify_submission(
             elif any(e.field == "brand" and sp.brand.lower() in e.excerpt.lower() for e in sp.evidence):
                 brand, brand_basis = sp.brand.strip(), "page_text"
             else:
-                warnings.append("Brand not shown in the page evidence; not used.")
+                warn("brand_not_evidenced", "Brand not shown in the page evidence; not used.")
         image_url = None
         if sp.image_url:
             ic = url_checker(sp.image_url)
             if ic.ok and (ic.canonical or "").startswith("https://"):
                 image_url = ic.canonical
             else:
-                warnings.append("Image link failed ClipCart's URL check; not shown.")
+                warn("image_rejected", "Image link failed ClipCart's URL check; not shown.")
         tier = "likely" if sp.match_type == "exact" else "similar"
         if sp.match_type == "exact":
-            warnings.append("Agent reported an exact match; not independently confirmed.")
+            warn("exact_claim_unconfirmed", "Agent reported an exact match; not independently confirmed.")
         checks = _checks(sp, price, prefs, chk.canonical, category, available_sizes, availability, condition)
         section = section_for(checks)
         pid = "rp_" + hashlib.sha256(f"{job_id}|{chk.canonical}".encode()).hexdigest()[:20]
@@ -198,6 +212,7 @@ def verify_submission(
                 verification="url_checked_page_not_fetched", uncertainty=sp.uncertainty, warnings=warnings,
                 links=links, mode=mode, source=source, image_url=image_url, brand=brand, brand_basis=brand_basis,
                 condition=condition, seller_kind=sp.seller_kind, variants=variants, evidence=sp.evidence,
+                warning_codes=codes,
             )
         )
         ids[pid] = sp.identifiers

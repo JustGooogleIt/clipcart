@@ -196,6 +196,22 @@ def _store_offers_as_products(L: Any) -> list[dict]:
     return out
 
 
+def research_mode(name: str, state: Any = None) -> str | None:
+    """The mode jobs from this provider get, without constructing it (health reports this).
+
+    ``fixture`` → fixture; ``manual`` → manual; ``solescout`` → fixture with the fixture catalog, else live.
+    ``None`` when the provider isn't implemented: no job can start, so there is no mode to report.
+    """
+    if name in ("fixture", "manual"):
+        return name
+    if name == "solescout":
+        catalog = getattr(state, "catalog", None)
+        if catalog is None:
+            return None
+        return "fixture" if getattr(catalog, "name", "") == "fixture" else "live"
+    return None
+
+
 def get_provider(name: str, state: Any = None) -> ResearchProvider:
     if name == "fixture":
         return FixtureResearchProvider()
