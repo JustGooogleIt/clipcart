@@ -1,0 +1,88 @@
+{
+  "healthBefore": {
+    "database": "local_memory",
+    "features": {
+      "photon": false,
+      "voice": false,
+      "solana": false,
+      "agentResearch": false,
+      "youtubeDownload": false,
+      "styleMemory": true
+    },
+    "styleModel": {
+      "mode": "unverified",
+      "configured": true,
+      "calls": 0,
+      "failures": 0,
+      "lastSuccessAt": null,
+      "lastError": null,
+      "recent": [],
+      "provider": "openai_compatible",
+      "model": "gaunernst/gemma-3-12b-it-int4-awq",
+      "hosting": "remote",
+      "label": "Gemma hosted on Lambda (not local)"
+    }
+  },
+  "noteStatus": 200,
+  "note": {
+    "mode": "model",
+    "model": "gaunernst/gemma-3-12b-it-int4-awq",
+    "hosting": "remote",
+    "provider": "Gemma hosted on Lambda (not local)",
+    "proposals": [
+      {
+        "kind": "size",
+        "value": {
+          "raw": "M",
+          "system": "alpha"
+        },
+        "action": "set",
+        "quote": "I'm a medium"
+      },
+      {
+        "kind": "color_like",
+        "value": "navy",
+        "action": "add",
+        "quote": "I love navy"
+      },
+      {
+        "kind": "material_avoid",
+        "value": "polyester",
+        "action": "add",
+        "quote": "I avoid polyester"
+      }
+    ],
+    "rejectedProposals": 0,
+    "note": null,
+    "usage": {
+      "wallMs": 2176,
+      "promptTokens": 357,
+      "completionTokens": 95
+    }
+  },
+  "memoriesBefore": 0,
+  "memoriesAfter": 0,
+  "healthAfter": {
+    "styleModel": {
+      "mode": "live",
+      "configured": true,
+      "calls": 1,
+      "failures": 0,
+      "lastSuccessAt": "2026-10-18T03:37:31.697289+00:00",
+      "lastError": null,
+      "recent": [
+        {
+          "at": "2026-10-18T03:37:31.697289+00:00",
+          "ok": true,
+          "traceId": null,
+          "code": null,
+          "note": "propose"
+        }
+      ],
+      "provider": "openai_compatible",
+      "model": "gaunernst/gemma-3-12b-it-int4-awq",
+      "hosting": "remote",
+      "label": "Gemma hosted on Lambda (not local)"
+    }
+  }
+}
