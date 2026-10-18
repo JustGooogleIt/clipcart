@@ -1,0 +1,14 @@
+{
+  "name": "clipcart-browser-extension",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ClipCart Chrome extension (Manifest V3). Load this folder unpacked; there is no build step.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/unit.test.mjs",
+    "test:e2e": "node test/e2e.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.0"
+  }
+}
