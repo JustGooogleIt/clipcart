@@ -151,8 +151,20 @@ def run_search(
 
     cands: list[Candidate] = list(tools.candidates.values())
     if not cands:
+        if tools.searches_attempted == 0:
+            # Nothing was retrieved because nothing was searched: say so, never "No listings found".
+            if "deadline" in tools.budget_stops or ledger.remaining_s() <= 0:
+                code, msg = "deadline_before_search", "Search ran out of time before any catalog call"
+            elif tools.budget_stops:
+                code, msg = "budget_before_search", "Search budget was used up before any catalog call"
+            else:
+                code, msg = "no_search_query", "No catalog search was run: no usable search query for this item"
+            emit("failed", msg, worker="verifier")
+            return SearchOutcome("failed", msg, worker_modes=worker_modes,
+                                 errors=[*tools.errors, {"code": code, "message": msg, "worker": "pipeline"}])
         status = "failed" if tools.errors else "no_match"
-        msg = "Catalog search failed" if tools.errors else "No listings found for this garment"
+        msg = ("Catalog search failed" if tools.errors
+               else f"Catalog searched ({tools.searches_attempted} quer{'y' if tools.searches_attempted == 1 else 'ies'}); no listings found")
         return SearchOutcome(status, msg, worker_modes=worker_modes, errors=tools.errors)
 
     off_cat = [c for c in cands if not title_matches_category(c.listing.title, profile.category)]
