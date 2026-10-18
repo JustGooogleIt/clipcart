@@ -9,13 +9,14 @@ from dataclasses import dataclass, field
 from app.categories import is_accessory, norm_ring_size, size_rule, title_is_category, tone_colors
 from app.contracts import ConstraintCheck, Listing, Money, Preferences
 
-RANKING_VERSION = "rules-2026-10-18.4"  # +MA-1/flight jacket terms, women's fit check
+RANKING_VERSION = "rules-2026-10-18.5"  # +sportcoat as one word; MA-1/flight jacket terms, women's fit check
 
 CATEGORY_WORDS: dict[str, tuple[str, ...]] = {
     "jacket": (
         "jacket", "coat", "blazer", "parka", "bomber", "windbreaker", "puffer", "anorak",
         "trucker", "gilet", "vest", "shacket", "overcoat", "trench", "peacoat", "raincoat", "biker",
         "moto", "varsity", "coach", "chore", "field",
+        "sportcoat", "sportcoats", "sportjacket",  # one-word spellings; "sport coat" already matches "coat"
     ),
     "top": (
         "shirt", "t-shirt", "tee", "top", "blouse", "sweater", "hoodie", "sweatshirt", "cardigan",
@@ -168,7 +169,8 @@ class GarmentProfile:
 
 # Multi-token names a word list can't catch, e.g. "Alpha Industries MA-1" is a bomber/flight jacket.
 CATEGORY_PATTERNS: dict[str, tuple[re.Pattern, ...]] = {
-    "jacket": (re.compile(r"\bma[-\s]?1\b", re.I), re.compile(r"\bflight\s+jacket\b", re.I)),
+    "jacket": (re.compile(r"\bma[-\s]?1\b", re.I), re.compile(r"\bflight\s+jacket\b", re.I),
+               re.compile(r"\bsport-(?:coat|jacket)s?\b", re.I)),
 }
 
 # Explicit women's labelling only. Never inferred from size, color or cut.

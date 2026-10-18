@@ -34,9 +34,22 @@ def test_ma1_and_flight_jacket_pass_jacket_gate(title):
     assert title_matches_category(title, "jacket")
 
 
-@pytest.mark.parametrize("title", ["Mama 1 Tote", "MA-10 Sneaker", "Flight Bag", "Maxi Dress"])
+@pytest.mark.parametrize("title", ["Mama 1 Tote", "MA-10 Sneaker", "Flight Bag", "Maxi Dress",
+                                   "Sports Bra", "Sport Socks 3-Pack", "Sporty Canvas Tote"])
 def test_gate_does_not_overmatch(title):
     assert not title_matches_category(title, "jacket")
+
+
+@pytest.mark.parametrize("title", ["Olive Green Moleskin Unstructured Sportcoat", "Harris Tweed Sportcoats",
+                                   "Navy Sportjacket", "Olive Sport Coat - Notch Lapel", "Wool Sport-Coat"])
+def test_sportcoat_spellings_pass_jacket_gate(title):
+    # A Grok Bot research run rejected a real moleskin sportcoat as "not a jacket" (2026-10-18).
+    assert title_matches_category(title, "jacket")
+
+
+@pytest.mark.parametrize("category", ["top", "pants", "bag", "watch", "ring", "bracelet"])
+def test_sportcoat_stays_out_of_other_categories(category):
+    assert not title_matches_category("Olive Green Moleskin Unstructured Sportcoat", category)
 
 
 @pytest.mark.parametrize("title,expected", [
