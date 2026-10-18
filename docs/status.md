@@ -22,7 +22,7 @@ The flow runs on http://127.0.0.1:8000 via `scripts/dev.sh`:
 | SoleScout catalog | Live (real calls succeed). PR #3 destinations are integrated | Already live, no key needed |
 | Perceptron | **Live**, verified 2026-10-17 with `perceptron-mk1.5` (set in `.env`). The smoke check gave request `be94e617…`, one jacket box, and visible attributes. The web flow worked on a photo (desktop) and a 6-frame clip (phone): 13 paid calls, 0 failures | Already live |
 | Grok (xAI) | Not configured: `XAI_API_KEY` is empty. Search uses rule-based workers | Key set, then `--only grok` shows `groundedInCatalog: true` |
-| MongoDB | `local_memory` by default. Restore after restart was verified on a real MongoDB 8.0 server (local binary, not Atlas) | `MONGODB_URI` (Atlas), then `--only atlas` succeeds |
+| MongoDB | `local_memory` by default. The full backend suite and a browser restart-restore check pass on a real MongoDB 8.0 server (local binary, not Atlas) | Owner steps in [`docs/atlas-setup.md`](atlas-setup.md), then `--only atlas` succeeds |
 
 ## Spend bounds for live Perceptron
 
@@ -38,7 +38,7 @@ See `git log integration`. Tests: `services/api/.venv/bin/python -m pytest servi
 - The live garment label shows only a color when the representative crop got an attribute call (3 per upload). Grouping and labels belong to the perception lane.
 - The UI detection chip refreshes only after a search finishes. That's a note for the UI polish session.
 - `XAI_API_KEY` is empty, so AT06 is met only by a scripted-client test.
-- `MONGODB_URI` is empty, so Atlas itself is unverified. The same code passed a restart-restore check on a real MongoDB server.
+- `MONGODB_URI` is empty, so Atlas itself is unverified. The same code passes the full suite and a restart-restore check on a real MongoDB 8.0 server. The owner's Atlas steps are in [`docs/atlas-setup.md`](atlas-setup.md).
 - `feat/ui-polish` hasn't landed, so the post-UI desktop and phone verification is still pending.
 - SoleScout free tier hides most cheapest sellers. Material composition is never provided, so material exclusions leave results in "Needs checking".
 
@@ -55,7 +55,7 @@ See `git log integration`. Tests: `services/api/.venv/bin/python -m pytest servi
 ## Next
 
 1. Fill `PERCEPTRON_API_KEY` (and optionally `XAI_API_KEY`, `MONGODB_URI`) in the root `.env`, then run `services/api/.venv/bin/python scripts/live_checks.py --image <garment photo>`.
-2. Set the Atlas URI and confirm reload after a server restart.
+2. Atlas: follow [`docs/atlas-setup.md`](atlas-setup.md) (owner steps), then run `--only atlas` and the restart check.
 3. Fit-check Shorts truth set: see [`docs/fit-checks.md`](fit-checks.md) (10/10 live Perceptron hits on downloadable Shorts).
 4. Build the truth set (AT19) on real clips once Perceptron is live.
 
