@@ -379,8 +379,11 @@ export default function App() {
   const step = !view?.media ? 0 : !selected ? 1 : !searchId ? 2 : 3;
   const youtubeEnabled = !!health?.features?.youtubeDownload;
   const fromYouTube = view?.media?.sourceType === "youtube_download";
+  const fromCapture = view?.media?.sourceType === "browser_capture";
   const mediaMeta = view?.media
-    ? fromYouTube
+    ? fromCapture
+      ? `Browser capture${captureSource(view.media.sourceTitle, view.media.canonicalSourceUrl)}`
+      : fromYouTube
       ? `YouTube clip${view.media.durationMs ? ` · ${timestamp(view.media.durationMs)}` : ""} · ${frames.length} frame${frames.length === 1 ? "" : "s"} sampled`
       : isVideo
       ? `Video${view.media.durationMs ? ` · ${timestamp(view.media.durationMs)}` : ""} · ${frames.length} frame${frames.length === 1 ? "" : "s"} sampled`
@@ -630,4 +633,14 @@ export default function App() {
       </div>
     </MemoryContext.Provider>
   );
+}
+
+/** " · {page title}" (or its host) for a frame captured by the browser extension; display text only. */
+function captureSource(title?: string | null, url?: string | null): string {
+  if (title) return ` · ${wordSafe(title, 60)}`;
+  try {
+    return url ? ` · ${new URL(url).host}` : "";
+  } catch {
+    return "";
+  }
 }

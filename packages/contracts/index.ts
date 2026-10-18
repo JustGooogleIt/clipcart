@@ -275,7 +275,8 @@ export interface MediaAsset {
   ownerId: string;
   rotationDegrees?: number;
   sha256: string;
-  sourceType: "upload_image" | "upload_video" | "youtube_download";
+  sourceTitle?: string | null;
+  sourceType: "upload_image" | "upload_video" | "youtube_download" | "browser_capture";
   storageKey: string;
   width: number;
 }

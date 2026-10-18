@@ -110,6 +110,7 @@ class MediaService:
         *,
         source_url: str | None = None,
         source_type: SourceType | None = None,
+        source_title: str | None = None,
     ) -> MediaAsset:
         """Stream ``upload`` to disk with a hard byte cap, then validate by decoding.
 
@@ -155,6 +156,7 @@ class MediaService:
                     duration_ms=None,
                     source_type=source_type or "upload_image",
                     canonical_source_url=source_url,
+                    source_title=source_title,
                     storage_key=f"{media_id}.bin",
                     byte_size=total,
                     rotation_degrees=0,
@@ -175,6 +177,7 @@ class MediaService:
                     duration_ms=p.duration_ms,
                     source_type=source_type or "upload_video",
                     canonical_source_url=source_url,
+                    source_title=source_title,
                     storage_key=f"{media_id}.bin",
                     byte_size=total,
                     rotation_degrees=p.rotation_cw,

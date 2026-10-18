@@ -262,10 +262,33 @@ def patch_session(session_id: str, body: SessionPatchIn, request: Request) -> di
 
 
 # ------------------------------------------------------------------ media
+def _capture_provenance(source_url: str | None, source_title: str | None) -> tuple[str | None, str | None]:
+    """Optional page provenance for a browser capture. The URL must be a plain http(s) address; the title is display text."""
+    if source_url is None:
+        if source_title is not None:
+            raise ApiProblem(422, "invalid_request", "sourceTitle needs a sourceUrl")
+        return None, None
+    from urllib.parse import urlsplit
+
+    u = source_url.strip()
+    try:
+        parts = urlsplit(u) if len(u) <= 2048 else None
+        if parts:
+            parts.port  # noqa: B018 - raises ValueError on a malformed port
+    except ValueError:  # malformed host or port
+        parts = None
+    if not parts or parts.scheme not in ("http", "https") or not parts.hostname or parts.username or parts.password:
+        raise ApiProblem(422, "invalid_request", "sourceUrl must be an http(s) URL without credentials, at most 2048 characters")
+    title = " ".join("".join(ch if ch.isprintable() else " " for ch in (source_title or "")).split())[:300] or None
+    return u, title
+
+
 @router.post("/api/media/uploads")
-async def upload(request: Request, sessionId: str, expectedRevision: int) -> dict:  # noqa: N803
+async def upload(request: Request, sessionId: str, expectedRevision: int,  # noqa: N803
+                 sourceUrl: str | None = None, sourceTitle: str | None = None) -> dict:  # noqa: N803
     require_mutation_header(request)
     owner = current_owner(request)
+    source_url, source_title = _capture_provenance(sourceUrl, sourceTitle)
     st = state_of(request)
     limiter.check(owner, "upload", 20)
     get_owned(st.db, sessionId, owner)
@@ -283,7 +306,10 @@ async def upload(request: Request, sessionId: str, expectedRevision: int) -> dic
             spool.write(chunk)
         spool.seek(0)
         try:
-            asset = await run_in_threadpool(st.media.ingest, spool, owner)
+            asset = await run_in_threadpool(
+                lambda: st.media.ingest(spool, owner, source_url=source_url, source_title=source_title,
+                                        source_type="browser_capture" if source_url else None)
+            )
         except MediaError as exc:
             raise ApiProblem(exc.http_status, exc.code, exc.message, exc.retryable) from None
     finally:

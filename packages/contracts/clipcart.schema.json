@@ -1001,11 +1001,23 @@
         "sha256": {
           "type": "string"
         },
+        "sourceTitle": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "sourceType": {
           "enum": [
             "upload_image",
             "upload_video",
-            "youtube_download"
+            "youtube_download",
+            "browser_capture"
           ],
           "type": "string"
         },
