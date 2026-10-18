@@ -55,6 +55,8 @@ export interface ProviderSnapshot {
   lastError: { code?: string; note?: string; traceId?: string } | null;
   recent?: { at: string; ok: boolean; traceId: string | null; code: string | null; note: string }[];
   model?: string;
+  label?: string | null;
+  hosting?: "local" | "remote" | null;
   provider?: string;
   setting?: string;
   error?: string | null;
@@ -63,13 +65,14 @@ export interface ProviderSnapshot {
 export interface Health {
   api: string;
   database: { mode: string; ok: boolean; note: string | null };
-  providers: { perceptron: ProviderSnapshot; grok: ProviderSnapshot; catalog: ProviderSnapshot };
+  providers: { perceptron: ProviderSnapshot; grok: ProviderSnapshot; catalog: ProviderSnapshot; styleModel?: ProviderSnapshot };
   features: {
     photon: boolean;
     voice: boolean;
     solana: boolean;
     agentResearch?: boolean;
     youtubeDownload?: boolean;
+    styleMemory?: boolean;
   };
   youtube?: { enabled: boolean; allowedVideoCount: number; maxDurationS: number };
 }
