@@ -6,6 +6,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from app.categories import is_accessory, norm_ring_size, size_rule, title_is_category, tone_colors
 from app.contracts import ConstraintCheck, Listing, Money, Preferences
 
 RANKING_VERSION = "rules-2026-10-18.4"  # +MA-1/flight jacket terms, women's fit check
@@ -116,6 +117,9 @@ class GarmentProfile:
             for w in words(part):
                 if w in _COLOR_WORDS and w not in out:
                     out.append(w)
+        for base in tone_colors(self.colors):  # 'gold-tone' still means gold for color matching
+            if base not in out:
+                out.append(base)
         return out
 
     def style_cues(self) -> list[str]:
@@ -172,6 +176,9 @@ _WOMENS = re.compile(r"\b(?:women(?:'?s)?|woman'?s|wmns|ladies)\b", re.I)
 
 
 def title_matches_category(title: str, category: str) -> bool:
+    acc = title_is_category(title, category, set(words(title)))
+    if acc is not None:
+        return acc
     fam = CATEGORY_WORDS.get(category)
     if not fam:
         return True
@@ -222,7 +229,34 @@ def price_phrase(listing: Listing, prefs: Preferences | None = None) -> str:
     return "Price not available"
 
 
-def check_constraints(listing: Listing, prefs: Preferences) -> list[ConstraintCheck]:
+def check_constraints(listing: Listing, prefs: Preferences, category: str | None = None) -> list[ConstraintCheck]:
+    """Constraint checks for one listing. ``category`` (the selected item's) decides which size rule applies:
+    clothing sizes never govern watches or jewelry; rings use ``prefs.ring_size`` only."""
+    rule = size_rule(category) if category else "clothing"
+    eff = prefs if rule == "clothing" else prefs.model_copy(update={"size": None})
+    checks = _base_checks(listing, eff, apparel_fit=not is_accessory(category))
+    if rule == "ring" and prefs.ring_size:
+        checks.append(_ring_size_check(listing, prefs.ring_size.raw))
+    return checks
+
+
+def _ring_size_check(listing: Listing, want_raw: str) -> ConstraintCheck:
+    ev = listing.evidence_ids
+    want = norm_ring_size(want_raw) or want_raw
+    if listing.sizes_in_stock is None:
+        return ConstraintCheck(constraint="ring size", state="unknown", detail="Ring sizes not checked", evidence_ids=ev)
+    listed = [(s.raw, norm_ring_size(s.raw)) for s in listing.sizes_in_stock]
+    if not listed:
+        return ConstraintCheck(constraint="ring size", state="unknown", detail="Source lists no in-stock ring sizes", evidence_ids=ev)
+    if any(n == want for _, n in listed):
+        return ConstraintCheck(constraint="ring size", state="satisfied", detail=f"US {want} listed in stock", evidence_ids=ev)
+    shown = ", ".join(r for r, _ in listed[:8])
+    if all(n is not None for _, n in listed):
+        return ConstraintCheck(constraint="ring size", state="violated", detail=f"US {want} not listed in stock (listed: {shown})", evidence_ids=ev)
+    return ConstraintCheck(constraint="ring size", state="unknown", detail=f"Listed sizes aren't US ring sizes ({shown}); not converted", evidence_ids=ev)
+
+
+def _base_checks(listing: Listing, prefs: Preferences, *, apparel_fit: bool = True) -> list[ConstraintCheck]:
     checks: list[ConstraintCheck] = []
     ev = listing.evidence_ids
 
@@ -290,7 +324,7 @@ def check_constraints(listing: Listing, prefs: Preferences) -> list[ConstraintCh
 
     # ClipCart has no fit-category preference yet, so the shopper's fit is always unspecified.
     # An explicitly women's listing therefore needs checking. Size (e.g. "M") never implies fit.
-    if explicitly_womens(listing.title):
+    if apparel_fit and explicitly_womens(listing.title):
         checks.append(
             ConstraintCheck(
                 constraint="fit",
@@ -349,6 +383,9 @@ def _alnum(s: str) -> str:
 
 def identity_tier(listing: Listing, profile: GarmentProfile) -> tuple[str, str]:
     """Return (tier, reason). Visual resemblance alone is never 'verified'."""
+    if is_accessory(profile.category):
+        # Watches/jewelry: lettering or a model code seen on the item doesn't establish brand or authenticity.
+        return "similar", "Similar look only; ClipCart doesn't confirm brand or authenticity from appearance"
     seen = [_alnum(t) for t in profile.visible_text if t.strip()]
     if listing.style_code and len(_alnum(listing.style_code)) >= 5:
         code = _alnum(listing.style_code)

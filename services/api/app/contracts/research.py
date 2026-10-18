@@ -18,7 +18,11 @@ from pydantic import Field
 from .base import Record
 from .shopping import ConstraintCheck, Money, OutboundLink, Preferences
 
-ResearchProviderName = Literal["fixture"]  # bridge providers ("grok_bot", "xai_api") are not implemented yet
+# "solescout": catalog-backed fallback (named store records). "manual": waits for a labelled manual import.
+# Bridge providers ("grok_bot", "xai_api") are not implemented: see docs/grok-bot-bridge.md.
+ResearchProviderName = Literal["fixture", "solescout", "manual"]
+ResultSource = Literal["provider", "manual_import"]
+ProductSource = Literal["agent", "catalog", "manual_import"]
 ResearchJobStatus = Literal["pending", "completed", "failed", "expired"]
 
 
@@ -43,6 +47,28 @@ class SubmittedPrice(Record):
     currency: str = Field(pattern=r"^[A-Z]{3}$")
 
 
+class SubmittedVariant(Record):
+    """A size or variant as the page showed it. ``available`` False is kept, never dropped."""
+
+    label: str = Field(min_length=1, max_length=40)
+    available: bool | None = None
+    price: SubmittedPrice | None = None
+    price_excerpt: str | None = Field(default=None, max_length=160)
+
+
+class PageEvidence(Record):
+    field: Literal["title", "price", "availability", "size", "condition", "brand", "identifier", "image"]
+    excerpt: str = Field(min_length=1, max_length=200)
+
+
+class ProductIdentifiers(Record):
+    gtin: str | None = Field(default=None, pattern=r"^\d{8,14}$")
+    mpn: str | None = Field(default=None, max_length=40)
+    sku: str | None = Field(default=None, max_length=40)
+    style_code: str | None = Field(default=None, max_length=40)
+    catalog_ref: str | None = Field(default=None, max_length=120)  # e.g. "solescout:<slug>"; set by catalog sources
+
+
 class SubmittedProduct(Record):
     retailer: str = Field(min_length=1, max_length=80)
     product_url: str = Field(min_length=8, max_length=2048)
@@ -55,6 +81,14 @@ class SubmittedProduct(Record):
     source_url: str | None = Field(default=None, max_length=2048)  # page the evidence came from, if not product_url
     observed_at: datetime
     uncertainty: str | None = Field(default=None, max_length=300)
+    # v2, all optional (docs/contracts/agent-research.md "v2 fields")
+    image_url: str | None = Field(default=None, max_length=2048)
+    brand: str | None = Field(default=None, max_length=60)  # kept only with page/catalog evidence
+    condition: Literal["new", "used", "pre_owned", "unknown"] = "unknown"
+    seller_kind: Literal["retailer", "marketplace", "resale", "unknown"] = "unknown"
+    variants: list[SubmittedVariant] = Field(default_factory=list, max_length=60)
+    evidence: list[PageEvidence] = Field(default_factory=list, max_length=12)
+    identifiers: ProductIdentifiers | None = None
 
 
 class ResearchSubmission(Record):
@@ -68,6 +102,35 @@ class RejectedItem(Record):
     index: int
     reason: str
     domain: str | None = None
+
+
+class ResearchVariant(Record):
+    label: str
+    availability: Literal["available", "unavailable", "unknown"]
+    price: Money | None = None  # only with the page text that shows it
+
+
+class OfferGroup(Record):
+    """Offers ClipCart treats as the same product, for price comparison."""
+
+    id: str
+    equivalence: Literal["identifier_match", "approximate", "single"]
+    basis: str  # e.g. "Same GTIN 00012345678905" or "Same brand and near-identical title (not confirmed)"
+    offer_count: int
+    lowest_confirmed_price: Money | None  # among offers whose price came with page text; same currency only
+    is_lowest_confirmed: bool
+    uncertain_price_count: int
+
+
+class StyleHints(Record):
+    """Compact, soft hints from the shopper's style profile. Never hard constraints."""
+
+    colors_like: list[str] = Field(default_factory=list, max_length=5)
+    colors_avoid: list[str] = Field(default_factory=list, max_length=5)
+    brands_like: list[str] = Field(default_factory=list, max_length=5)
+    brands_avoid: list[str] = Field(default_factory=list, max_length=5)
+    materials_avoid: list[str] = Field(default_factory=list, max_length=5)
+    tones_like: list[str] = Field(default_factory=list, max_length=5)
 
 
 class ResearchProduct(Record):
@@ -91,14 +154,24 @@ class ResearchProduct(Record):
     uncertainty: str | None
     warnings: list[str]
     links: list[OutboundLink]
-    mode: Literal["live", "fixture"]
+    mode: Literal["live", "fixture", "manual"]
+    # v2, additive
+    source: ProductSource = "agent"
+    image_url: str | None = None
+    brand: str | None = None
+    brand_basis: Literal["page_text", "catalog_record"] | None = None
+    condition: Literal["new", "used", "unknown"] = "unknown"
+    seller_kind: Literal["retailer", "marketplace", "resale", "unknown"] = "unknown"
+    variants: list[ResearchVariant] = Field(default_factory=list)
+    evidence: list[PageEvidence] = Field(default_factory=list)
+    offer_group: OfferGroup | None = None
 
 
 class ResearchJob(Record):
     id: str
     session_id: str
     provider: ResearchProviderName
-    mode: Literal["live", "fixture"]
+    mode: Literal["live", "fixture", "manual"]
     status: ResearchJobStatus
     garment: ResearchGarmentContext
     preferences: Preferences
@@ -110,3 +183,5 @@ class ResearchJob(Record):
     agent_notes: str | None = None
     error: dict | None = None
     summary: str | None = None
+    style_hints: StyleHints | None = None
+    result_source: ResultSource = "provider"

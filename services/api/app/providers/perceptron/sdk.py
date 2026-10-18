@@ -40,6 +40,21 @@ ATTRIBUTE_PROMPT = (
     "size, price or the wearer's identity. Use empty arrays only when truly unsure."
 )
 
+# Watches and jewelry: same schema, appearance-only wording (docs/contracts/accessories.md).
+ACCESSORY_ATTRIBUTE_PROMPT = (
+    "Describe only what is directly visible on this {category}. Return JSON with: "
+    "color (tone and visible colors only, using words like gold-tone, silver-tone, rose-gold-tone, black, "
+    "two-tone, plus dial or bead colors), "
+    "pattern (usually empty), "
+    "cut (form: hoop, stud, drop, chain, pendant, choker, bangle, cuff, link, beaded, band, signet, "
+    "round case, square case, metal bracelet strap, leather-look strap, digital display), "
+    "details (visible cues such as clear stones, textured links, numeral dial, bezel markings, small charm), "
+    "visible_text (exact readable lettering only, else empty). "
+    "Never state metal content or purity (no gold, silver, platinum, karat, sterling), gemstone types "
+    "(say clear stone or green stone, not diamond or emerald), pearls (say round beads), brand, "
+    "authenticity, luxury status, price or size. Use empty arrays when unsure."
+)
+
 # Open-vocabulary finds (plants, art, objects, …) — never collapse to a short noun.
 OBJECT_ATTRIBUTE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -151,9 +166,12 @@ class SdkBackend:
         )
 
     def describe(self, crop_bytes: bytes, category: str) -> AttributeResponse:
+        from app.categories import is_accessory
+
+        prompt = ACCESSORY_ATTRIBUTE_PROMPT if is_accessory(category) else ATTRIBUTE_PROMPT
         return self._describe_json(
             crop_bytes,
-            ATTRIBUTE_PROMPT.format(category=category),
+            prompt.format(category=category),
             ATTRIBUTE_SCHEMA,
             "garment_attributes",
         )

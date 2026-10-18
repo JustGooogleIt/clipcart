@@ -61,7 +61,7 @@ export const WALKTHROUGH = {
   label: "Jacket",
   box: { x: 6, y: 31, w: 92, h: 66 },
   /** Source frame size, used to map the box onto the cropped video. */
-  frame: { w: 360, h: 640 },
+  frame: { w: 480, h: 854 },
 };
 
 export const COPY = {

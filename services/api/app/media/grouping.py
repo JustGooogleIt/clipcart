@@ -24,6 +24,8 @@ import hashlib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 
+from app.categories import is_accessory
+
 from .geometry import area, center_distance, iou
 from .types import Garment, GarmentObservation
 
@@ -69,7 +71,12 @@ class GarmentGrouper:
             return True
         aa, ab = area(a.box01), area(b.box01)
         ratio = max(aa, ab) / min(aa, ab)
-        return center_distance(a.box01, b.box01) <= self.max_center_shift and ratio <= self.max_area_ratio
+        shift = self.max_center_shift
+        if is_accessory(a.category):
+            # Small objects: the allowed shift scales with the object, so two earrings ~10% apart never merge.
+            side = max(a.box01[2] - a.box01[0], a.box01[3] - a.box01[1], b.box01[2] - b.box01[0], b.box01[3] - b.box01[1])
+            shift = min(self.max_center_shift, max(0.015, side))
+        return center_distance(a.box01, b.box01) <= shift and ratio <= self.max_area_ratio
 
     def compatible(self, track: _Track, ob: GarmentObservation, shot: int) -> bool:
         last = track.last

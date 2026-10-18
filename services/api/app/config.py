@@ -31,7 +31,7 @@ def _ensure_ca_bundle() -> None:
 
 @dataclass(frozen=True)
 class Settings:
-    mongodb_uri: str | None
+    mongodb_uri: str | None = field(repr=False)  # may embed a password; never in repr/logs
     mongodb_db: str
     media_root: Path
     catalog_provider: str
@@ -45,6 +45,7 @@ class Settings:
     xai_model: str
     xai_base_url: str
     feature_agent_research: bool
+    feature_accessory_detection: bool
     research_provider: str
     research_job_ttl_s: int
     research_resolve_dns: bool
@@ -56,8 +57,11 @@ class Settings:
     ollama_base_url: str
     style_model_timeout_s: float
     style_model_explanations: bool
+    style_model_ranking: bool  # let model interpretations influence ranking (default off)
+    style_interpret_debounce_s: float
+    style_interpret_max_wait_s: float
     style_remote_base_url: str | None
-    style_remote_api_key: str | None
+    style_remote_api_key: str | None = field(repr=False)
     style_remote_model: str | None
     style_remote_label: str | None
     style_remote_json_mode: str
@@ -120,6 +124,7 @@ def load_settings() -> Settings:
         xai_model=os.getenv("XAI_MODEL", "grok-4.3"),
         xai_base_url=os.getenv("XAI_BASE_URL", "https://api.x.ai/v1").rstrip("/"),
         feature_agent_research=_flag("FEATURE_AGENT_RESEARCH"),
+        feature_accessory_detection=_flag("FEATURE_ACCESSORY_DETECTION"),
         research_provider=(os.getenv("RESEARCH_PROVIDER") or "fixture").lower(),
         research_job_ttl_s=int(os.getenv("RESEARCH_JOB_TTL_S", "900")),
         research_resolve_dns=_flag("RESEARCH_RESOLVE_DNS", True),
@@ -133,6 +138,9 @@ def load_settings() -> Settings:
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/"),
         style_model_timeout_s=float(os.getenv("STYLE_MODEL_TIMEOUT_S", "8")),
         style_model_explanations=_flag("STYLE_MODEL_EXPLANATIONS"),
+        style_model_ranking=_flag("STYLE_MODEL_RANKING"),
+        style_interpret_debounce_s=float(os.getenv("STYLE_INTERPRET_DEBOUNCE_S", "20")),
+        style_interpret_max_wait_s=float(os.getenv("STYLE_INTERPRET_MAX_WAIT_S", "120")),
         style_remote_base_url=(os.getenv("STYLE_REMOTE_BASE_URL") or "").rstrip("/") or None,
         style_remote_api_key=os.getenv("STYLE_REMOTE_API_KEY") or None,
         style_remote_model=os.getenv("STYLE_REMOTE_MODEL") or None,

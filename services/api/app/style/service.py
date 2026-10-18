@@ -19,7 +19,15 @@ from app.contracts import StyleProfile
 from app.contracts.style_memory import OwnedItem, ProfileEntry, StyleEvent, StyleItem, StyleMemory
 from app.sessions.service import ApiProblem, new_id, now
 
+from .tags import listing_facts
 from .vocab import ONE_ACTIVE, PAIRS, InvalidMemory, colors_in, normalize, same_value
+
+EVIDENCE_WEIGHT = {"saved_item": 1, "rejected_item": 1, "user_confirmed_purchase": 2, "verified_order": 2}
+
+
+def inferred_confidence(weighted: int) -> float:
+    return round(min(0.9, 0.3 + 0.15 * weighted), 2)
+
 
 LIKE_THRESHOLD = 2  # saved/purchased items supporting a brand or color
 AVOID_THRESHOLD = 2  # rejected items
@@ -56,6 +64,7 @@ def item_from_recommendation(db, owner: str, recommendation_id: str) -> StyleIte
     return StyleItem(
         recommendation_id=recommendation_id, listing_id=rec["listingId"], offer_key=L.get("offerKey"), product_key=pk,
         title=str(L.get("title") or "Untitled")[:200], brand=L.get("brand"), domain=host, category=g.get("category"),
+        condition=L.get("condition"), style_facts=listing_facts(L.get("title"), L.get("materialText")),
     )
 
 
@@ -109,6 +118,9 @@ def delete_event(db, owner: str, event_id: str) -> dict:
     res = db.style_events.delete_one({"_id": event_id, "ownerId": owner})
     if not res.deleted_count:
         raise ApiProblem(404, "not_found", "Event not found")
+    from .interpret import prune
+
+    prune(db, owner)  # model interpretations resting only on deleted history go too
     return rebuild_inferred(db, owner)
 
 
@@ -132,7 +144,8 @@ def add_stated_memory(db, owner: str, kind: str, value: Any, source: str) -> tup
     mid = new_id("mem")
     ev = add_event(db, owner, "explicit_preference", origin="stated", source=source, memory_id=mid)
     mem = StyleMemory(id=mid, kind=kind, value=value, origin="stated", source=source, status="active",
-                      source_event_ids=[ev.id], evidence_count=1, created_at=t, updated_at=t)
+                      source_event_ids=[ev.id], evidence_count=1, created_at=t, updated_at=t, confidence=1.0,
+                      last_evidence_at=t)
     overridden = []
     for d in active:
         conflict = (
@@ -173,43 +186,65 @@ def rebuild_inferred(db, owner: str) -> dict:
     support: dict[tuple[str, str], list[str]] = defaultdict(list)
     display: dict[tuple[str, str], Any] = {}
     purchase_brand: dict[str, list[str]] = defaultdict(list)
+    weight: dict[str, int] = {}
+    meta: dict[str, tuple[str, str]] = {}  # event id -> (type, occurredAt)
+    excerpts: dict[tuple[tuple[str, str], str], str] = {}
+    # Retailer clicks are interest only and never feed inference. A save is interest, not ownership.
     for e in db.style_events.find({"ownerId": owner, "type": {"$in": ["saved_item", "rejected_item",
                                                                        "user_confirmed_purchase", "verified_order"]}}):
         item = e.get("item") or {}
         like = e["type"] != "rejected_item"
-        kinds = ("brand_like", "color_like") if like else ("brand_avoid", "color_avoid")
+        weight[e["id"]] = EVIDENCE_WEIGHT[e["type"]]
+        meta[e["id"]] = (e["type"], e["occurredAt"])
+        kinds = ("brand_like", "color_like", "style_like") if like else ("brand_avoid", "color_avoid", "style_avoid")
         brand = (item.get("brand") or "").strip()
         if brand:
             k = (kinds[0], brand.lower())
             support[k].append(e["id"])
             display[k] = brand
+            excerpts[(k, e["id"])] = f"Brand: {brand}"
             if e["type"] in ("user_confirmed_purchase", "verified_order"):
                 purchase_brand[brand.lower()].append(e["id"])
         for c in colors_in(item.get("title")):
             support[(kinds[1], c)].append(e["id"])
             display[(kinds[1], c)] = c
+            excerpts[((kinds[1], c), e["id"])] = str(item.get("title"))[:120]
+        for f in item.get("styleFacts") or []:
+            k = (kinds[2], f["tag"])
+            support[k].append(e["id"])
+            display[k] = f["tag"]
+            excerpts[(k, e["id"])] = f["excerpt"]
     existing = {d["_id"]: d for d in db.style_memories.find({"ownerId": owner})}
     removed = {(d["kind"], _key(d["value"])) for d in existing.values() if d["status"] == "removed"}
     stated = [d for d in existing.values() if d["origin"] == "stated" and d["status"] == "active"]
     t = now().isoformat()
     want: dict[str, dict] = {}
     for (kind, vkey), ids in support.items():
-        n = len(set(ids))
+        uniq = sorted(set(ids))
+        n = len(uniq)
+        weighted = sum(weight[i] for i in uniq)
         threshold = AVOID_THRESHOLD if kind.endswith("_avoid") else LIKE_THRESHOLD
         if kind == "brand_like" and len(set(purchase_brand.get(vkey, []))) >= PURCHASE_BRAND_THRESHOLD:
             threshold = 1
-        if n < threshold or (kind, vkey) in removed:
+        enough = weighted >= threshold if kind.startswith("style_") else n >= threshold  # styles: a purchase counts double
+        if not enough or (kind, vkey) in removed:
             continue
         value = display[(kind, vkey)]
         blocker = next((d for d in stated if (d["kind"] == kind and same_value(d["value"], value))
                         or (PAIRS.get(kind) == d["kind"] and same_value(d["value"], value))), None)
         mid = _inferred_id(owner, kind, value)
         src = "rejected_items" if kind.endswith("_avoid") else ("purchases" if purchase_brand.get(vkey) and kind == "brand_like" else "saved_items")
+        latest = sorted(uniq, key=lambda i: meta[i][1], reverse=True)
+        evidence = [{"eventId": i, "type": meta[i][0], "at": meta[i][1], "excerpt": excerpts.get(((kind, vkey), i))}
+                    for i in latest[:5]]
         want[mid] = {"id": mid, "kind": kind, "value": value, "origin": "inferred", "source": src,
                      "status": "overridden" if blocker else "active", "overriddenBy": blocker["id"] if blocker else None,
-                     "sourceEventIds": sorted(set(ids))[:20], "evidenceCount": n}
+                     "sourceEventIds": uniq[:20], "evidenceCount": n, "confidence": inferred_confidence(weighted),
+                     "lastEvidenceAt": meta[latest[0]][1], "evidence": evidence}
     changes = {"added": [], "updated": [], "removed": []}
     for mid, d in existing.items():
+        if d.get("source") == "model_interpretation":
+            continue  # model interpretations have their own lifecycle (app/style/interpret.py)
         if d["origin"] == "inferred" and d["status"] != "removed" and mid not in want:
             db.style_memories.delete_one({"_id": mid})  # evidence gone: derived memory disappears
             changes["removed"].append(mid)
@@ -219,7 +254,8 @@ def rebuild_inferred(db, owner: str) -> dict:
             db.style_memories.insert_one({"_id": mid, "ownerId": owner, **w, "createdAt": t, "updatedAt": t})
             changes["added"].append(mid)
         elif old["status"] != "removed":
-            fields = {k: w[k] for k in ("status", "overriddenBy", "sourceEventIds", "evidenceCount", "source")}
+            fields = {k: w[k] for k in ("status", "overriddenBy", "sourceEventIds", "evidenceCount", "source", "confidence",
+                                        "lastEvidenceAt", "evidence")}
             if any(old.get(k) != v for k, v in fields.items()):
                 db.style_memories.update_one({"_id": mid}, {"$set": {**fields, "updatedAt": t}})
                 changes["updated"].append(mid)
@@ -227,14 +263,18 @@ def rebuild_inferred(db, owner: str) -> dict:
 
 
 # ------------------------------------------------------------------ profile
-def build_profile(db, owner: str) -> StyleProfile:
+def build_profile(db, owner: str, *, include_model: bool = True) -> StyleProfile:
+    """``include_model=False`` drops model interpretations (search snapshots while STYLE_MODEL_RANKING is off)."""
     active = [_mem(d) for d in db.style_memories.find({"ownerId": owner, "status": "active"})]
+    if not include_model:
+        active = [m for m in active if m.source != "model_interpretation"]
 
     def entries(kind: str) -> list[ProfileEntry]:
         ms = sorted((m for m in active if m.kind == kind),
                     key=lambda m: (m.origin != "stated", -m.evidence_count, -m.updated_at.timestamp()))
         return [ProfileEntry(value=m.value, origin=m.origin, memory_id=m.id,
-                             evidence_count=m.evidence_count if m.origin == "inferred" else None) for m in ms[:5]]
+                             evidence_count=m.evidence_count if m.origin == "inferred" else None,
+                             confidence=m.confidence, source=m.source) for m in ms[:5]]
 
     def one(kind: str) -> ProfileEntry | None:
         e = entries(kind)
@@ -256,6 +296,8 @@ def build_profile(db, owner: str) -> StyleProfile:
         colors_like=entries("color_like"), colors_avoid=entries("color_avoid"),
         materials_avoid=entries("material_avoid"), materials_like=entries("material_like"),
         brands_like=entries("brand_like"), brands_avoid=entries("brand_avoid"),
+        tones_like=entries("tone_like"), tones_avoid=entries("tone_avoid"), ring_size=one("ring_size"),
+        styles_like=entries("style_like"), styles_avoid=entries("style_avoid"),
         recently_owned=owned, rejected_product_keys=rejected, updated_at=max(stamps) if stamps else None,
     )
 

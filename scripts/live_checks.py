@@ -125,21 +125,37 @@ def grok_check() -> dict:
 
 
 def atlas_check() -> dict:
-    uri = os.getenv("MONGODB_URI")
+    """Connect with the app's settings, round-trip a marker document, and make sure the app's indexes exist.
+
+    Prints only the host, never the URI, user name or password.
+    """
+    uri = S.mongodb_uri
     if not uri:
         return {"check": "atlas", "status": "skipped", "missing": "MONGODB_URI"}
     import pymongo
+    from pymongo.uri_parser import parse_uri
 
+    from app.storage.db import COLLECTIONS, ensure_indexes
+
+    parsed = parse_uri(uri)
+    hosts = [h for h, _ in parsed["nodelist"]] or ["(srv)"]
+    tls = bool(parsed["options"].get("tls") or parsed["options"].get("ssl") or uri.startswith("mongodb+srv://"))
     client = pymongo.MongoClient(uri, serverSelectionTimeoutMS=10000, appname="clipcart-live-check")
     db = client[S.mongodb_db]
     t0 = time.monotonic()
     db.command("ping")
+    version = client.server_info().get("version")
     marker = {"_id": f"check-{uuid.uuid4().hex[:8]}", "at": time.time()}
-    db._healthcheck.insert_one(marker)
-    back = db._healthcheck.find_one({"_id": marker["_id"]})
-    db._healthcheck.delete_one({"_id": marker["_id"]})
+    db["_healthcheck"].insert_one(marker)
+    back = db["_healthcheck"].find_one({"_id": marker["_id"]})
+    db["_healthcheck"].delete_one({"_id": marker["_id"]})
+    round_trip = round(time.monotonic() - t0, 2)
+    ensure_indexes(db)  # idempotent; the app does the same at startup
+    indexed = {c: len(db[c].index_information()) for c in COLLECTIONS if c in db.list_collection_names()}
+    client.close()
     return {"check": "atlas", "status": "ok" if back else "failed", "dbMode": S.db_mode, "database": S.mongodb_db,
-            "roundTripS": round(time.monotonic() - t0, 2)}
+            "host": hosts[0].split(".", 1)[-1] if S.db_mode == "atlas" else hosts[0], "tls": tls,
+            "serverVersion": version, "roundTripS": round_trip, "indexesPerCollection": indexed}
 
 
 def main() -> int:

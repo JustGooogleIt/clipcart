@@ -28,6 +28,8 @@ COLLECTIONS = (
     "idempotency",
     "style_events",
     "style_memories",
+    "style_interpret_queue",
+    "style_interpret_runs",
     "research_jobs",
 )
 
@@ -63,6 +65,7 @@ def ensure_indexes(db: Any) -> None:
     db.style_events.create_index([("ownerId", ASCENDING), ("occurredAt", DESCENDING)])
     db.style_events.create_index([("ownerId", ASCENDING), ("type", ASCENDING)])
     db.style_memories.create_index([("ownerId", ASCENDING), ("status", ASCENDING), ("kind", ASCENDING)])
+    db.style_interpret_runs.create_index([("ownerId", ASCENDING), ("at", DESCENDING)])
     db.referrals.create_index([("sessionId", ASCENDING), ("occurredAt", DESCENDING)])
 
 

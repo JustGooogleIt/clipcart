@@ -541,6 +541,11 @@
             "top",
             "pants",
             "bag",
+            "watch",
+            "necklace",
+            "bracelet",
+            "ring",
+            "earrings",
             "other"
           ],
           "type": "string"
@@ -1045,6 +1050,39 @@
       "title": "MediaAsset",
       "type": "object"
     },
+    "MemoryEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "excerpt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "eventId",
+        "type",
+        "at"
+      ],
+      "title": "MemoryEvidence",
+      "type": "object"
+    },
     "Money": {
       "additionalProperties": false,
       "properties": {
@@ -1063,6 +1101,56 @@
         "currency"
       ],
       "title": "Money",
+      "type": "object"
+    },
+    "OfferGroup": {
+      "additionalProperties": false,
+      "description": "Offers ClipCart treats as the same product, for price comparison.",
+      "properties": {
+        "basis": {
+          "type": "string"
+        },
+        "equivalence": {
+          "enum": [
+            "identifier_match",
+            "approximate",
+            "single"
+          ],
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isLowestConfirmed": {
+          "type": "boolean"
+        },
+        "lowestConfirmedPrice": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offerCount": {
+          "type": "integer"
+        },
+        "uncertainPriceCount": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "equivalence",
+        "basis",
+        "offerCount",
+        "lowestConfirmedPrice",
+        "isLowestConfirmed",
+        "uncertainPriceCount"
+      ],
+      "title": "OfferGroup",
       "type": "object"
     },
     "OutboundLink": {
@@ -1133,6 +1221,35 @@
         "at"
       ],
       "title": "OwnedItem",
+      "type": "object"
+    },
+    "PageEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "excerpt": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "field": {
+          "enum": [
+            "title",
+            "price",
+            "availability",
+            "size",
+            "condition",
+            "brand",
+            "identifier",
+            "image"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "excerpt"
+      ],
+      "title": "PageEvidence",
       "type": "object"
     },
     "PreferencePatch": {
@@ -1220,6 +1337,17 @@
           ],
           "default": null
         },
+        "ringSize": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SizePref"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "size": {
           "anyOf": [
             {
@@ -1282,6 +1410,17 @@
           ],
           "default": null
         },
+        "ringSize": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SizePref"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "size": {
           "anyOf": [
             {
@@ -1297,9 +1436,87 @@
       "title": "Preferences",
       "type": "object"
     },
+    "ProductIdentifiers": {
+      "additionalProperties": false,
+      "properties": {
+        "catalogRef": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "gtin": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{8,14}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mpn": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sku": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "styleCode": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "ProductIdentifiers",
+      "type": "object"
+    },
     "ProfileEntry": {
       "additionalProperties": false,
       "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "evidenceCount": {
           "anyOf": [
             {
@@ -1320,6 +1537,17 @@
             "inferred"
           ],
           "type": "string"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "value": {}
       },
@@ -1660,7 +1888,8 @@
         "mode": {
           "enum": [
             "live",
-            "fixture"
+            "fixture",
+            "manual"
           ],
           "type": "string"
         },
@@ -1674,7 +1903,11 @@
           "type": "array"
         },
         "provider": {
-          "const": "fixture",
+          "enum": [
+            "fixture",
+            "solescout",
+            "manual"
+          ],
           "type": "string"
         },
         "rejected": {
@@ -1682,6 +1915,14 @@
             "$ref": "#/$defs/RejectedItem"
           },
           "type": "array"
+        },
+        "resultSource": {
+          "default": "provider",
+          "enum": [
+            "provider",
+            "manual_import"
+          ],
+          "type": "string"
         },
         "sessionId": {
           "type": "string"
@@ -1694,6 +1935,17 @@
             "expired"
           ],
           "type": "string"
+        },
+        "styleHints": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StyleHints"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "summary": {
           "anyOf": [
@@ -1732,6 +1984,41 @@
           ],
           "type": "string"
         },
+        "brand": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "brandBasis": {
+          "anyOf": [
+            {
+              "enum": [
+                "page_text",
+                "catalog_record"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "condition": {
+          "default": "unknown",
+          "enum": [
+            "new",
+            "used",
+            "unknown"
+          ],
+          "type": "string"
+        },
         "constraintChecks": {
           "items": {
             "$ref": "#/$defs/ConstraintCheck"
@@ -1740,6 +2027,12 @@
         },
         "domain": {
           "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/PageEvidence"
+          },
+          "type": "array"
         },
         "id": {
           "type": "string"
@@ -1750,6 +2043,17 @@
             "similar"
           ],
           "type": "string"
+        },
+        "imageUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "jobId": {
           "type": "string"
@@ -1770,13 +2074,25 @@
         "mode": {
           "enum": [
             "live",
-            "fixture"
+            "fixture",
+            "manual"
           ],
           "type": "string"
         },
         "observedAt": {
           "format": "date-time",
           "type": "string"
+        },
+        "offerGroup": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OfferGroup"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "price": {
           "anyOf": [
@@ -1816,11 +2132,30 @@
           ],
           "type": "string"
         },
+        "sellerKind": {
+          "default": "unknown",
+          "enum": [
+            "retailer",
+            "marketplace",
+            "resale",
+            "unknown"
+          ],
+          "type": "string"
+        },
         "sizesAvailable": {
           "items": {
             "type": "string"
           },
           "type": "array"
+        },
+        "source": {
+          "default": "agent",
+          "enum": [
+            "agent",
+            "catalog",
+            "manual_import"
+          ],
+          "type": "string"
         },
         "title": {
           "type": "string"
@@ -1838,6 +2173,12 @@
         "validatedAt": {
           "format": "date-time",
           "type": "string"
+        },
+        "variants": {
+          "items": {
+            "$ref": "#/$defs/ResearchVariant"
+          },
+          "type": "array"
         },
         "verification": {
           "const": "url_checked_page_not_fetched",
@@ -1907,6 +2248,39 @@
         "products"
       ],
       "title": "ResearchSubmission",
+      "type": "object"
+    },
+    "ResearchVariant": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "enum": [
+            "available",
+            "unavailable",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "label",
+        "availability"
+      ],
+      "title": "ResearchVariant",
       "type": "object"
     },
     "SearchBudget": {
@@ -2321,6 +2695,56 @@
       "title": "StyleEvent",
       "type": "object"
     },
+    "StyleHints": {
+      "additionalProperties": false,
+      "description": "Compact, soft hints from the shopper's style profile. Never hard constraints.",
+      "properties": {
+        "brandsAvoid": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "brandsLike": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "colorsAvoid": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "colorsLike": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "materialsAvoid": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "tonesLike": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "type": "array"
+        }
+      },
+      "title": "StyleHints",
+      "type": "object"
+    },
     "StyleItem": {
       "additionalProperties": false,
       "description": "Listing facts copied server-side from stored records; never client-supplied.",
@@ -2337,6 +2761,17 @@
           "default": null
         },
         "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "condition": {
           "anyOf": [
             {
               "type": "string"
@@ -2402,6 +2837,12 @@
           ],
           "default": null
         },
+        "styleFacts": {
+          "items": {
+            "$ref": "#/$defs/StyleTagFact"
+          },
+          "type": "array"
+        },
         "title": {
           "type": "string"
         }
@@ -2415,9 +2856,27 @@
     "StyleMemory": {
       "additionalProperties": false,
       "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "createdAt": {
           "format": "date-time",
           "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/MemoryEvidence"
+          },
+          "maxItems": 5,
+          "type": "array"
         },
         "evidenceCount": {
           "default": 1,
@@ -2436,9 +2895,26 @@
             "material_like",
             "material_avoid",
             "brand_like",
-            "brand_avoid"
+            "brand_avoid",
+            "tone_like",
+            "tone_avoid",
+            "ring_size",
+            "style_like",
+            "style_avoid"
           ],
           "type": "string"
+        },
+        "lastEvidenceAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "origin": {
           "enum": [
@@ -2466,7 +2942,8 @@
             "chat_refinement",
             "saved_items",
             "rejected_items",
-            "purchases"
+            "purchases",
+            "model_interpretation"
           ],
           "type": "string"
         },
@@ -2774,6 +3251,17 @@
           "default": 0,
           "type": "integer"
         },
+        "ringSize": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProfileEntry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "size": {
           "anyOf": [
             {
@@ -2784,6 +3272,34 @@
             }
           ],
           "default": null
+        },
+        "stylesAvoid": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "stylesLike": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "tonesAvoid": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "tonesLike": {
+          "items": {
+            "$ref": "#/$defs/ProfileEntry"
+          },
+          "maxItems": 5,
+          "type": "array"
         },
         "updatedAt": {
           "anyOf": [
@@ -2822,7 +3338,12 @@
             "material_like",
             "material_avoid",
             "brand_like",
-            "brand_avoid"
+            "brand_avoid",
+            "tone_like",
+            "tone_avoid",
+            "ring_size",
+            "style_like",
+            "style_avoid"
           ],
           "type": "string"
         },
@@ -2838,6 +3359,32 @@
         "quote"
       ],
       "title": "StyleProposal",
+      "type": "object"
+    },
+    "StyleTagFact": {
+      "additionalProperties": false,
+      "description": "A style tag the listing's own text states, with the words that state it.",
+      "properties": {
+        "excerpt": {
+          "type": "string"
+        },
+        "field": {
+          "enum": [
+            "title",
+            "material"
+          ],
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tag",
+        "field",
+        "excerpt"
+      ],
+      "title": "StyleTagFact",
       "type": "object"
     },
     "SubmittedPrice": {
@@ -2871,6 +3418,58 @@
             "unknown"
           ],
           "type": "string"
+        },
+        "brand": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "condition": {
+          "default": "unknown",
+          "enum": [
+            "new",
+            "used",
+            "pre_owned",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/PageEvidence"
+          },
+          "maxItems": 12,
+          "type": "array"
+        },
+        "identifiers": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductIdentifiers"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "imageUrl": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "matchType": {
           "enum": [
@@ -2916,6 +3515,16 @@
           "minLength": 1,
           "type": "string"
         },
+        "sellerKind": {
+          "default": "unknown",
+          "enum": [
+            "retailer",
+            "marketplace",
+            "resale",
+            "unknown"
+          ],
+          "type": "string"
+        },
         "sizesAvailable": {
           "items": {
             "type": "string"
@@ -2951,6 +3560,13 @@
             }
           ],
           "default": null
+        },
+        "variants": {
+          "items": {
+            "$ref": "#/$defs/SubmittedVariant"
+          },
+          "maxItems": 60,
+          "type": "array"
         }
       },
       "required": [
@@ -2961,6 +3577,56 @@
         "observedAt"
       ],
       "title": "SubmittedProduct",
+      "type": "object"
+    },
+    "SubmittedVariant": {
+      "additionalProperties": false,
+      "description": "A size or variant as the page showed it. ``available`` False is kept, never dropped.",
+      "properties": {
+        "available": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "label": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SubmittedPrice"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "priceExcerpt": {
+          "anyOf": [
+            {
+              "maxLength": 160,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "SubmittedVariant",
       "type": "object"
     }
   },

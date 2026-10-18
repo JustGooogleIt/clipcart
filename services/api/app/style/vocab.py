@@ -8,12 +8,18 @@ from typing import Any
 from app.shopping.refine import _MATERIALS
 from app.shopping.rules import _COLOR_WORDS, norm_size
 
-ONE_ACTIVE = {"size", "fit", "budget_max"}
+ONE_ACTIVE = {"size", "fit", "budget_max", "ring_size"}
 PAIRS = {
     "color_like": "color_avoid", "color_avoid": "color_like",
     "material_like": "material_avoid", "material_avoid": "material_like",
     "brand_like": "brand_avoid", "brand_avoid": "brand_like",
+    "tone_like": "tone_avoid", "tone_avoid": "tone_like",
+    "style_like": "style_avoid", "style_avoid": "style_like",
 }
+TONES = ("gold-tone", "silver-tone", "rose-gold-tone", "black", "two-tone")
+_TONE_ALIASES = {"gold": "gold-tone", "gold tone": "gold-tone", "golden": "gold-tone", "silver": "silver-tone",
+                 "silver tone": "silver-tone", "rose gold": "rose-gold-tone", "rose gold tone": "rose-gold-tone",
+                 "rose-gold": "rose-gold-tone", "two tone": "two-tone", "mixed metal": "two-tone"}
 COLORS = set(_COLOR_WORDS) | {"gray"}
 MATERIALS = set(_MATERIALS) | {"faux leather", "corduroy", "satin", "velvet", "tweed"}
 _FIT = {"women": "womens", "womens": "womens", "women's": "womens", "woman's": "womens", "ladies": "womens",
@@ -55,6 +61,27 @@ def normalize(kind: str, value: Any) -> Any:
             raise InvalidMemory("size must be 1-12 characters")
         label, system = norm_size(raw)
         return {"raw": label, "system": system if system in ("alpha", "numeric") else None}
+    if kind in ("style_like", "style_avoid"):
+        from .tags import STYLE_TAGS, normalize_tag
+
+        v = normalize_tag(value)
+        if not v:
+            raise InvalidMemory(f"unknown style {value!r}; use one of {', '.join(STYLE_TAGS)}")
+        return v
+    if kind in ("tone_like", "tone_avoid"):
+        v = " ".join(str(value or "").lower().replace("-", " ").split())
+        v = _TONE_ALIASES.get(v, v.replace(" ", "-"))
+        if v not in TONES:
+            raise InvalidMemory(f"unknown tone {value!r}; use gold-tone, silver-tone, rose-gold-tone, black or two-tone")
+        return v
+    if kind == "ring_size":
+        from app.categories import norm_ring_size
+
+        raw = value.get("raw") if isinstance(value, dict) else value
+        n = norm_ring_size(str(raw or ""))
+        if n is None:
+            raise InvalidMemory("ring size must be a US size from 3 to 15, e.g. 7 or 6.5")
+        return {"raw": n, "system": "us"}
     if kind == "budget_max":
         if isinstance(value, dict):
             minor, cur = value.get("amountMinor"), str(value.get("currency") or "USD").upper()

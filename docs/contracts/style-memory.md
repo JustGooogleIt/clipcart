@@ -248,3 +248,72 @@ The intentgraph endpoint was unreachable, because its tunnel was down and its ho
 - **Adapter:** `OpenAICompatibleStyleModel` in `app/style/model.py`, selected with `STYLE_MODEL_PROVIDER=openai_compatible`. Ollama and the rule-based fallback are unchanged, and every validation and purchase guard still applies to its output.
 - **Smoke test:** an isolated ClipCart on its own port used the in-memory database, no `.env`, and environment set only in the process. Health showed `unverified` with hosting `remote` before the call. `POST /api/style/notes` returned 3 grounded proposals in 2.2 s, saved nothing, and health then showed `live`.
 - **Call budget:** 19 of the 20 authorized calls were used, 18 for the benchmark and 1 for the smoke test.
+
+## Wardrobe and style tags (v2, additive, `feat/style-wardrobe`)
+
+### Evidence types (unchanged, now spelled out)
+
+| Event | Meaning | Feeds inference? |
+| --- | --- | --- |
+| `saved_item` | **Interest only.** A save is never ownership. | Likes, weight 1 |
+| `rejected_item` | Not for me | Avoids, weight 1 |
+| `retailer_click` | Interest only. Server-recorded. | **No** |
+| `user_confirmed_purchase` | The shopper says they own or bought it. Not verified by ClipCart. | Likes, weight 2. Shown under "Owned (you said)". |
+| `verified_order` | A paid ClipCart demo order | Likes, weight 2. Shown under "Owned (verified)". |
+
+### Style preferences
+
+There are new memory kinds, `style_like` and `style_avoid`. They're editable like brands, using the same `POST /api/style/memories` and `DELETE /api/style/memories/{id}`. The vocabulary is: `vintage`, `minimalist`, `streetwear`, `workwear`, `preppy`, `athleisure`, `y2k`, `outdoor`, `techwear`, `western`, `bohemian`, `classic`, `grunge`, `punk`.
+
+### Listing facts
+
+`StyleItem` gains `condition` and `styleFacts: [{tag, field, excerpt}]`. They're computed **on the server** from the stored listing's title, material text and condition, by deterministic keyword rules. The listing's own words are the evidence. A negated phrase such as "not vintage", "non-vintage" or "no logo" never produces a tag.
+
+### Memory fields
+
+- **`confidence`:** 1.0 for stated memories. For deterministic inferred memories it's `min(0.9, 0.3 + 0.15 × weighted evidence)`. For model interpretations it's capped at 0.7.
+- **`lastEvidenceAt`:** when the most recent supporting evidence happened.
+- **`evidence`:** up to 5 entries of `{eventId, type, at, excerpt}`.
+
+`ProfileEntry` gains `confidence` and `source`. `StyleProfileView` gains `stylesLike` and `stylesAvoid`.
+
+### Inference rules
+
+- **Deterministic (always on):** a style tag becomes an inferred like at weighted evidence ≥ 2, meaning two saves or one purchase. It becomes an inferred avoid at two rejections.
+- **Overrides:** a stated memory overrides an inferred one, and a memory the shopper removed is never re-inferred. Both rules are unchanged.
+
+### Model interpretations (Gemma, optional)
+
+- **Trigger:** new saved, rejected, purchase or verified-order evidence queues an interpretation. Runs are **debounced**: they wait `STYLE_INTERPRET_DEBOUNCE_S` (20 s) after the last event, and at most `STYLE_INTERPRET_MAX_WAIT_S` (120 s). They're **deduplicated**: the same evidence and model are never sent twice.
+- **Updates, not training:** the model proposes structured updates to the persistent profile. **No model weights are trained.**
+- **What it may propose:** only soft kinds, meaning `style_*`, `brand_*`, `color_*` and `tone_*`. **Never** size, ring size, fit or budget, and never anything that changes session `preferences`, the hard constraints.
+- **Validation in code:** every proposal has to pass all of these checks:
+  - The value is in the vocabulary.
+  - The cited events were part of the request.
+  - The action matches: likes only from saves or purchases, avoids only from rejections.
+  - The quote is copied word for word from those listings.
+  - The value isn't negated in the quote.
+  - The shopper hasn't removed that value.
+  - No stated memory says otherwise.
+- **Results:** accepted proposals become inferred memories with `source: "model_interpretation"`. The shopper can edit or remove them like any other.
+- **Ranking:** **model interpretations don't affect ranking** unless `STYLE_MODEL_RANKING=1`, which is **off by default**. The panel shows them, labelled.
+- **Availability:** with no model configured (the default `STYLE_MODEL_PROVIDER=none`), only deterministic inference runs, and the queue reports `waiting_for_model`.
+
+`GET /api/style/interpretations` returns `{status, pendingEvents, runs: [{id, at, model, evidenceEventIds, applied, rejected: [{kind, value, reason}]}]}`. `POST /api/style/interpretations/run` runs any due work now. It's owner-only and limited to 6 per 10 minutes.
+
+### UI follow-up (Claude app)
+
+1. **Style chips:** show style likes and avoids as editable chips next to brands, using the vocabulary above.
+2. **Evidence:** for inferred memories, show confidence (High ≥ 0.7, Medium ≥ 0.45, otherwise Low) and the evidence excerpts with dates.
+3. **Model label:** label `source: "model_interpretation"` as "Suggested by the style model from your saves", and say it doesn't affect ranking while `STYLE_MODEL_RANKING` is off.
+4. **Wardrobe groups:** separate "Owned (you said)", "Owned (verified)", "Saved (interest)", "Hidden" and "Opened links (not purchases)".
+
+### Bounded model test (not run; Lambda not restarted)
+
+The Gemma endpoint is offline. The provider integration is ready (`STYLE_MODEL_PROVIDER=openai_compatible` or `ollama`). A bounded test needs:
+
+1. **Endpoint:** an **OpenAI-compatible `/v1/chat/completions` endpoint** serving Gemma, for example the vLLM `gaunernst/gemma-3-12b-it-int4-awq` setup in `docs/experiments/hosted-gemma-a10/`, reached through a localhost tunnel.
+2. **Environment:** only in the shell, set `STYLE_REMOTE_BASE_URL`, `STYLE_REMOTE_API_KEY` and `STYLE_REMOTE_MODEL`.
+3. **Run:** `services/api/.venv/bin/python scripts/experiments/style_interpret_bench.py --max-calls 8`. That's one call per case in `scripts/experiments/style_interpret_cases.json`, at most 400 output tokens each. Every proposal goes through production validation. The run reports validated precision and recall, refusals by reason, latency and tokens.
+
+Ranking stays off (`STYLE_MODEL_RANKING` unset) until that run and the action-interpretation regression set (`scripts/experiments/style_regression_cases.json`) look acceptable.

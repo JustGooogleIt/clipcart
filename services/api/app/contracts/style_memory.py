@@ -26,11 +26,22 @@ Origin = Literal["stated", "inferred"]
 MemoryKind = Literal[
     "size", "fit", "budget_max",
     "color_like", "color_avoid", "material_like", "material_avoid", "brand_like", "brand_avoid",
+    "tone_like", "tone_avoid", "ring_size",  # accessories (docs/contracts/accessories.md)
+    "style_like", "style_avoid",  # vintage, minimalist, streetwear… (app/style/tags.py)
 ]
 MemorySource = Literal[
     "preferences_form", "style_panel", "style_note", "chat_refinement", "saved_items", "rejected_items", "purchases",
+    "model_interpretation",  # proposed by the style model from evidence, validated in code; never changes hard constraints
 ]
 MemoryStatus = Literal["active", "overridden", "removed"]
+
+
+class StyleTagFact(Record):
+    """A style tag the listing's own text states, with the words that state it."""
+
+    tag: str
+    field: Literal["title", "material"]
+    excerpt: str
 
 
 class StyleItem(Record):
@@ -44,6 +55,8 @@ class StyleItem(Record):
     brand: str | None = None
     domain: str | None = None
     category: str | None = None
+    condition: str | None = None
+    style_facts: list[StyleTagFact] = Field(default_factory=list)
 
 
 class StyleEvent(Record):
@@ -58,6 +71,13 @@ class StyleEvent(Record):
     order_id: str | None = None  # for verified_order
 
 
+class MemoryEvidence(Record):
+    event_id: str
+    type: str
+    at: datetime
+    excerpt: str | None = None
+
+
 class StyleMemory(Record):
     id: str
     kind: MemoryKind
@@ -70,6 +90,9 @@ class StyleMemory(Record):
     overridden_by: str | None = None
     created_at: datetime
     updated_at: datetime
+    confidence: float | None = None  # 1.0 stated; inferred from weighted evidence; model capped at 0.7
+    last_evidence_at: datetime | None = None
+    evidence: list[MemoryEvidence] = Field(default_factory=list, max_length=5)
 
 
 class ProfileEntry(Record):
@@ -77,6 +100,8 @@ class ProfileEntry(Record):
     origin: Origin
     memory_id: str
     evidence_count: int | None = None
+    confidence: float | None = None
+    source: str | None = None
 
 
 class OwnedItem(Record):
@@ -96,6 +121,11 @@ class StyleProfile(Record):
     materials_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
     brands_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
     brands_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    tones_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    tones_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    ring_size: ProfileEntry | None = None
+    styles_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    styles_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
     recently_owned: list[OwnedItem] = Field(default_factory=list, max_length=5)
     rejected_product_keys: list[str] = Field(default_factory=list, max_length=200)  # internal to search; count is exposed
     updated_at: datetime | None = None
@@ -153,6 +183,11 @@ class StyleProfileView(Record):
     materials_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
     brands_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
     brands_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    tones_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    tones_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    ring_size: ProfileEntry | None = None
+    styles_like: list[ProfileEntry] = Field(default_factory=list, max_length=5)
+    styles_avoid: list[ProfileEntry] = Field(default_factory=list, max_length=5)
     recently_owned: list[OwnedItem] = Field(default_factory=list, max_length=5)
     rejected_offer_count: int = 0
     updated_at: datetime | None = None
