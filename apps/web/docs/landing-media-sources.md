@@ -39,9 +39,37 @@ The caps already in the script are kept, and **nothing is upscaled**:
 - **Hero (fc08):** up to 1080 wide. The native stream is copied when it's ≤1080 wide.
 - **Gallery loops:** up to 720 wide, at CRF 23.
 - **Posters:** taken from the source frames.
-- **fc01 walkthrough and upload sample:** this is the one change. A source wider than 720 is **scaled down only**, to 720x1280 at CRF 20, keeping its native frame rate, its timestamps (no trim, passthrough timing) and its original audio. Committing the 26 MB 1080p60 source as a landing asset would be too heavy. A ≤720-wide source is still copied unchanged.
+- **fc01 walkthrough and upload sample:** this uses **YouTube's native 480x854, 30 fps rendition** (format 135 plus original audio), copied byte-for-byte, 5.6 MB. It's chosen on measured loading (below), not repository size. It matches the 360p file's timeline: SSIM at 22.0 s peaks at offset 0 (0.875). The 720p60 and 1080p60 renditions are kept locally in `downloads/fit-checks-hires/extra/`. The script still copies a sample ≤720 wide unchanged, and only scales down a wider one, keeping its frame rate, timestamps and audio.
 
 No generative enhancement or upscaling is used, so garment details are whatever the native rendition shows.
+
+## Measured loading (2026-10-18)
+
+These were measured in Chrome 155 with a cold cache, through ClipCart's own server. `FileResponse` answers `Range` requests with `206`.
+
+**Transfer:**
+
+| | Integration (360p) | #24 with 720p fc01 | #24 with 480p fc01 (shipped) |
+| --- | --- | --- | --- |
+| First view (hero, side cards, posters, metadata) | 2.13 MB | 8.76 MB | 8.76 MB |
+| Offscreen gallery loops on first view | 0–64 KB each (load interrupted) | same | same |
+| fc01 on first view | metadata only | 64 KB | 64 KB |
+| Walkthrough scroll-in: fc01 range request | `bytes=1310720-` (1.35 MB) | `bytes=7929856-` (7.9 MB) | `bytes=2654208-` (2.9 MB) |
+
+Chrome makes one range request starting just before 0:19. It keeps buffering to the end of the file even after the demo pauses at 0:22, so the clip's bitrate decides the cost.
+
+**Timing** (phone viewport, 60 ms latency):
+
+| | 10 Mbps: largest paint / hero moving / walkthrough at 0:22 | 4 Mbps: same |
+| --- | --- | --- |
+| Integration | 0.64 / 1.23 / 2.87 s | 1.26 / 2.47 / 5.08 s |
+| #24, 720p fc01 | 1.06 / 2.41 / 6.56 s | 2.32 / 5.66 / **14.8 s** |
+| #24, 480p fc01 (shipped) | 1.15 / 2.50 / 4.66 s | 2.32 / 5.63 / 9.96 s |
+| Same, with a 720p hero (comparison only) | 1.08 / 2.27 / 4.80 s | 2.30 / 5.41 / 10.97 s |
+
+**Conclusions:**
+- **Hero:** the **1080p hero stays**. Its poster, which shows the same frame, still paints within 2.5 s at 4 Mbps. A 720p re-encode is barely smaller (3.9 MB against 4.7 MB) and changes the timings by about 0.2 s.
+- **fc01:** the **720p60 file was a measured problem**. It took 14.8 s to reach the walkthrough frame at 4 Mbps, so fc01 uses the native 480p30 rendition.
 
 ### Reproduce the download
 
